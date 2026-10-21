@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@azure/functions": "^4.16.5",
-    "@caravan/contracts": "*"
+    "@caravan/contracts": "*",
+    "jose": "^6.2.13"
   }
 }

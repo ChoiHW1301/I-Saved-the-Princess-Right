@@ -7,10 +7,10 @@
 [P01 앱 기반·인증·저장 API](./phases/2026-10-21-caravan-escort-game/P01-foundation-api/phase.md)
 
 ## Active Task
-[T03 Entra authentication](./phases/2026-10-21-caravan-escort-game/P01-foundation-api/T03-entra-auth.md)
+[T04 Cosmos data models and repositories](./phases/2026-10-21-caravan-escort-game/P01-foundation-api/T04-cosmos-models.md)
 
 ## Status
-- T01 and T02 completed and committed.
+- T01, T02, and T03 completed and committed.
 
 ## Next Step (IMPORTANT)
-Follow T03: implement MSAL sign-in and protect the API for DEX employees using the confirmed Entra app and group configuration.
+Follow T04: implement the shared game data contracts and Cosmos DB profile and temporary-save repository models.

@@ -9,3 +9,4 @@ coverage/
 .env*
 !.env.example
 !.env.*.example
+apps/api/local.settings.json

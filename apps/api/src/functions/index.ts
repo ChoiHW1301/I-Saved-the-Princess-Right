@@ -1,4 +1,7 @@
 import { app } from '@azure/functions';
 
-// HTTP functions are registered here as API tasks are implemented.
+import './health.js';
+import './whoami.js';
+
+// Export the app instance for the Azure Functions Node.js v4 programming model.
 export { app };

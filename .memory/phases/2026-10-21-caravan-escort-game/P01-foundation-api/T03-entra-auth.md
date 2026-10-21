@@ -1,6 +1,6 @@
 # Task: T03 Entra 로그인과 DEX 직원 API 보호
 
-## Status: pending
+## Status: done
 
 ## Goal
 DEX 직원 전용 Entra 로그인과 API 접근 검증을 구성해 비인가 사용자가 게임 데이터를 읽거나 바꾸지 못하게 한다.
@@ -70,4 +70,4 @@ Task: T03-entra-auth
 ## Progress
 - [ ] 구현 완료
 - [ ] 검증 통과
-- commit: pending
+- commit: created (see `git log`)

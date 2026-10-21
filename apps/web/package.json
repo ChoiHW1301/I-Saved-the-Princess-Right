@@ -10,6 +10,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.25.1",
+    "@azure/msal-react": "^5.7.2",
     "@caravan/contracts": "*",
     "phaser": "^4.2.1",
     "react": "^19.3.1",

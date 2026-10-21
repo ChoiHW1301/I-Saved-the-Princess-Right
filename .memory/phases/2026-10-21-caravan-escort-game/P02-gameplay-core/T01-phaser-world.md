@@ -1,6 +1,6 @@
 # Task: T01 Phaser 플레이 공간과 이동
 
-## Status: pending
+## Status: done
 
 ## Goal
 중앙 마차와 플레이어를 보여주는 Phaser 플레이 화면을 React에 연결하고, 데스크톱 키보드 이동과 전진 배경을 제공한다.
@@ -37,9 +37,9 @@
 - **Test Scenarios**: WASD와 방향키 매핑, 대각선 속도 정규화, 화면 가장자리 이동 clamp, React unmount 뒤 ticker/keyboard listener 해제.
 
 ## Acceptance Criteria
-- [ ] 중앙 마차가 고정되고 배경만 이동하는 화면이 표시됨
-- [ ] WASD와 방향키가 같은 이동을 제공하고 화면 밖으로 벗어나지 않음
-- [ ] Phaser 리소스가 React unmount 때 정리됨
+- [x] 중앙 마차가 고정되고 배경만 이동하는 화면이 표시됨
+- [x] WASD와 방향키가 같은 이동을 제공하고 화면 밖으로 벗어나지 않음
+- [x] Phaser 리소스가 React unmount 때 정리됨
 
 ## Validation
 - `npm run test --workspace apps/web -- src/game/test` — game world cases pass
@@ -58,6 +58,6 @@ Task: T01-phaser-world
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
 - commit: pending

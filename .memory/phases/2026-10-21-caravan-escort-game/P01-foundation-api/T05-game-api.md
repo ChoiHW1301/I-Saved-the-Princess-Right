@@ -1,6 +1,6 @@
 # Task: T05 프로필·저장·결과·랭킹 API
 
-## Status: pending
+## Status: done
 
 ## Goal
 웹 클라이언트가 계정 진행을 읽고, 판을 저장·제출하며, 상위 랭킹과 본인 순위를 조회할 HTTP API를 제공한다.
@@ -53,10 +53,10 @@
 - **Error & Exception Handling**: repeated `runId` returns the existing receipt without another gold award; invalid query/filter → 400; unknown board → empty entries with null rank; partial Cosmos failure returns 503 and logs runId/correlationId for retry. The client cannot choose caller ID or display name.
 
 ## Acceptance Criteria
-- [ ] Account endpoints enforce caller identity and role and use versioned writes
-- [ ] A run submission awards gold once and updates score/clear records
-- [ ] Score/clear boards return at most 10 entries and calculate the caller’s rank outside the top ten
-- [ ] API errors use stable codes and never return stack traces
+- [x] Account endpoints enforce caller identity and role and use versioned writes
+- [x] A run submission awards gold once and updates score/clear records
+- [x] Score/clear boards return at most 10 entries and calculate the caller’s rank outside the top ten
+- [x] API errors use stable codes and never return stack traces
 
 ## Validation
 - `npm run test --workspace apps/api -- test/functions/profile-save.test.ts test/services/runService.test.ts test/functions/leaderboards.test.ts` — API behavior cases pass
@@ -75,6 +75,6 @@ Task: T05-game-api
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과
+- commit: created (see `git log`)

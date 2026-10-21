@@ -1,6 +1,6 @@
 import { CurrentRunSaveV1Schema, type CurrentRunSaveV1 } from '@caravan/contracts';
 import { getGameContainers } from './cosmosClient.js';
-import { asContainer, cosmosStatus, mapStorageFailure, StorageError, type ContainerPort } from './repositorySupport.js';
+import { asContainer, cosmosStatus, mapStorageFailure, StorageError, stripCosmosMetadata, type ContainerPort } from './repositorySupport.js';
 
 export interface SaveRepositoryPort {
   get(userId: string): Promise<CurrentRunSaveV1 | null>;
@@ -10,8 +10,7 @@ export interface SaveRepositoryPort {
 
 function saveFromResponse(response: { resource?: unknown }): CurrentRunSaveV1 | null {
   if (!response.resource) return null;
-  const { _etag: _ignored, ...document } = response.resource as Record<string, unknown>;
-  return CurrentRunSaveV1Schema.parse(document);
+  return CurrentRunSaveV1Schema.parse(stripCosmosMetadata(response.resource));
 }
 
 export class SaveRepository implements SaveRepositoryPort {

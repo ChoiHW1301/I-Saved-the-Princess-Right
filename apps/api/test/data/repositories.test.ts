@@ -70,17 +70,18 @@ describe('Cosmos repositories', () => {
     const mock = mockedContainer();
     mock.documents.set(`${userId}/profile`, {
       id: 'profile', userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 1,
-      displayName: caller.displayName, goldBalance: 0, unlockedCharacters: ['hero'],
+      displayName: caller.displayName, goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['hero'],
       permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
     });
     const repository = new ProfileRepository(mock.container);
     const receipt = {
       id: 'run:run-1', userId, runId: 'run-1', score: 100, goldAward: 10,
-      status: 'won' as const, endingId: 'purified-princess' as const, createdAt: now,
+      status: 'won' as const, endingId: 'princess-purified' as const, characterId: 'hero' as const,
+      elapsedSeconds: 120, kills: 1, defeatedBossIds: ['castle-warlord', 'princess-demon'], karma: 50, createdAt: now,
     };
     const updated = {
       id: 'profile' as const, userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 2,
-      displayName: caller.displayName, goldBalance: 10, unlockedCharacters: ['hero'] as ['hero'],
+      displayName: caller.displayName, goldBalance: 10, lifetimeGoldEarned: 10, unlockedCharacters: ['hero'] as ['hero'],
       permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
     };
     await expect(repository.applyRunOnce(caller, receipt, updated)).resolves.toBe(true);
@@ -103,17 +104,17 @@ describe('Cosmos repositories', () => {
     (mock.container.items as any).query = query;
     mock.documents.set(`score/${userId}`, {
       id: userId, boardId: 'score', userId, displayName: 'Hero', score: 200,
-      characterId: 'hero', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
+      kills: 2, characterId: 'hero', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
     });
     const repository = new LeaderboardRepository(mock.container);
     await repository.upsertBest({
       id: userId, boardId: 'score', userId, displayName: 'Hero', score: 100,
-      characterId: 'hero', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
+      kills: 1, characterId: 'hero', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
     });
     expect(mock.upsert).not.toHaveBeenCalled();
     await repository.listTop('score', 10);
     expect(query).toHaveBeenCalledWith(expect.objectContaining({
-      query: expect.stringContaining('ORDER BY c.score DESC, c.elapsedSeconds ASC, c.displayName ASC'),
+      query: expect.stringContaining('ORDER BY c.score DESC, c.kills DESC, c.elapsedSeconds DESC, c.displayName ASC'),
     }), { partitionKey: 'score' });
   });
 });

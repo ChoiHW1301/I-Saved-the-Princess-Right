@@ -1,12 +1,13 @@
 import { PlayerProfileSchema, RunReceiptDocumentSchema, type PlayerProfile, type RunReceiptDocument } from '@caravan/contracts';
 import type { Caller } from '../auth/authorize.js';
 import { getGameContainers } from './cosmosClient.js';
-import { asContainer, cosmosStatus, mapStorageFailure, StorageError, type ContainerPort } from './repositorySupport.js';
+import { asContainer, cosmosStatus, mapStorageFailure, StorageError, stripCosmosMetadata, type ContainerPort } from './repositorySupport.js';
 
 export interface ProfileRepositoryPort {
   getOrCreate(caller: Caller): Promise<PlayerProfile>;
   save(profile: PlayerProfile): Promise<void>;
   applyRunOnce(caller: Caller, receipt: RunReceiptDocument, updatedProfile: PlayerProfile): Promise<boolean>;
+  getRunReceipt(userId: string, runId: string): Promise<RunReceiptDocument | null>;
 }
 
 function userIdFor(caller: Caller): string {
@@ -19,8 +20,7 @@ function clientProfile(document: unknown): PlayerProfile {
 
 function fromResponse(response: { resource?: unknown; etag?: string }): { profile: PlayerProfile; etag?: string } | null {
   if (!response.resource) return null;
-  const { _etag: _ignored, ...profile } = response.resource as Record<string, unknown>;
-  return { profile: clientProfile(profile), etag: response.etag };
+  return { profile: clientProfile(stripCosmosMetadata(response.resource)), etag: response.etag };
 }
 
 export class ProfileRepository implements ProfileRepositoryPort {
@@ -47,6 +47,7 @@ export class ProfileRepository implements ProfileRepositoryPort {
       version: 1,
       displayName: caller.displayName,
       goldBalance: 0,
+      lifetimeGoldEarned: 0,
       unlockedCharacters: ['hero'],
       permanentUpgradeLevels: {},
       passiveIds: [],
@@ -105,6 +106,17 @@ export class ProfileRepository implements ProfileRepositoryPort {
       if (error instanceof StorageError) throw error;
       if (cosmosStatus(error) === 409) return false;
       mapStorageFailure(error, 'PROFILE_CONFLICT');
+    }
+  }
+
+  async getRunReceipt(userId: string, runId: string): Promise<RunReceiptDocument | null> {
+    try {
+      const response = await this.container.item(`run:${runId}`, userId).read<RunReceiptDocument>();
+      if (!response.resource) return null;
+      return RunReceiptDocumentSchema.parse(stripCosmosMetadata(response.resource));
+    } catch (error) {
+      if (cosmosStatus(error) === 404) return null;
+      mapStorageFailure(error);
     }
   }
 }

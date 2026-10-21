@@ -4,6 +4,7 @@ import {
   LeaderboardEntrySchema,
   PlayerProfileSchema,
   RunReceiptDocumentSchema,
+  RunSubmissionSchema,
 } from '../src/index.js';
 
 const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
@@ -12,7 +13,7 @@ const now = '2026-10-21T00:00:00.000Z';
 const profile = {
   id: 'profile', userId, tenantId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   objectId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', version: 1, displayName: 'Hero', goldBalance: 0,
-  unlockedCharacters: ['hero'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
+  lifetimeGoldEarned: 0, unlockedCharacters: ['hero'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
 };
 
 const snapshot = {
@@ -31,10 +32,11 @@ describe('shared document schemas', () => {
     }).snapshot.status).toBe('active');
     expect(RunReceiptDocumentSchema.parse({
       id: 'run:run-1', userId, runId: 'run-1', score: 500, goldAward: 10,
-      status: 'won', endingId: 'purified-princess', createdAt: now,
+      status: 'won', endingId: 'princess-purified', characterId: 'hero', elapsedSeconds: 120,
+      kills: 5, defeatedBossIds: ['castle-warlord'], karma: 50, createdAt: now,
     }).status).toBe('won');
     expect(LeaderboardEntrySchema.parse({
-      id: userId, boardId: 'score', userId, displayName: 'Hero', score: 500,
+      id: userId, boardId: 'score', userId, displayName: 'Hero', score: 500, kills: 5,
       characterId: 'hero', karmaTier: 'good', elapsedSeconds: 120, clear: true, updatedAt: now,
     }).score).toBe(500);
   });
@@ -59,5 +61,15 @@ describe('shared document schemas', () => {
       snapshot: { ...snapshot, enemies: tooManyEnemies },
     })).toThrow();
     expect(() => PlayerProfileSchema.parse({ ...profile, displayName: 'x'.repeat(1_048_600) })).toThrow();
+  });
+
+  it('accepts known boss result IDs and rejects unknown boss IDs or out-of-range run stats', () => {
+    const run = {
+      runId: 'run-1', characterId: 'hero', status: 'won', elapsedSeconds: 900, kills: 10000,
+      defeatedBossIds: ['castle-warlord', 'princess-demon'], karma: 100, endingId: 'princess-purified',
+    };
+    expect(RunSubmissionSchema.parse(run).defeatedBossIds).toHaveLength(2);
+    expect(() => RunSubmissionSchema.parse({ ...run, defeatedBossIds: ['unknown-boss'] })).toThrow();
+    expect(() => RunSubmissionSchema.parse({ ...run, kills: 10001 })).toThrow();
   });
 });

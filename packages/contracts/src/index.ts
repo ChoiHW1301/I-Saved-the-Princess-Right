@@ -7,3 +7,5 @@ export type RunStatus = 'active' | 'won' | 'lost';
 export * from './profile.js';
 export * from './save.js';
 export * from './leaderboard.js';
+export * from './runResult.js';
+export * from './validation.js';

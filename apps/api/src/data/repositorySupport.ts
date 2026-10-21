@@ -59,3 +59,10 @@ export function mapStorageFailure(error: unknown, conflictCode?: 'SAVE_CONFLICT'
 export function asContainer(container: unknown): ContainerPort {
   return container as ContainerPort;
 }
+
+export function stripCosmosMetadata<T>(resource: T): T {
+  if (typeof resource !== 'object' || resource === null || Array.isArray(resource)) return resource;
+  return Object.fromEntries(
+    Object.entries(resource).filter(([key]) => !key.startsWith('_')),
+  ) as T;
+}

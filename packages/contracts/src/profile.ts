@@ -14,6 +14,7 @@ export const PlayerProfileSchema = withDocumentLimit(z.object({
   version: CounterSchema,
   displayName: z.string().min(1).max(128),
   goldBalance: CounterSchema,
+  lifetimeGoldEarned: CounterSchema.default(0),
   unlockedCharacters: z.array(CharacterIdSchema).max(32),
   permanentUpgradeLevels: z.record(z.string().min(1).max(64), CounterSchema),
   passiveIds: z.array(IdSchema).max(100),

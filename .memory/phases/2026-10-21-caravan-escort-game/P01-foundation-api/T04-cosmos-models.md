@@ -1,6 +1,6 @@
 # Task: T04 공유 데이터 계약과 Cosmos 저장소
 
-## Status: pending
+## Status: done
 
 ## Goal
 계정 진행, 이어하기 저장, 랭킹의 데이터 구조와 Cosmos DB 접근 계층을 정의해 API가 사용할 저장 기반을 만든다.
@@ -78,6 +78,6 @@ Task: T04-cosmos-models
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과
+- commit: created (see `git log`)

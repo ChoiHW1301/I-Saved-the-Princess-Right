@@ -11,7 +11,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@azure/cosmos": "^4.10.1",
     "@azure/functions": "^4.16.5",
+    "@azure/identity": "^4.14.0",
     "@caravan/contracts": "*",
     "jose": "^6.2.13"
   }

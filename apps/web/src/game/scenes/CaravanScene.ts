@@ -12,6 +12,10 @@ import { movementFromKeys } from '../systems/MovementInput.js';
 import { RespawnSystem } from '../systems/RespawnSystem.js';
 import { seededRandom } from '../systems/seededRandom.js';
 import { createRunState } from '../state/RunState.js';
+import { LevelSystem } from '../systems/LevelSystem.js';
+import { gameEventBus } from '../bridge/GameEventBus.js';
+import { upgradeCatalog } from '../content/upgrades.js';
+import { resolveHit } from '../systems/CombatSystem.js';
 
 export interface RunWorldConfig { width: number; height: number; seed: number }
 
@@ -19,11 +23,12 @@ export class CaravanScene extends Phaser.Scene {
   private hero!: Hero;
   private background!: BackgroundScroll;
   private readonly enemies: Enemy[] = [];
-  private readonly run = createRunState();
+  private run = createRunState();
   private readonly enemyDirector = new EnemyDirector();
   private readonly autoAttack = new AutoAttackSystem();
   private readonly health = new HealthSystem();
   private readonly respawn = new RespawnSystem();
+  private levelSystem!: LevelSystem;
   private spawnCooldownMs = 900;
   private statusText!: Phaser.GameObjects.Text;
   private heroBar!: Phaser.GameObjects.Graphics;
@@ -33,7 +38,9 @@ export class CaravanScene extends Phaser.Scene {
   private random = seededRandom(1);
   constructor() { super('CaravanScene'); }
   create(data: RunWorldConfig = { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1 }): void {
+    this.run = createRunState();
     this.random = seededRandom(data.seed);
+    this.levelSystem = new LevelSystem(() => this.random());
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.background = new BackgroundScroll(this);
@@ -46,6 +53,8 @@ export class CaravanScene extends Phaser.Scene {
     const clearInput = (): void => this.hero?.setInput({ x: 0, y: 0 });
     window.addEventListener('blur', clearInput);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('blur', clearInput));
+    const unsubscribeChoice = gameEventBus.on('upgrade-choice', ({ upgradeId }) => this.chooseUpgrade(upgradeId));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeChoice);
     this.refreshHud();
   }
   update(_time: number, delta: number): void {
@@ -80,7 +89,14 @@ export class CaravanScene extends Phaser.Scene {
     }
     for (const attack of this.enemyDirector.update(this.enemies, heroPosition, caravanPosition, delta, !this.run.player.isDead)) {
       if (attack.target === 'caravan') this.health.damageCaravan(this.run.caravan, attack.damage, this.run);
-      else this.health.damagePlayer(this.run.player, attack.damage);
+      else {
+        const wasDamaged = this.health.damagePlayer(this.run.player, attack.damage);
+        const reflect = this.run.upgradeStats['hero-reflect'] ?? 0;
+        if (wasDamaged && reflect > 0) {
+          const reflected = resolveHit(attack.enemy, reflect, 'hero-reflect');
+          if (reflected?.killed) this.onEnemyDefeated(attack.enemy);
+        }
+      }
       if (this.run.player.isDead) {
         this.hero.setVisible(false);
         (this.hero.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
@@ -112,12 +128,48 @@ export class CaravanScene extends Phaser.Scene {
 
   private onEnemyDefeated(enemy: Enemy): void {
     this.run.kills += 1;
+    this.run.runGold += enemy.definition.gold;
     this.events.emit('enemy-defeated', {
       enemyId: enemy.definition.id,
       experience: enemy.definition.experience,
       gold: enemy.definition.gold,
       position: enemy.worldPosition,
     });
+    const result = this.levelSystem.addXp(this.run, enemy.definition.experience);
+    if (result.levelUps > 0 && this.run.pendingChoices.length > 0) {
+      this.scene.pause();
+      gameEventBus.emit('level-up', { level: this.run.level, choices: this.run.pendingChoices });
+    }
+  }
+
+  private chooseUpgrade(upgradeId: string): void {
+    const choice = this.run.pendingChoices.find((candidate) => candidate.id === upgradeId);
+    const upgrade = upgradeCatalog.find((candidate) => candidate.id === upgradeId);
+    if (!choice || !upgrade || !this.levelSystem.applyChoice(this.run, upgradeId)) {
+      if (import.meta.env.DEV) console.error(`Ignored invalid level-up choice: ${upgradeId}`);
+      return;
+    }
+    this.applyUpgrade(upgrade.stat, choice.value);
+    const nextChoices = this.levelSystem.presentNextChoice(this.run);
+    if (nextChoices.length > 0) {
+      gameEventBus.emit('level-up', { level: this.run.level, choices: nextChoices });
+      return;
+    }
+    gameEventBus.emit('level-up-complete', null);
+    this.scene.resume();
+  }
+
+  private applyUpgrade(stat: string, value: number): void {
+    if (stat === 'sword-damage' || stat === 'sword-range') this.autoAttack.applyUpgrade(stat, value);
+    if (stat === 'movement-speed') this.hero.moveSpeed += value;
+    if (stat === 'hero-max-health') {
+      this.run.player.maxHp += value;
+      this.run.player.hp += value;
+    }
+    if (stat === 'caravan-max-health') {
+      this.run.caravan.maxHp += value;
+      this.run.caravan.hp += value;
+    }
   }
 
   private removeEnemyAt(index: number): void {
@@ -128,7 +180,7 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private refreshHud(): void {
-    this.statusText?.setText(`적 처치 ${this.run.kills}  ·  생존 ${Math.floor(this.run.elapsedSeconds)}초`);
+    this.statusText?.setText(`LV ${this.run.level}  EXP ${this.run.xp}/${this.run.xpToNext}  ·  적 처치 ${this.run.kills}  ·  생존 ${Math.floor(this.run.elapsedSeconds)}초`);
     this.heroBar?.clear().fillStyle(0x20201d, 0.9).fillRoundedRect(24, 96, 184, 13, 5)
       .fillStyle(0x83bd78).fillRoundedRect(26, 98, 180 * this.run.player.hp / this.run.player.maxHp, 9, 4);
     this.caravanBar?.clear().fillStyle(0x20201d, 0.9).fillRoundedRect(WORLD_WIDTH - 218, 96, 194, 13, 5)

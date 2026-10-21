@@ -18,6 +18,11 @@ export function selectNearestEnemy(origin: Vector2, enemies: readonly Enemy[], r
 export class AutoAttackSystem {
   private cooldownMs = 0;
   constructor(private readonly weapon: WeaponConfig = { damage: 10, range: 125, cooldownMs: 600 }) {}
+  applyUpgrade(stat: string, amount: number): void {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (stat === 'sword-damage') this.weapon.damage += amount;
+    if (stat === 'sword-range') this.weapon.range += amount;
+  }
   update(hero: Vector2, enemies: readonly Enemy[], delta: number): AutoAttackHit | null {
     this.cooldownMs = Math.max(0, this.cooldownMs - delta);
     if (this.cooldownMs > 0) return null;

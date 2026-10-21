@@ -5,6 +5,7 @@ export const MetaUpgradeIdSchema = z.enum(['max-health', 'armor', 'damage', 'mag
 export type MetaUpgradeId = z.infer<typeof MetaUpgradeIdSchema>;
 
 export const CharacterIdSchema = z.enum(['hero', 'archer', 'mage', 'merchant', 'dark-hero']);
+export type CharacterId = z.infer<typeof CharacterIdSchema>;
 
 export const PlayerProfileSchema = withDocumentLimit(z.object({
   id: z.literal('profile'),

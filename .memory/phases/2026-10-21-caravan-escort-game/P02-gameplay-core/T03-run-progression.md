@@ -1,6 +1,6 @@
 # Task: T03 경험치와 판 안 레벨업
 
-## Status: pending
+## Status: done
 
 ## Goal
 처치 보상으로 경험치를 모아 레벨업하고, 전투를 멈춘 상태에서 무작위 강화 3개 중 하나를 적용하는 판 안 성장 루프를 만든다.
@@ -44,9 +44,9 @@
 - **Error & Exception Handling**: empty choice array resumes run with no selection; invalid UI command logs a development error and leaves game paused for a valid choice.
 
 ## Acceptance Criteria
-- [ ] XP from enemy deaths increments levels using deterministic thresholds
-- [ ] Every level-up pauses game, displays up to three valid options, and applies one exactly once
-- [ ] XP/level/upgrades reset when a new run is created
+- [x] XP from enemy deaths increments levels using deterministic thresholds
+- [x] Every level-up pauses game, displays up to three valid options, and applies one exactly once
+- [x] XP/level/upgrades reset when a new run is created
 
 ## Validation
 - `npm run test --workspace packages/contracts -- gameplay.test.ts` — gameplay DTO constraints pass
@@ -66,6 +66,6 @@ Task: T03-run-progression
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
 - commit: pending

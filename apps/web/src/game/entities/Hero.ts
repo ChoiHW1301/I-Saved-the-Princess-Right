@@ -3,6 +3,7 @@ import { normalizedMovement, type MovementInput } from '../systems/MovementInput
 
 export class Hero extends Phaser.Physics.Arcade.Sprite {
   static readonly SPEED = 220;
+  moveSpeed = Hero.SPEED;
   constructor(scene: Phaser.Scene, x: number, y: number) {
     if (!scene.textures.exists('hero-art')) {
       const art = scene.add.graphics();
@@ -23,6 +24,6 @@ export class Hero extends Phaser.Physics.Arcade.Sprite {
   }
   setInput(input: MovementInput): void {
     const vector = normalizedMovement(input);
-    (this.body as Phaser.Physics.Arcade.Body).setVelocity(vector.x * Hero.SPEED, vector.y * Hero.SPEED);
+    (this.body as Phaser.Physics.Arcade.Body).setVelocity(vector.x * this.moveSpeed, vector.y * this.moveSpeed);
   }
 }

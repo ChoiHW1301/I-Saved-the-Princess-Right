@@ -36,6 +36,7 @@ export const RunStateSchema = z.object({
   karma: z.number().int().min(-100).max(100), runGold: z.number().int().nonnegative(), kills: z.number().int().nonnegative(),
   selectedUpgradeIds: z.array(z.string().min(1).max(64)).max(500), weaponLevels: z.record(z.string().min(1).max(64), z.number().int().nonnegative()),
   eventChoiceIds: z.array(z.string().min(1).max(128)).max(100),
+  defeatedBossIds: z.array(z.enum(['castle-warlord', 'lava-behemoth', 'princess-demon', 'king-guard'])).max(3),
   pausedBy: z.enum(['none', 'level-up', 'event', 'boss', 'network']), player: PlayerRunStateSchema, caravan: CaravanRunStateSchema,
   pendingChoices: z.array(UpgradeChoiceSchema).max(3), pendingLevelUps: z.number().int().nonnegative(),
   upgradeStats: z.record(z.string().min(1).max(64), z.number().finite()),
@@ -43,7 +44,7 @@ export const RunStateSchema = z.object({
 export interface RunState {
   runId: string; status: RunStatus; elapsedSeconds: number; characterId: CharacterId;
   level: number; xp: number; xpToNext: number; karma: number; runGold: number; kills: number;
-  selectedUpgradeIds: string[]; weaponLevels: Record<string, number>; eventChoiceIds: string[];
+  selectedUpgradeIds: string[]; weaponLevels: Record<string, number>; eventChoiceIds: string[]; defeatedBossIds: import('./leaderboard.js').BossId[];
   pausedBy: 'none' | 'level-up' | 'event' | 'boss' | 'network';
   player: PlayerRunState;
   caravan: CaravanRunState; pendingChoices: UpgradeChoice[]; pendingLevelUps: number;

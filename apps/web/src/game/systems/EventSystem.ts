@@ -1,5 +1,6 @@
 import type { RunState } from '@caravan/contracts';
 import { eventCatalog, type EventChoice, type StoryEvent } from '../content/events.js';
+import { applyKarma } from './KarmaSystem.js';
 
 export interface EventOutcome {
   eventId: string;
@@ -31,7 +32,7 @@ export class EventSystem {
       || !this.isChoiceValid(event.yes) || !this.isChoiceValid(event.no)) return null;
     const choice = choiceId === 'yes' ? event.yes : choiceId === 'no' ? event.no : null;
     if (!choice) return null;
-    run.karma = Math.max(-100, Math.min(100, run.karma + choice.karmaDelta));
+    run.karma = applyKarma(run.karma, choice.karmaDelta);
     run.caravan.hp = Math.max(0, Math.min(run.caravan.maxHp, run.caravan.hp + choice.wagonHpDelta));
     run.runGold = Math.max(0, run.runGold + choice.goldDelta);
     run.eventChoiceIds.push(`${eventId}:${choice.id}`);

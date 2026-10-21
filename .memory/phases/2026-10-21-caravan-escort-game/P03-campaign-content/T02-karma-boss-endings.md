@@ -1,6 +1,6 @@
 # Task: T02 카르마 분기·보스전·엔딩
 
-## Status: pending
+## Status: done
 
 ## Goal
 현재 카르마와 최종 카르마를 사용해 흑화 외형, 준보스와 최종전, 승패 후 결말을 일관되게 진행한다.
@@ -46,10 +46,10 @@
 - **Error & Exception Handling**: unknown tier maps to neutral only after validation rejects invalid karma; no ending resolver call for active run.
 
 ## Acceptance Criteria
-- [ ] Karma boundaries classify exactly and clamp event changes
-- [ ] Good/neutral use princess demon; evil uses king and soldiers
-- [ ] Good victory purifies princess; neutral victory kills her; evil victory makes hero new demon king
-- [ ] Current visual follows current karma; ending follows final run karma
+- [x] Karma boundaries classify exactly and clamp event changes
+- [x] Good/neutral use princess demon; evil uses king and soldiers
+- [x] Good victory purifies princess; neutral victory kills her; evil victory makes hero new demon king
+- [x] Current visual follows current karma; ending follows final run karma
 
 ## Validation
 - `npm run test --workspace apps/web -- src/game/test/KarmaAndBoss.test.ts src/game/test/EndingSystem.test.ts` — all boundary/endings pass
@@ -68,6 +68,6 @@ Task: T02-karma-boss-endings
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과
+- commit: feat(campaign): add karma routes bosses and endings

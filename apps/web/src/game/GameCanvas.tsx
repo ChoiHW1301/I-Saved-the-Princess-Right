@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import Phaser from 'phaser';
 import { createGameConfig } from './config/createGameConfig.js';
-import type { UpgradeChoice } from '@caravan/contracts';
+import type { BossId, RunEndingSummary, UpgradeChoice } from '@caravan/contracts';
 import type { StoryEvent } from './content/events.js';
 import type { CampaignMilestone } from './content/campaignSchedule.js';
 import { gameEventBus } from './bridge/GameEventBus.js';
 import { LevelUpOverlay } from './ui/LevelUpOverlay.js';
 import { EventChoiceOverlay } from './ui/EventChoiceOverlay.js';
+import { EndingPanel } from './ui/EndingPanel.js';
+
+type ActiveBossEncounter = CampaignMilestone & { bossId: BossId };
 
 export function GameCanvas(): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; choices: UpgradeChoice[] } | null>(null);
   const [storyEvent, setStoryEvent] = useState<StoryEvent | null>(null);
-  const [bossEncounter, setBossEncounter] = useState<CampaignMilestone | null>(null);
+  const [bossEncounter, setBossEncounter] = useState<ActiveBossEncounter | null>(null);
+  const [runSummary, setRunSummary] = useState<RunEndingSummary | null>(null);
   const chooseUpgrade = useCallback((upgradeId: string): void => {
     gameEventBus.emit('upgrade-choice', { upgradeId });
   }, []);
@@ -29,7 +33,8 @@ export function GameCanvas(): JSX.Element {
     const unsubscribeBossComplete = gameEventBus.on('boss-defeated', ({ milestoneId }) => {
       setBossEncounter((active) => active?.id === milestoneId ? null : active);
     });
-    return () => { unsubscribeLevelUp(); unsubscribeComplete(); unsubscribeEvent(); unsubscribeEventComplete(); unsubscribeBoss(); unsubscribeBossComplete(); };
+    const unsubscribeRunEnded = gameEventBus.on('run-ended', (summary) => { setRunSummary(summary); setLevelUp(null); setStoryEvent(null); setBossEncounter(null); });
+    return () => { unsubscribeLevelUp(); unsubscribeComplete(); unsubscribeEvent(); unsubscribeEventComplete(); unsubscribeBoss(); unsubscribeBossComplete(); unsubscribeRunEnded(); };
   }, []);
 
   useEffect(() => {
@@ -48,8 +53,9 @@ export function GameCanvas(): JSX.Element {
       {levelUp && <LevelUpOverlay level={levelUp.level} choices={levelUp.choices} onChoose={chooseUpgrade} />}
       {storyEvent && <EventChoiceOverlay event={storyEvent} onChoose={chooseEvent} />}
       {bossEncounter && <div role="status" style={{ position: 'absolute', zIndex: 15, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '10px 22px', border: '1px solid #b86556', borderRadius: 999, background: '#251414dd', color: '#f0c6a8', letterSpacing: '.12em', pointerEvents: 'none' }}>
-        {bossEncounter.kind === 'final-boss' ? 'FINAL BOSS' : 'MINI-BOSS'} · {bossEncounter.id.replaceAll('-', ' ').toUpperCase()}
+        {bossEncounter.kind === 'final-boss' ? 'FINAL BOSS' : 'MINI-BOSS'} · {bossEncounter.bossId.replaceAll('-', ' ').toUpperCase()}
       </div>}
+      {runSummary && <EndingPanel summary={runSummary} />}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import type { UpgradeChoice } from '@caravan/contracts';
+import type { BossId, RunEndingSummary, UpgradeChoice } from '@caravan/contracts';
 import type { StoryEvent } from '../content/events.js';
 import type { CampaignMilestone } from '../content/campaignSchedule.js';
 
@@ -9,8 +9,10 @@ interface GameEvents {
   'story-event': StoryEvent;
   'event-choice': { eventId: string; choiceId: 'yes' | 'no' };
   'event-complete': { eventId: string };
-  'boss-encounter': CampaignMilestone;
+  'boss-encounter': CampaignMilestone & { bossId: BossId };
   'boss-defeated': { milestoneId: string };
+  'run-ended': RunEndingSummary;
+  'continue-after-ending': RunEndingSummary;
 }
 type Listener<T> = (payload: T) => void;
 

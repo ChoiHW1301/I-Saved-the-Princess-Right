@@ -1,6 +1,6 @@
 # Task: T02 적·전투·호위 생존 규칙
 
-## Status: pending
+## Status: done
 
 ## Goal
 일반 적과 마차 우선 돌격 적이 플레이어/마차를 위협하고 자동 공격으로 처치할 수 있는 핵심 전투 루프를 구현한다.
@@ -43,9 +43,9 @@
 - **Error & Exception Handling**: repeated death timers are idempotent; game-over overlay is emitted once; timer callbacks are cancelled when scene shuts down.
 
 ## Acceptance Criteria
-- [ ] Basic enemies select nearest target and attack in range
-- [ ] Caravan-priority enemy is low-health and attacks wagon first
-- [ ] Hero respawns with temporary invulnerability; wagon destruction ends run
+- [x] Basic enemies select nearest target and attack in range
+- [x] Caravan-priority enemy is low-health and attacks wagon first
+- [x] Hero respawns with temporary invulnerability; wagon destruction ends run
 
 ## Validation
 - `npm run test --workspace apps/web -- src/game/test/CombatSystem.test.ts src/game/test/SurvivalRules.test.ts` — targeting, damage, and state transitions pass
@@ -64,6 +64,6 @@ Task: T02-combat-and-survival
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
 - commit: pending

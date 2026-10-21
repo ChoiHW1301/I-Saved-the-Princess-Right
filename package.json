@@ -1,0 +1,30 @@
+{
+  "name": "caravan-escort-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "packages/contracts"
+  ],
+  "scripts": {
+    "dev:web": "npm run build --workspace @caravan/contracts && npm run dev --workspace @caravan/web",
+    "dev:api": "npm run build --workspace @caravan/contracts && npm run dev --workspace @caravan/api",
+    "build": "npm run build --workspace @caravan/contracts && npm run build --workspace @caravan/api && npm run build --workspace @caravan/web",
+    "typecheck": "npm run typecheck --workspace @caravan/contracts && npm run build --workspace @caravan/contracts && npm run typecheck --workspace @caravan/api && npm run typecheck --workspace @caravan/web",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}

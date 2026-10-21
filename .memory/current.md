@@ -7,10 +7,10 @@
 [P01 앱 기반·인증·저장 API](./phases/2026-10-21-caravan-escort-game/P01-foundation-api/phase.md)
 
 ## Active Task
-[T02 TypeScript workspace scaffold](./phases/2026-10-21-caravan-escort-game/P01-foundation-api/T02-workspace-scaffold.md)
+[T03 Entra authentication](./phases/2026-10-21-caravan-escort-game/P01-foundation-api/T03-entra-auth.md)
 
 ## Status
-- T01 completed and committed as the initial repository commit.
+- T01 and T02 completed and committed.
 
 ## Next Step (IMPORTANT)
-Follow T01: initialize Git at the workspace root and commit the `.memory/` planning documents.
+Follow T03: implement MSAL sign-in and protect the API for DEX employees using the confirmed Entra app and group configuration.

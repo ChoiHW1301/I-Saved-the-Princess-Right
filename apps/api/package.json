@@ -1,0 +1,17 @@
+{
+  "name": "@caravan/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "dev": "npm run build && func start",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.16.5",
+    "@caravan/contracts": "*"
+  }
+}

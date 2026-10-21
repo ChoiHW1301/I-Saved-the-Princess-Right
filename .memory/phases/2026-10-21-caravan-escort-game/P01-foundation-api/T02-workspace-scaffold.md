@@ -1,6 +1,6 @@
 # Task: T02 TypeScript 워크스페이스 기반
 
-## Status: pending
+## Status: done
 
 ## Goal
 앱 코드가 없는 저장소에 웹, API, 공용 계약 패키지를 분리한 빌드 가능한 TypeScript 프로젝트 기반을 만든다.
@@ -75,4 +75,4 @@ Task: T02-workspace-scaffold
 ## Progress
 - [ ] 구현 완료
 - [ ] 검증 통과
-- commit: pending
+- commit: created (see `git log`)

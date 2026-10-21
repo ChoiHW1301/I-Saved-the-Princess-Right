@@ -10,13 +10,19 @@ export class Enemy extends Phaser.GameObjects.Container implements Damageable {
   dead = false;
   attackCooldownMs = 0;
   target: EnemyTarget = 'hero';
-  constructor(scene: Phaser.Scene, x: number, y: number, readonly definition: EnemyDefinition) {
+  constructor(scene: Phaser.Scene, x: number, y: number, readonly definition: EnemyDefinition, readonly bossMilestoneId?: string) {
     super(scene, x, y);
     this.hp = definition.maxHp;
     this.maxHp = definition.maxHp;
-    const body = scene.add.circle(0, 0, definition.wagonPriority ? 12 : 15, definition.color).setStrokeStyle(3, 0x211b19);
+    const body = scene.add.circle(0, 0, bossMilestoneId ? 28 : definition.wagonPriority ? 12 : 15, definition.color).setStrokeStyle(bossMilestoneId ? 5 : 3, 0x211b19);
     const eye = scene.add.circle(4, -3, 2, 0xffe3bd);
     this.add([body, eye]);
+    if (bossMilestoneId) {
+      this.add([
+        scene.add.triangle(-12, -26, 0, 14, 12, 14, 0xd4a84f).setRotation(-0.2),
+        scene.add.triangle(12, -26, 0, 14, 12, 14, 0xd4a84f).setRotation(0.2),
+      ]);
+    }
     this.setDepth(8);
     scene.add.existing(this);
   }

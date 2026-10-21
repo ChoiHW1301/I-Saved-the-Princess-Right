@@ -1,6 +1,6 @@
 # Task: T01 캠페인 시계·지역·이벤트 일정
 
-## Status: pending
+## Status: done
 
 ## Goal
 실제 플레이 타이머에 따라 세 지역, 배경 전환, 네 번의 일시 정지 이벤트, 두 준보스와 최종 보스 발생 시점을 결정한다.
@@ -46,9 +46,9 @@
 - **Error & Exception Handling**: missing event ID or duplicate choice cannot mutate state; if no valid choice exists, maintain pause and surface content error.
 
 ## Acceptance Criteria
-- [ ] All milestones fire once at the specified game times
-- [ ] Biome crossfades begin 30 seconds before each miniboss and finish at arrival
-- [ ] Event choice pauses combat and applies only the selected outcome
+- [x] All milestones fire once at the specified game times
+- [x] Biome crossfades begin 30 seconds before each miniboss and finish at arrival
+- [x] Event choice pauses combat and applies only the selected outcome
 
 ## Validation
 - `npm run test --workspace apps/web -- src/game/test/CampaignClock.test.ts src/game/test/EventSystem.test.ts` — milestone, pause, and outcome cases pass
@@ -67,6 +67,6 @@ Task: T01-campaign-schedule-events
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
 - commit: pending

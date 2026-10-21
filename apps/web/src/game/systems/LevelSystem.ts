@@ -7,7 +7,8 @@ export class LevelSystem {
   constructor(private readonly random: () => number, private readonly catalog: readonly UpgradeDefinition[] = upgradeCatalog) {}
 
   addXp(state: RunState, amount: number): AddExperienceResult {
-    if (!Number.isInteger(amount) || amount <= 0 || state.status !== 'active' || state.pausedBy !== 'none') {
+    if (!Number.isInteger(amount) || amount <= 0 || state.status !== 'active'
+      || (state.pausedBy !== 'none' && state.pausedBy !== 'boss')) {
       return { state, levelUps: 0 };
     }
     state.xp += amount;
@@ -20,7 +21,7 @@ export class LevelSystem {
     }
     if (levelUps > 0) {
       state.pendingLevelUps += levelUps;
-      this.presentNextChoice(state);
+      if (state.pausedBy === 'none') this.presentNextChoice(state);
     }
     return { state, levelUps };
   }

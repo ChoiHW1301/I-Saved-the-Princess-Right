@@ -16,6 +16,10 @@ import { LevelSystem } from '../systems/LevelSystem.js';
 import { gameEventBus } from '../bridge/GameEventBus.js';
 import { upgradeCatalog } from '../content/upgrades.js';
 import { resolveHit } from '../systems/CombatSystem.js';
+import { CampaignClock } from '../systems/CampaignClock.js';
+import { EventSystem } from '../systems/EventSystem.js';
+import { getBiomeAt } from '../systems/BiomeTransitionSystem.js';
+import type { CampaignMilestone } from '../content/campaignSchedule.js';
 
 export interface RunWorldConfig { width: number; height: number; seed: number }
 
@@ -29,6 +33,10 @@ export class CaravanScene extends Phaser.Scene {
   private readonly health = new HealthSystem();
   private readonly respawn = new RespawnSystem();
   private levelSystem!: LevelSystem;
+  private campaignClock!: CampaignClock;
+  private eventSystem!: EventSystem;
+  private activeBossMilestoneId: string | null = null;
+  private pendingFinalVictory = false;
   private spawnCooldownMs = 900;
   private statusText!: Phaser.GameObjects.Text;
   private heroBar!: Phaser.GameObjects.Graphics;
@@ -41,6 +49,8 @@ export class CaravanScene extends Phaser.Scene {
     this.run = createRunState();
     this.random = seededRandom(data.seed);
     this.levelSystem = new LevelSystem(() => this.random());
+    this.campaignClock = new CampaignClock();
+    this.eventSystem = new EventSystem();
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.background = new BackgroundScroll(this);
@@ -55,11 +65,34 @@ export class CaravanScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('blur', clearInput));
     const unsubscribeChoice = gameEventBus.on('upgrade-choice', ({ upgradeId }) => this.chooseUpgrade(upgradeId));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeChoice);
+    const unsubscribeEvent = gameEventBus.on('event-choice', ({ eventId, choiceId }) => this.chooseEvent(eventId, choiceId));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeEvent);
+    const unsubscribeBoss = gameEventBus.on('boss-defeated', ({ milestoneId }) => this.completeBoss(milestoneId));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeBoss);
     this.refreshHud();
   }
   update(_time: number, delta: number): void {
-    if (!this.hero?.active || this.run.status !== 'active') return;
-    this.run.elapsedSeconds += delta / 1000;
+    if (!this.hero?.active) return;
+    if (this.run.status !== 'active') {
+      if (this.run.status === 'lost' && !this.gameOverShown) this.showGameOver();
+      return;
+    }
+    const milestones = this.campaignClock.update(delta);
+    this.run.elapsedSeconds = this.campaignClock.elapsedSeconds;
+    if (milestones.length > 0) {
+      const milestone = milestones[0]!;
+      if (milestone.kind === 'event') {
+        const event = this.eventSystem.present(milestone.id, this.run);
+        if (!event) throw new Error(`Missing or invalid story event content for ${milestone.id}`);
+        this.campaignClock.pause(`event:${milestone.id}`);
+        this.scene.pause();
+        gameEventBus.emit('story-event', event);
+        return;
+      }
+      this.startBoss(milestone);
+    }
+    const biome = getBiomeAt(this.run.elapsedSeconds);
+    this.background.setTransition(biome.from, biome.to, biome.progress);
     const revived = this.respawn.update(this.run.player, delta);
     if (revived) {
       this.hero.setPosition(WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 110).setVisible(true).setAlpha(0.55);
@@ -83,7 +116,7 @@ export class CaravanScene extends Phaser.Scene {
     const heroPosition = this.run.player.isDead ? { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 + 110 } : { x: this.hero.x, y: this.hero.y };
     const caravanPosition = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
     this.spawnCooldownMs -= delta;
-    if (this.spawnCooldownMs <= 0 && this.enemies.length < 36) {
+    if (this.run.pausedBy !== 'boss' && this.spawnCooldownMs <= 0 && this.enemies.length < 36) {
       this.spawnEnemy();
       this.spawnCooldownMs = Math.max(850, 2200 - this.run.elapsedSeconds * 12);
     }
@@ -140,6 +173,31 @@ export class CaravanScene extends Phaser.Scene {
       this.scene.pause();
       gameEventBus.emit('level-up', { level: this.run.level, choices: this.run.pendingChoices });
     }
+    if (enemy.bossMilestoneId) gameEventBus.emit('boss-defeated', { milestoneId: enemy.bossMilestoneId });
+  }
+
+  private startBoss(milestone: CampaignMilestone): void {
+    this.activeBossMilestoneId = milestone.id;
+    this.run.pausedBy = 'boss';
+    this.campaignClock.pause(`boss:${milestone.id}`);
+    const isFinal = milestone.kind === 'final-boss';
+    const base = enemyCatalog[0]!;
+    const definition = {
+      ...base,
+      id: milestone.id,
+      maxHp: isFinal ? 360 : 180,
+      speed: isFinal ? 48 : 42,
+      damage: isFinal ? 24 : 18,
+      attackRange: isFinal ? 52 : 46,
+      targetPolicy: 'nearest' as const,
+      wagonPriority: false,
+      experience: isFinal ? 0 : 16,
+      gold: isFinal ? 60 : 20,
+      color: isFinal ? 0x8d4f9e : milestone.id === 'lava-behemoth' ? 0xd46a3b : 0xa54848,
+    };
+    const edgeX = this.random() < 0.5 ? 18 : WORLD_WIDTH - 18;
+    this.enemies.push(new Enemy(this, edgeX, WORLD_HEIGHT * (0.3 + this.random() * 0.4), definition, milestone.id));
+    gameEventBus.emit('boss-encounter', milestone);
   }
 
   private chooseUpgrade(upgradeId: string): void {
@@ -156,7 +214,37 @@ export class CaravanScene extends Phaser.Scene {
       return;
     }
     gameEventBus.emit('level-up-complete', null);
+    if (this.pendingFinalVictory) {
+      this.showVictory();
+      return;
+    }
     this.scene.resume();
+  }
+
+  private chooseEvent(eventId: string, choiceId: 'yes' | 'no'): void {
+    const outcome = this.eventSystem.choose(eventId, choiceId, this.run);
+    if (!outcome || !this.campaignClock.resume(`event:${eventId}`)) return;
+    gameEventBus.emit('event-complete', { eventId });
+    if (this.run.caravan.hp <= 0) {
+      this.run.status = 'lost';
+      this.scene.resume();
+      return;
+    }
+    this.scene.resume();
+  }
+
+  private completeBoss(milestoneId: string): void {
+    if (this.activeBossMilestoneId !== milestoneId || !this.campaignClock.resume(`boss:${milestoneId}`)) return;
+    this.activeBossMilestoneId = null;
+    this.run.pausedBy = 'none';
+    if (milestoneId === 'princess-demon') this.pendingFinalVictory = true;
+    const choices = this.levelSystem.presentNextChoice(this.run);
+    if (choices.length > 0) {
+      this.scene.pause();
+      gameEventBus.emit('level-up', { level: this.run.level, choices });
+      return;
+    }
+    if (this.pendingFinalVictory) this.showVictory();
   }
 
   private applyUpgrade(stat: string, value: number): void {
@@ -195,5 +283,14 @@ export class CaravanScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '30px', color: '#f1d7ac', align: 'center', lineSpacing: 14,
     }).setOrigin(0.5).setDepth(151);
     this.run.status = 'lost';
+  }
+
+  private showVictory(): void {
+    this.pendingFinalVictory = false;
+    this.run.status = 'won';
+    this.add.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 0x100d0b, 0.68).setDepth(150);
+    this.add.text(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, `목적지에 도착했습니다\n생존 ${Math.floor(this.run.elapsedSeconds)}초 · 처치 ${this.run.kills}`, {
+      fontFamily: 'system-ui, sans-serif', fontSize: '30px', color: '#f1d7ac', align: 'center', lineSpacing: 14,
+    }).setOrigin(0.5).setDepth(151);
   }
 }

@@ -114,15 +114,5 @@ export function RequireAuth({ children }: { children: ReactNode }): JSX.Element 
     );
   }
 
-  return (
-    <>
-      <header>
-        <span>{accounts[0]?.name ?? accounts[0]?.username ?? '로그인 사용자'}</span>
-        <button type="button" onClick={signOut}>
-          로그아웃
-        </button>
-      </header>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

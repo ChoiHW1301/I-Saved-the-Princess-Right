@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import Phaser from 'phaser';
 import { createGameConfig } from './config/createGameConfig.js';
 import type { BossId, RunEndingSummary, UpgradeChoice } from '@caravan/contracts';
+import type { CharacterId, PlayerProfile } from '@caravan/contracts';
+import { WORLD_HEIGHT, WORLD_WIDTH } from './config/createGameConfig.js';
 import type { StoryEvent } from './content/events.js';
 import type { CampaignMilestone } from './content/campaignSchedule.js';
 import { gameEventBus } from './bridge/GameEventBus.js';
@@ -11,7 +13,7 @@ import { EndingPanel } from './ui/EndingPanel.js';
 
 type ActiveBossEncounter = CampaignMilestone & { bossId: BossId };
 
-export function GameCanvas(): JSX.Element {
+export function GameCanvas({ characterId = 'hero', profile }: { characterId?: CharacterId; profile?: PlayerProfile }): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; choices: UpgradeChoice[] } | null>(null);
   const [storyEvent, setStoryEvent] = useState<StoryEvent | null>(null);
@@ -41,12 +43,12 @@ export function GameCanvas(): JSX.Element {
     const host = hostRef.current;
     if (!host || host.dataset.gameMounted === 'true') return;
     host.dataset.gameMounted = 'true';
-    const game = new Phaser.Game(createGameConfig(host));
+    const game = new Phaser.Game(createGameConfig(host, { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: Date.now(), characterId, profile }));
     return () => {
       game.destroy(true);
       delete host.dataset.gameMounted;
     };
-  }, []);
+  }, [characterId, profile]);
   return (
     <>
       <div ref={hostRef} aria-label="마차 호위 게임 화면" style={{ width: '100%', height: '100%' }} />

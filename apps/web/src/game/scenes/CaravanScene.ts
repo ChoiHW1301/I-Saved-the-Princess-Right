@@ -32,6 +32,7 @@ import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile }
 
 export class CaravanScene extends Phaser.Scene {
+  private readonly initialRunConfig?: RunWorldConfig;
   private hero!: Hero;
   private background!: BackgroundScroll;
   private readonly enemies: Enemy[] = [];
@@ -57,8 +58,9 @@ export class CaravanScene extends Phaser.Scene {
   private runEndEmitted = false;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
   private random = seededRandom(1);
-  constructor() { super('CaravanScene'); }
-  create(data: RunWorldConfig = { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1 }): void {
+  constructor(initialRunConfig?: RunWorldConfig) { super('CaravanScene'); this.initialRunConfig = initialRunConfig; }
+  create(data?: RunWorldConfig): void {
+    data ??= this.initialRunConfig ?? { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1 };
     const selectedCharacter = data.characterId ?? 'hero';
     if (data.profile && !data.profile.unlockedCharacters.includes(selectedCharacter)) {
       throw new Error(`Character is locked for this profile: ${selectedCharacter}`);

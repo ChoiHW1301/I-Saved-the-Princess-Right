@@ -1,6 +1,6 @@
 # Task: T01 로그인 후 홈·캐릭터 선택·영구 성장 화면
 
-## Status: pending
+## Status: done
 
 ## Goal
 로그인한 직원이 계정 골드·해금·저장 상태를 확인하고, 캐릭터를 선택하거나 영구 강화 후 새 판을 시작할 React 메뉴를 제공한다.
@@ -41,10 +41,10 @@
 - **Error & Exception Handling**: absent art uses CSS pixel silhouette placeholders; no hidden/zero-size interactive controls.
 
 ## Acceptance Criteria
-- [ ] Only unlocked characters can start a run
-- [ ] Home reflects API gold/profile/current-save state
-- [ ] Upgrade UI enforces API result and clearly shows cost/cap
-- [ ] Login/access errors have user-readable states
+- [x] Only unlocked characters can start a run
+- [x] Home reflects API gold/profile/current-save state
+- [x] Upgrade UI enforces API result and clearly shows cost/cap
+- [x] Login/access errors have user-readable states
 
 ## Validation
 - `npm run test --workspace apps/web -- src/features/home/HomePage.test.tsx` — locked/unlocked, purchase, retry states pass
@@ -63,6 +63,6 @@ Task: T01-account-home-ui
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과 (`npm run test --workspace apps/web -- src/features/home/HomePage.test.tsx`, `npm run build --workspace apps/web`)
+- commit: recorded in Git history

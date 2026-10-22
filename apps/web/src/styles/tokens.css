@@ -1,0 +1,19 @@
+:root {
+  font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+  color: #f0e2c6;
+  background: #11120f;
+  font-synthesis: none;
+  --ink: #f0e2c6;
+  --muted: #a69b85;
+  --gold: #d6b16d;
+  --gold-bright: #f0ce8c;
+  --line: #514637;
+  --panel: #1a1a15;
+  --panel-light: #24221a;
+  --wine: #7e3731;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: #11120f; }
+button, a { font: inherit; }
+button:focus-visible, a:focus-visible { outline: 3px solid #f3cf88; outline-offset: 3px; }

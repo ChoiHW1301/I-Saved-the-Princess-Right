@@ -1,4 +1,8 @@
 import { app } from '@azure/functions';
+import { readAuthConfig } from '../config/env.js';
+
+// Fail initialization with the exact missing setting instead of waiting for the first request.
+readAuthConfig();
 
 import './health.js';
 import './whoami.js';

@@ -1,10 +1,11 @@
 import { CurrentRunSaveV1Schema, RunReceiptSchema, type CurrentRunSaveV1, type PlayerProfile, type RunReceipt, type RunSubmission } from '@caravan/contracts';
+import { apiUrl } from '../../auth/apiUrl.js';
 
 export class RunApiError extends Error {
   constructor(readonly status: number, readonly code: string) { super(code); this.name = 'RunApiError'; }
 }
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers } });
+  const response = await fetch(apiUrl(path), { ...init, headers: { Authorization: `Bearer ${token}`, ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers } });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({})) as { code?: string };
     throw new RunApiError(response.status, payload.code ?? 'REQUEST_FAILED');

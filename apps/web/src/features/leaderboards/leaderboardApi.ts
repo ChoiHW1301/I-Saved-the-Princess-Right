@@ -1,4 +1,5 @@
 import type { CharacterId, KarmaTier } from '@caravan/contracts';
+import { apiUrl } from '../../auth/apiUrl.js';
 
 export interface PublicLeaderboardEntry {
   rank: number;
@@ -26,7 +27,7 @@ export class LeaderboardApiError extends Error {
 }
 
 async function request(path: string, token: string): Promise<LeaderboardResponse> {
-  const response = await fetch(`/api${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await fetch(apiUrl(path), { headers: { Authorization: `Bearer ${token}` } });
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { code?: string };
     throw new LeaderboardApiError(response.status, body.code ?? 'REQUEST_FAILED');

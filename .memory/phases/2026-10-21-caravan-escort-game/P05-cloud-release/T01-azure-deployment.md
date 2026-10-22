@@ -1,6 +1,6 @@
 # Task: T01 Azure 리소스와 배포 설정
 
-## Status: pending
+## Status: done
 
 ## Goal
 웹 정적 호스팅, 독립 Functions API, Cosmos DB, 진단 리소스를 구성 코드와 환경 변수 문서로 재현 가능하게 정의한다.
@@ -42,10 +42,10 @@
 - **Error & Exception Handling**: missing server settings stop Function startup with explicit setting name; access tokens and Cosmos credentials are never logged or bundled.
 
 ## Acceptance Criteria
-- [ ] Bicep template provisions the complete non-identity Azure topology and Cosmos containers
-- [ ] Function system identity has data-plane access to Cosmos without keys
-- [ ] SWA build output and `/api` routing match the monorepo paths
-- [ ] Environment documentation distinguishes browser-public settings from API-only settings
+- [x] Bicep template provisions the complete non-identity Azure topology and Cosmos containers
+- [x] Function system identity has data-plane access to Cosmos without keys
+- [x] SWA build output and `/api` routing match the monorepo paths
+- [x] Environment documentation distinguishes browser-public settings from API-only settings
 
 ## Validation
 - `az bicep build --file infra/main.bicep` — template compiles
@@ -65,6 +65,6 @@ Task: T01-azure-deployment
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과 (`az bicep build --file infra/main.bicep`, Bicep parameter build, `npm run build`, `npm run test:infra`, `npm test`)
+- commit: recorded in Git history

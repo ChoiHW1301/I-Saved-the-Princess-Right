@@ -20,6 +20,9 @@ export function readAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
   if (!cosmosEndpoint) {
     throw new Error('COSMOS_ENDPOINT is required.');
   }
+  if (env.NODE_ENV === 'production' && !env.APPLICATIONINSIGHTS_CONNECTION_STRING?.trim()) {
+    throw new Error('APPLICATIONINSIGHTS_CONNECTION_STRING is required in production.');
+  }
 
   let endpoint: URL;
   try {
@@ -27,8 +30,8 @@ export function readAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
   } catch {
     throw new Error('COSMOS_ENDPOINT must be a valid URL.');
   }
-  if (endpoint.protocol !== 'https:' && endpoint.protocol !== 'http:') {
-    throw new Error('COSMOS_ENDPOINT must use HTTP or HTTPS.');
+  if (endpoint.protocol !== 'https:' && !(endpoint.protocol === 'http:' && env.NODE_ENV !== 'production')) {
+    throw new Error('COSMOS_ENDPOINT must use HTTPS in production (HTTP is allowed for local development).');
   }
 
   return { tenantId, audience, cosmosEndpoint: endpoint.toString() };

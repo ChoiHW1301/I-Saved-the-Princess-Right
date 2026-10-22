@@ -1,7 +1,8 @@
 import { PlayerProfileSchema, type MetaUpgradeId, type PlayerProfile } from '@caravan/contracts';
+import { apiUrl } from '../../auth/apiUrl.js';
 
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(apiUrl(path), {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
   });

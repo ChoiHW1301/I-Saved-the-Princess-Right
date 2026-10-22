@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useMsal } from '@azure/msal-react';
 import type { CharacterId, CurrentRunSaveV1, MetaUpgradeId, PassiveId, PlayerProfile, RunSubmission } from '@caravan/contracts';
 import { useApiToken } from '../../auth/useApiToken.js';
+import { loginRequest } from '../../auth/msalConfig.js';
 import { GameCanvas } from '../../game/GameCanvas.js';
 import { characterCatalog } from '../../game/content/characters.js';
 import { CharacterSelect } from '../characters/CharacterSelect.js';
@@ -9,6 +10,7 @@ import { MetaShop } from '../progression/MetaShop.js';
 import { useProfile } from '../profile/useProfile.js';
 import { ProfileApiError } from '../profile/profileApi.js';
 import { RunController, RunControllerError } from '../run/RunController.js';
+import { LeaderboardPage } from '../leaderboards/LeaderboardPage.js';
 import './HomePage.css';
 
 type Section = 'home' | 'characters' | 'shop' | 'leaderboard';
@@ -34,6 +36,7 @@ export function HomePage(): JSX.Element {
     finally { setBusyUpgrade(false); }
   }
   async function signOut(): Promise<void> { await instance.logoutRedirect({ account: accounts[0] }); }
+  async function signIn(): Promise<void> { await instance.loginRedirect(loginRequest); }
   async function startNewRun(id: CharacterId): Promise<void> {
     if (!controller) return;
     if (pendingResult) { setNotice('이전 원정 결과를 먼저 계정에 기록해 주세요.'); return; }
@@ -93,7 +96,7 @@ export function HomePage(): JSX.Element {
         </>}
         {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1><p>해금한 캐릭터를 선택해 마차와 함께 출발하세요.</p></div><CharacterSelect profile={profile} onStart={(id) => void startNewRun(id)} /></>}
         {section === 'shop' && <><div className="page-intro"><span className="eyebrow">CAMP PROVISIONS</span><h1>영구 강화</h1><p>원정에서 모은 골드를 사용해 계정 능력을 강화합니다.</p></div><MetaShop profile={profile} onPurchased={() => undefined} onBuyUpgrade={(id) => buy(id)} onBuyPassive={(id) => buy(id, true)} busy={busyUpgrade || loading} error={error ? errorMessage : null} /></>}
-        {section === 'leaderboard' && <div className="page-intro"><span className="eyebrow">HALL OF HEROES</span><h1>랭킹</h1><p>원정 기록을 모아 순위를 확인할 수 있습니다.</p><div className="empty-panel"><span aria-hidden="true">♜</span><strong>랭킹 게시판을 준비하고 있습니다.</strong><p>랭킹 기록 화면이 곧 야영지에 추가됩니다.</p></div></div>}
+        {section === 'leaderboard' && <LeaderboardPage getToken={getToken} onSignIn={() => void signIn()} />}
       </div>
     </div>
     <footer className="home-footer"><span>© CARAVAN ESCORT</span><span>왕국의 길은 아직 멀다</span></footer>

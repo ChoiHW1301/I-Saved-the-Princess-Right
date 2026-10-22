@@ -1,0 +1,27 @@
+.leaderboard-page { margin-bottom: 0; }
+.leaderboard-mode-tabs { display: flex; align-items: center; gap: 8px; margin: 28px 0 16px; border-bottom: 1px solid #40392c; }
+.leaderboard-mode-tabs button { min-height: 42px; padding: 0 16px; border: 1px solid transparent; color: #b4a992; background: transparent; font: inherit; cursor: pointer; }
+.leaderboard-mode-tabs button.active { border-color: #51452f; border-bottom-color: #c7a766; color: #f0ddb7; background: #211f19; }
+.leaderboard-mode-tabs .leaderboard-refresh { margin-left: auto; color: var(--gold-bright); font-size: 22px; }
+.leaderboard-board { padding: clamp(16px, 3vw, 28px); border: 1px solid #40392c; background: linear-gradient(145deg, #1e1d17, #171813); }
+.leaderboard-board-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.leaderboard-board-heading h2 { margin: 8px 0 0; color: #e8d7b5; font: 25px Georgia, "Noto Serif KR", serif; }
+.leaderboard-total { color: #988d77; font-size: 12px; }
+.leaderboard-my-rank { margin: 18px 0; padding: 12px 14px; border: 1px solid #59492f; color: #f0d89f; background: #292318; font-weight: 700; }
+.leaderboard-filters { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0 12px; }
+.leaderboard-filters label { display: grid; gap: 6px; color: #b7a88c; font-size: 12px; }
+.leaderboard-filters select { min-width: 142px; height: 38px; padding: 0 10px; border: 1px solid #584b35; border-radius: 2px; color: #e4d4b3; background: #211f19; font: inherit; }
+.leaderboard-table-wrap { overflow-x: auto; }
+.leaderboard-table { width: 100%; border-collapse: collapse; color: #c9bea8; font-size: 13px; white-space: nowrap; }
+.leaderboard-table th { padding: 11px 12px; color: #9b8c70; border-bottom: 1px solid #514733; text-align: left; font-size: 10px; letter-spacing: .1em; }
+.leaderboard-table td { padding: 13px 12px; border-bottom: 1px solid #302e25; }
+.leaderboard-table tr:last-child td { border-bottom: 0; }
+.leaderboard-table td small { display: block; margin-top: 4px; color: #988d77; font-size: 10px; }
+.rank-medal { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid #514838; border-radius: 50%; color: #c4b48f; font-weight: 700; }
+.rank-1 { color: #ffe09a; border-color: #a98745; background: #453719; }.rank-2 { color: #e0ded4; }.rank-3 { color: #d7a47d; }
+.score-cell { color: #eed399; font-weight: 800; }
+.clear-result { color: #c8b478; }
+.leaderboard-empty, .leaderboard-loading { padding: 26px 12px; color: #b9ad96; text-align: center; }
+.leaderboard-error { margin: 14px 0; padding: 15px; border: 1px solid #8a6541; color: #f1d7a3; background: #2b2117; }
+.leaderboard-error p { margin: 7px 0 12px; color: #c5b99f; font-size: 13px; }
+@media (max-width: 600px) { .leaderboard-board-heading { align-items: start; flex-direction: column; }.leaderboard-mode-tabs button { padding: 0 10px; font-size: 12px; }.leaderboard-table { font-size: 12px; }.leaderboard-table th, .leaderboard-table td { padding: 10px 8px; } }

@@ -23,6 +23,7 @@ export interface PublicLeaderboardEntry {
 export interface LeaderboardPage {
   entries: PublicLeaderboardEntry[];
   myRank: number | null;
+  totalEntries: number;
 }
 
 export class LeaderboardService {
@@ -50,7 +51,7 @@ export class LeaderboardService {
     const sortedAll = [...all].sort(compareEntries);
     const myIndex = sortedAll.findIndex((entry) => entry.userId === userIdFor(caller));
     const entries = top.slice(0, limit).map((entry) => toPublicEntry(entry, sortedAll.findIndex((candidate) => candidate.userId === entry.userId) + 1));
-    return { entries, myRank: myIndex < 0 ? null : myIndex + 1 };
+    return { entries, myRank: myIndex < 0 ? null : myIndex + 1, totalEntries: sortedAll.length };
   }
 }
 

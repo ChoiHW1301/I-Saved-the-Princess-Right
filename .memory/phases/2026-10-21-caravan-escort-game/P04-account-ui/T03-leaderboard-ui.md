@@ -1,6 +1,6 @@
 # Task: T03 점수·클리어 랭킹 UI
 
-## Status: pending
+## Status: done
 
 ## Goal
 로그인한 DEX 직원에게 상위 10명 점수 랭킹과 캐릭터·카르마별 클리어 랭킹, 10위 밖일 때 본인 순위를 보여준다.
@@ -29,10 +29,10 @@
 - **Error & Exception Handling**: 401 sends user to sign-in; 403 shows access message; API outage has retry and preserves currently rendered cached list; invalid filter resets to defaults.
 
 ## Acceptance Criteria
-- [ ] Both ranking modes are navigable
-- [ ] Clear board can filter by character and karma tier
-- [ ] Only top ten records and player’s own rank are shown
-- [ ] No private identity fields are rendered
+- [x] Both ranking modes are navigable
+- [x] Clear board can filter by character and karma tier
+- [x] Only top ten records and player’s own rank are shown
+- [x] No private identity fields are rendered
 
 ## Validation
 - `npm run test --workspace apps/web -- src/features/leaderboards/LeaderboardPage.test.tsx` — top-ten, personal rank, filters, error states pass
@@ -51,6 +51,6 @@ Task: T03-leaderboard-ui
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과 (`npm run test --workspace apps/web -- src/features/leaderboards/LeaderboardPage.test.tsx`, `npm run build --workspace apps/web`, `npm run typecheck --workspace apps/api`, `npm run test --workspace apps/api`)
+- commit: recorded in Git history

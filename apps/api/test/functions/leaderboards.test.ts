@@ -30,6 +30,7 @@ describe('leaderboard pages', () => {
     const page = await service.scoreBoard(caller, 10);
     expect(page.entries).toHaveLength(10);
     expect(page.myRank).toBe(12);
+    expect(page.totalEntries).toBe(12);
     expect(page.entries[0]).toMatchObject({ rank: 1, displayName: 'Player 1' });
     expect(page.entries[0]).not.toHaveProperty('userId');
     expect(page.entries[0]).not.toHaveProperty('id');
@@ -44,7 +45,7 @@ describe('leaderboard pages', () => {
     await expect(service.clearBoard(caller, 'unknown', 'good', 10)).rejects.toMatchObject({
       code: 'INVALID_LEADERBOARD_FILTER',
     });
-    await expect(service.clearBoard(caller, 'hero', 'good', 10)).resolves.toEqual({ entries: [], myRank: null });
+    await expect(service.clearBoard(caller, 'hero', 'good', 10)).resolves.toEqual({ entries: [], myRank: null, totalEntries: 0 });
     await expect(service.scoreBoard(caller, 11)).rejects.toMatchObject({ code: 'INVALID_LEADERBOARD_FILTER' });
   });
 });

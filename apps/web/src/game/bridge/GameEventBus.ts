@@ -1,4 +1,4 @@
-import type { BossId, RunEndingSummary, UpgradeChoice } from '@caravan/contracts';
+import type { BossId, CharacterId, RunEndingSummary, RunSnapshotV1, UpgradeChoice } from '@caravan/contracts';
 import type { StoryEvent } from '../content/events.js';
 import type { CampaignMilestone } from '../content/campaignSchedule.js';
 
@@ -13,6 +13,12 @@ interface GameEvents {
   'boss-defeated': { milestoneId: string };
   'run-ended': RunEndingSummary;
   'continue-after-ending': RunEndingSummary;
+  'snapshot-request': { reason: 'autosave' | 'checkpoint' | 'manual' };
+  'snapshot-ready': { runId: string; characterId: CharacterId; snapshot: RunSnapshotV1; reason: 'autosave' | 'checkpoint' | 'manual'; resumeAfterSave: boolean };
+  'snapshot-saved': { reason: 'autosave' | 'checkpoint' | 'manual'; resume: boolean };
+  'snapshot-failed': { message: string };
+  'resume-run': null;
+  'pause-request': null;
 }
 type Listener<T> = (payload: T) => void;
 

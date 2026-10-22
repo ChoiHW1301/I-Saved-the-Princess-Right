@@ -1,6 +1,6 @@
 # Task: T02 임시 저장·이어하기·결과 제출 통합
 
-## Status: pending
+## Status: done
 
 ## Goal
 활성 게임의 자동·수동 저장, 연결 장애 중 일시 정지, 계정 저장 복구, 판 종료 보상 제출을 웹과 게임 상태에 연결한다.
@@ -38,11 +38,11 @@
 - **Error & Exception Handling**: submission retry reuses same runId; API idempotency prevents double rewards; 401 reauth, 403 show access failure, 503 retain pending receipt.
 
 ## Acceptance Criteria
-- [ ] User can save manually and continue after returning home or reopening browser
-- [ ] Autosave executes at 30 seconds and required event/boss milestones
-- [ ] Network failure pauses run and local snapshot resumes after successful sync
-- [ ] New game requires confirmation when a saved run would be replaced
-- [ ] Result submission persists rewards/unlocks exactly once and deletes current save after success
+- [x] User can save manually and continue after returning home or reopening browser
+- [x] Autosave executes at 30 seconds and required event/boss milestones
+- [x] Network failure pauses run and local snapshot resumes after successful sync
+- [x] New game requires confirmation when a saved run would be replaced
+- [x] Result submission persists rewards/unlocks exactly once and deletes current save after success
 
 ## Validation
 - `npm run test --workspace apps/web -- src/features/run/SaveResume.test.ts src/features/results/ResultPage.test.tsx` — autosave, offline, retry, result flows pass
@@ -62,6 +62,6 @@ Task: T02-save-resume-results
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과 (`npm run typecheck`, web/contracts/api full tests)
+- commit: recorded in Git history

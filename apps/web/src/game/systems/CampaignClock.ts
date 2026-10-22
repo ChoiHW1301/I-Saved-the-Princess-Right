@@ -4,8 +4,12 @@ export class CampaignClock {
   elapsedSeconds = 0;
   pausedReason: string | null = null;
   private readonly emittedIds = new Set<string>();
-  constructor(private readonly schedule: readonly CampaignMilestone[] = campaignSchedule) {
+  constructor(private readonly schedule: readonly CampaignMilestone[] = campaignSchedule, restored?: { elapsedSeconds: number; emittedIds: string[] }) {
     validateCampaignSchedule(schedule);
+    if (restored) {
+      this.elapsedSeconds = Math.max(0, Math.min(CAMPAIGN_DURATION_SECONDS, restored.elapsedSeconds));
+      for (const id of restored.emittedIds) this.emittedIds.add(id);
+    }
   }
 
   update(deltaMs: number): CampaignMilestone[] {

@@ -1,24 +1,32 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useMsal } from '@azure/msal-react';
-import type { CharacterId, MetaUpgradeId, PassiveId, PlayerProfile } from '@caravan/contracts';
+import type { CharacterId, CurrentRunSaveV1, MetaUpgradeId, PassiveId, PlayerProfile, RunSubmission } from '@caravan/contracts';
+import { useApiToken } from '../../auth/useApiToken.js';
 import { GameCanvas } from '../../game/GameCanvas.js';
 import { characterCatalog } from '../../game/content/characters.js';
 import { CharacterSelect } from '../characters/CharacterSelect.js';
 import { MetaShop } from '../progression/MetaShop.js';
 import { useProfile } from '../profile/useProfile.js';
 import { ProfileApiError } from '../profile/profileApi.js';
+import { RunController, RunControllerError } from '../run/RunController.js';
 import './HomePage.css';
 
 type Section = 'home' | 'characters' | 'shop' | 'leaderboard';
 
 export function HomePage(): JSX.Element {
   const { instance, accounts } = useMsal();
-  const { data, loading, error, refresh, buyUpgrade, buyPassive } = useProfile();
+  const { data, loading, error, refresh, replaceProfile, buyUpgrade, buyPassive } = useProfile();
+  const { getToken } = useApiToken();
   const [section, setSection] = useState<Section>('home');
   const [playing, setPlaying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyUpgrade, setBusyUpgrade] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterId>('hero');
+  const [runLaunch, setRunLaunch] = useState<{ runId: string; save?: CurrentRunSaveV1 } | null>(null);
+  const [pendingResult, setPendingResult] = useState<RunSubmission | null>(null);
+  const controller = useMemo(() => data ? new RunController(getToken, data.profile) : null, [getToken, data?.profile.userId]);
+  useEffect(() => { if (controller && data) controller.setProfile(data.profile); }, [controller, data?.profile]);
+  useEffect(() => { if (controller) void controller.getPendingResult().then(setPendingResult).catch(() => setPendingResult(null)); }, [controller]);
 
   async function buy(id: MetaUpgradeId | PassiveId, passive = false): Promise<PlayerProfile | undefined> {
     setBusyUpgrade(true);
@@ -26,6 +34,25 @@ export function HomePage(): JSX.Element {
     finally { setBusyUpgrade(false); }
   }
   async function signOut(): Promise<void> { await instance.logoutRedirect({ account: accounts[0] }); }
+  async function startNewRun(id: CharacterId): Promise<void> {
+    if (!controller) return;
+    if (pendingResult) { setNotice('이전 원정 결과를 먼저 계정에 기록해 주세요.'); return; }
+    if (data?.hasCurrentSave && !window.confirm('저장된 원정을 새 원정으로 바꿀까요? 현재 저장은 삭제됩니다.')) return;
+    try { const next = await controller.startNew(id); replaceProfile(profile!, false); setSelectedCharacter(id); setRunLaunch(next); setPlaying(true); setNotice(null); }
+    catch (caught) { setNotice(caught instanceof RunControllerError ? caught.message : '새 원정을 시작하지 못했습니다. 연결을 확인해 주세요.'); }
+  }
+  async function continueRun(): Promise<void> {
+    if (!controller) return;
+    try { const save = await controller.continueRun(); setRunLaunch({ runId: save.runId, save }); setSelectedCharacter(save.snapshot.characterId); setPlaying(true); setNotice(null); }
+    catch (caught) { setNotice(caught instanceof RunControllerError ? caught.message : '저장된 원정을 불러오지 못했습니다.'); }
+  }
+  async function retryPendingResult(): Promise<void> {
+    if (!controller) return;
+    try { const receipt = await controller.retryResult(); replaceProfile(receipt.profile, false); setPendingResult(null); setNotice(`원정 결과가 저장되었습니다. 획득 골드 ${receipt.goldAward} G`); }
+    catch (caught) { setNotice(caught instanceof RunControllerError ? caught.message : '결과 재제출에 실패했습니다. 연결을 확인해 주세요.'); }
+  }
+  function returnToHome(): void { setPlaying(false); setRunLaunch(null); }
+  function onRunProfileUpdated(next: PlayerProfile): void { replaceProfile(next, false); }
   const profile = data?.profile;
   const errorMessage = error instanceof ProfileApiError && error.code === 'INSUFFICIENT_GOLD'
     ? '골드가 부족합니다. 원정에서 골드를 모은 뒤 다시 시도해 주세요.'
@@ -37,9 +64,9 @@ export function HomePage(): JSX.Element {
       ? '로그인 세션이 만료되었습니다. 다시 로그인해 주세요.'
       : '계정 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 
-  if (playing && profile) return <main className="game-shell">
-    <header className="game-topbar"><button className="button button-secondary" type="button" onClick={() => setPlaying(false)}>메뉴로</button><strong>CARAVAN ESCORT</strong><span>{profile.displayName} · {selectedCharacter}</span></header>
-    <section className="game-frame"><GameCanvas characterId={selectedCharacter} profile={profile} /></section>
+  if (playing && profile && controller && runLaunch) return <main className="game-shell">
+    <header className="game-topbar"><strong>CARAVAN ESCORT</strong><span>{profile.displayName} · {selectedCharacter}</span></header>
+    <section className="game-frame"><GameCanvas key={runLaunch.runId} characterId={selectedCharacter} profile={profile} runId={runLaunch.runId} resumeSave={runLaunch.save} controller={controller} onExit={returnToHome} onProfileUpdated={onRunProfileUpdated} onSaved={() => replaceProfile(profile, true)} /></section>
     <p className="game-hint">WASD 또는 방향키로 이동하세요. 용사는 자동으로 적을 공격합니다.</p>
   </main>;
 
@@ -58,12 +85,13 @@ export function HomePage(): JSX.Element {
       </aside>
       <div className="home-content">
         {notice && <p className="home-notice" role="status">{notice}</p>}
+        {pendingResult && <div className="home-notice pending-result" role="status"><span>이전 원정 결과가 아직 계정에 기록되지 않았습니다.</span><button type="button" className="button button-secondary" onClick={() => void retryPendingResult()}>결과 다시 제출</button></div>}
         {section === 'home' && <>
-          <section className="welcome-banner"><div className="banner-copy"><span className="eyebrow">THE DEMON KEEP · JOURNEY 01</span><h1>마차의 호위대를<br /><em>준비하세요</em></h1><p>어둠의 성에서 공주를 구출하고, 왕국으로 돌아가는 길을 열어라.</p><div className="banner-actions"><button type="button" className="button button-primary" onClick={() => { setSection('characters'); setNotice(null); }}>새 원정 시작 <span aria-hidden="true">→</span></button><button type="button" className="button button-ghost" disabled={!data.hasCurrentSave} onClick={() => setNotice('저장된 원정 이어하기는 저장 연동 화면을 준비 중입니다.')}>이어하기 {data.hasCurrentSave ? '· 저장 있음' : '· 저장 없음'}</button></div></div><div className="banner-art" aria-hidden="true"><span className="moon" /><span className="castle castle-a" /><span className="castle castle-b" /><span className="road" /><span className="wagon">♜</span></div></section>
-          <div className="home-summary"><article className="summary-card"><span className="eyebrow">해금한 캐릭터</span><strong>{profile.unlockedCharacters.length}<small> / {Object.keys(characterCatalog).length}</small></strong><button type="button" onClick={() => setSection('characters')}>캐릭터 확인 →</button></article><article className="summary-card"><span className="eyebrow">영구 성장</span><strong>{Object.values(profile.permanentUpgradeLevels).reduce((sum, level) => sum + level, 0)}<small> 강화 레벨</small></strong><button type="button" onClick={() => setSection('shop')}>강화 상점 →</button></article><article className="summary-card"><span className="eyebrow">현재 원정 저장</span><strong>{data.hasCurrentSave ? '보관 중' : '없음'}</strong><button type="button" disabled={!data.hasCurrentSave} onClick={() => setNotice('저장된 원정 이어하기는 저장 연동 화면을 준비 중입니다.')}>저장 확인 →</button></article></div>
+          <section className="welcome-banner"><div className="banner-copy"><span className="eyebrow">THE DEMON KEEP · JOURNEY 01</span><h1>마차의 호위대를<br /><em>준비하세요</em></h1><p>어둠의 성에서 공주를 구출하고, 왕국으로 돌아가는 길을 열어라.</p><div className="banner-actions"><button type="button" className="button button-primary" disabled={Boolean(pendingResult)} onClick={() => { setSection('characters'); setNotice(null); }}>새 원정 시작 <span aria-hidden="true">→</span></button><button type="button" className="button button-ghost" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>이어하기 {data.hasCurrentSave ? '· 저장 있음' : '· 저장 없음'}</button></div></div><div className="banner-art" aria-hidden="true"><span className="moon" /><span className="castle castle-a" /><span className="castle castle-b" /><span className="road" /><span className="wagon">♜</span></div></section>
+          <div className="home-summary"><article className="summary-card"><span className="eyebrow">해금한 캐릭터</span><strong>{profile.unlockedCharacters.length}<small> / {Object.keys(characterCatalog).length}</small></strong><button type="button" onClick={() => setSection('characters')}>캐릭터 확인 →</button></article><article className="summary-card"><span className="eyebrow">영구 성장</span><strong>{Object.values(profile.permanentUpgradeLevels).reduce((sum, level) => sum + level, 0)}<small> 강화 레벨</small></strong><button type="button" onClick={() => setSection('shop')}>강화 상점 →</button></article><article className="summary-card"><span className="eyebrow">현재 원정 저장</span><strong>{data.hasCurrentSave ? '보관 중' : '없음'}</strong><button type="button" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>저장 이어하기 →</button></article></div>
           <section className="camp-tip"><span aria-hidden="true">✧</span><div><strong>여정의 첫걸음</strong><p>첫 플레이를 마치면 궁수, 첫 클리어 후 마법사를 만날 수 있습니다.</p></div><button type="button" aria-label="캐릭터 선택" onClick={() => setSection('characters')}>→</button></section>
         </>}
-        {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1><p>해금한 캐릭터를 선택해 마차와 함께 출발하세요.</p></div><CharacterSelect profile={profile} onStart={(id) => { setSelectedCharacter(id); setPlaying(true); }} /></>}
+        {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1><p>해금한 캐릭터를 선택해 마차와 함께 출발하세요.</p></div><CharacterSelect profile={profile} onStart={(id) => void startNewRun(id)} /></>}
         {section === 'shop' && <><div className="page-intro"><span className="eyebrow">CAMP PROVISIONS</span><h1>영구 강화</h1><p>원정에서 모은 골드를 사용해 계정 능력을 강화합니다.</p></div><MetaShop profile={profile} onPurchased={() => undefined} onBuyUpgrade={(id) => buy(id)} onBuyPassive={(id) => buy(id, true)} busy={busyUpgrade || loading} error={error ? errorMessage : null} /></>}
         {section === 'leaderboard' && <div className="page-intro"><span className="eyebrow">HALL OF HEROES</span><h1>랭킹</h1><p>원정 기록을 모아 순위를 확인할 수 있습니다.</p><div className="empty-panel"><span aria-hidden="true">♜</span><strong>랭킹 게시판을 준비하고 있습니다.</strong><p>랭킹 기록 화면이 곧 야영지에 추가됩니다.</p></div></div>}
       </div>

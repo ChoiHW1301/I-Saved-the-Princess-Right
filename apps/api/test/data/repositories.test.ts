@@ -8,10 +8,10 @@ const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:bbbbbbbb-bbbb-bbbb-bbbb-bbb
 const caller = { tenantId: userId.split(':')[0]!, objectId: userId.split(':')[1]!, displayName: 'Hero' };
 const now = '2026-10-21T00:00:00.000Z';
 const snapshot = {
-  elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
+  characterId: 'hero', elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
   eventChoiceIds: [], ordinarySpawnCooldownMs: 800, activeBoss: null,
-  player: { x: 0, y: 0, hp: 100, level: 1, xp: 0, respawnMs: 0, invulnerableMs: 0 },
-  wagon: { hp: 100, maxHp: 100 }, runGold: 0, weaponLevels: { sword: 1 }, upgradeIds: [],
+  player: { x: 0, y: 0, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, invulnerableMs: 0 },
+  wagon: { hp: 100, maxHp: 100 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, upgradeIds: [],
   defeatedBossIds: [], enemies: [], projectiles: [],
 };
 

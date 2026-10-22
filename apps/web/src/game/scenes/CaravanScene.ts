@@ -3,7 +3,7 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from '../config/createGameConfig.js';
 import { Caravan } from '../entities/Caravan.js';
 import { Enemy } from '../entities/Enemy.js';
 import { Hero } from '../entities/Hero.js';
-import { enemyCatalog } from '../content/enemies.js';
+import { enemyCatalog, type EnemyDefinition } from '../content/enemies.js';
 import { BackgroundScroll } from '../systems/BackgroundScroll.js';
 import { EnemyDirector } from '../systems/EnemyDirector.js';
 import { HealthSystem } from '../systems/HealthSystem.js';
@@ -20,6 +20,7 @@ import { EventSystem } from '../systems/EventSystem.js';
 import { getBiomeAt } from '../systems/BiomeTransitionSystem.js';
 import type { CampaignMilestone } from '../content/campaignSchedule.js';
 import type { BossId, PlayerProfile, RunEndingSummary } from '@caravan/contracts';
+import type { CurrentRunSaveV1 } from '@caravan/contracts';
 import { getKarmaTier } from '../systems/KarmaSystem.js';
 import { chooseFinalBoss } from '../content/bosses.js';
 import { BossDirector } from '../systems/BossDirector.js';
@@ -28,8 +29,12 @@ import { getCharacterDefinition } from '../content/characters.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
 import type { CharacterId } from '@caravan/contracts';
 import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
+import { createSnapshot, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
+import { bossCatalog } from '../content/bosses.js';
+import { campaignSchedule } from '../content/campaignSchedule.js';
+import type { StageId } from '../content/biomes.js';
 
-export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile }
+export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1 }
 
 export class CaravanScene extends Phaser.Scene {
   private readonly initialRunConfig?: RunWorldConfig;
@@ -58,15 +63,18 @@ export class CaravanScene extends Phaser.Scene {
   private runEndEmitted = false;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
   private random = seededRandom(1);
+  private uiPaused = false;
   constructor(initialRunConfig?: RunWorldConfig) { super('CaravanScene'); this.initialRunConfig = initialRunConfig; }
   create(data?: RunWorldConfig): void {
-    data ??= this.initialRunConfig ?? { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1 };
-    const selectedCharacter = data.characterId ?? 'hero';
+    data = { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1, ...this.initialRunConfig, ...data };
+    const snapshot = data.resumeSave?.snapshot;
+    const selectedCharacter = snapshot?.characterId ?? data.characterId ?? 'hero';
     if (data.profile && !data.profile.unlockedCharacters.includes(selectedCharacter)) {
       throw new Error(`Character is locked for this profile: ${selectedCharacter}`);
     }
-    this.run = createRunState(selectedCharacter);
-    applyPermanentUpgrade(data.profile ?? this.emptyProfile(), this.run);
+    this.run = snapshot && data.resumeSave ? restoreSnapshot(data.resumeSave) : createRunState(selectedCharacter);
+    if (!snapshot) applyPermanentUpgrade(data.profile ?? this.emptyProfile(), this.run);
+    if (data.runId) this.run.runId = data.runId;
     this.gameOverShown = false;
     this.runEndEmitted = false;
     this.finalBossForRun = undefined;
@@ -74,17 +82,51 @@ export class CaravanScene extends Phaser.Scene {
     this.activeBossId = null;
     this.activeBossIsFinal = false;
     this.pendingFinalVictory = false;
-    this.random = seededRandom(data.seed);
+    this.random = seededRandom(snapshot?.rngSeed ?? data.seed);
     this.levelSystem = new LevelSystem(() => this.random());
-    this.campaignClock = new CampaignClock();
+    const emittedMilestones = snapshot ? campaignSchedule.filter((milestone) => {
+      if (milestone.atSeconds > snapshot.elapsedSeconds) return false;
+      return milestone.kind === 'event'
+        ? snapshot.eventChoiceIds.some((id) => id.startsWith(`${milestone.id}:`)) || snapshot.pendingEventId === milestone.id
+        : milestone.kind === 'final-boss'
+          ? snapshot.defeatedBossIds.some((id) => id === 'princess-demon' || id === 'king-guard') || snapshot.activeBoss?.id === milestone.id
+          : snapshot.defeatedBossIds.includes(milestone.id as BossId) || snapshot.activeBoss?.id === milestone.id;
+    }).map((milestone) => milestone.id) : [];
+    this.campaignClock = new CampaignClock(campaignSchedule, snapshot ? { elapsedSeconds: snapshot.elapsedSeconds, emittedIds: emittedMilestones } : undefined);
+    this.campaignClock.elapsedSeconds = snapshot?.elapsedSeconds ?? 0;
     this.eventSystem = new EventSystem();
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    this.background = new BackgroundScroll(this);
+    this.background = new BackgroundScroll(this, snapshot?.stageId as StageId | undefined);
     new Caravan(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
-    this.hero = new Hero(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 110);
+    this.hero = new Hero(this, snapshot?.player.x ?? WORLD_WIDTH / 2, snapshot?.player.y ?? WORLD_HEIGHT / 2 + 110);
     this.hero.setKarmaTier(getKarmaTier(this.run.karma));
     this.hero.moveSpeed = getCharacterDefinition(this.run.characterId).baseStats.speed + (this.run.upgradeStats['movement-speed'] ?? 0);
+    if (snapshot) {
+      this.spawnCooldownMs = snapshot.ordinarySpawnCooldownMs;
+      this.run.elapsedSeconds = snapshot.elapsedSeconds;
+      for (const saved of snapshot.enemies) {
+        const definition = this.enemyDefinition(saved.typeId);
+        const milestone = snapshot.activeBoss?.typeId === saved.typeId ? snapshot.activeBoss.id : undefined;
+        const enemy = new Enemy(this, saved.x, saved.y, definition, milestone);
+        enemy.hp = Math.min(enemy.maxHp, saved.hp); enemy.attackCooldownMs = saved.attackCooldownMs;
+        this.enemies.push(enemy);
+      }
+      if (snapshot.activeBoss) {
+        const boss = bossCatalog[snapshot.activeBoss.typeId as BossId];
+        this.activeBossMilestoneId = snapshot.activeBoss.id;
+        this.activeBossId = boss?.id ?? null;
+        this.activeBossIsFinal = snapshot.activeBoss.id === 'princess-demon';
+        this.finalBossForRun = this.activeBossIsFinal ? boss?.id : undefined;
+        this.campaignClock.pause(`boss:${snapshot.activeBoss.id}`);
+        if (boss) { this.bossDirector.startBoss(boss.id, this.run); this.bossDirector.syncBoss(snapshot.activeBoss.hp, 0); }
+      }
+      this.pendingFinalVictory = snapshot.elapsedSeconds >= 900 && snapshot.defeatedBossIds.some((id) => id === 'princess-demon' || id === 'king-guard');
+      if (this.pendingFinalVictory) this.finalBossForRun = snapshot.defeatedBossIds.find((id) => id === 'princess-demon' || id === 'king-guard');
+      if (snapshot.pendingEventId) this.campaignClock.pause(`event:${snapshot.pendingEventId}`);
+      this.hero.setPosition(snapshot.player.x, snapshot.player.y);
+      if (this.run.player.isDead) { this.hero.setVisible(false); (this.hero.body as Phaser.Physics.Arcade.Body).enable = false; }
+    }
     this.statusText = this.add.text(24, 66, '', { fontFamily: 'system-ui, sans-serif', fontSize: '15px', color: '#f4e7ce' }).setScrollFactor(0).setDepth(100);
     this.heroBar = this.add.graphics().setScrollFactor(0).setDepth(100);
     this.caravanBar = this.add.graphics().setScrollFactor(0).setDepth(100);
@@ -98,7 +140,29 @@ export class CaravanScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeEvent);
     const unsubscribeBoss = gameEventBus.on('boss-defeated', ({ milestoneId }) => this.completeBoss(milestoneId));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeBoss);
+    const unsubscribeSnapshot = gameEventBus.on('snapshot-request', ({ reason }) => this.createRunSnapshot(reason));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeSnapshot);
+    const unsubscribePause = gameEventBus.on('pause-request', () => { this.uiPaused = true; this.scene.pause(); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribePause);
+    const unsubscribeSaved = gameEventBus.on('snapshot-saved', ({ resume }) => { if (resume) this.scene.resume(); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeSaved);
+    const unsubscribeFailed = gameEventBus.on('snapshot-failed', () => { this.run.pausedBy = 'network'; this.uiPaused = true; this.scene.pause(); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeFailed);
+    const unsubscribeResume = gameEventBus.on('resume-run', () => {
+      if (this.run.pausedBy === 'network') this.run.pausedBy = this.run.pendingChoices.length > 0 ? 'level-up' : this.activeBossId ? 'boss' : this.eventSystem.pendingEventId ? 'event' : 'none';
+      this.uiPaused = this.run.pausedBy === 'event' || this.run.pausedBy === 'level-up';
+      if (!this.uiPaused) this.scene.resume();
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeResume);
     this.refreshHud();
+    if (this.run.pendingChoices.length) {
+      this.uiPaused = true; this.scene.pause();
+      gameEventBus.emit('level-up', { level: this.run.level, choices: this.run.pendingChoices });
+    }
+    if (snapshot?.pendingEventId) {
+      const event = this.eventSystem.restore(snapshot.pendingEventId, this.run);
+      if (event) { this.uiPaused = true; this.scene.pause(); gameEventBus.emit('story-event', event); }
+    }
   }
   update(_time: number, delta: number): void {
     if (!this.hero?.active) return;
@@ -114,7 +178,7 @@ export class CaravanScene extends Phaser.Scene {
         const event = this.eventSystem.present(milestone.id, this.run);
         if (!event) throw new Error(`Missing or invalid story event content for ${milestone.id}`);
         this.campaignClock.pause(`event:${milestone.id}`);
-        this.scene.pause();
+        this.uiPaused = true; this.scene.pause();
         gameEventBus.emit('story-event', event);
         return;
       }
@@ -211,7 +275,7 @@ export class CaravanScene extends Phaser.Scene {
     });
     const result = this.levelSystem.addXp(this.run, enemy.definition.experience);
     if (result.levelUps > 0 && this.run.pendingChoices.length > 0) {
-      this.scene.pause();
+      this.uiPaused = true; this.scene.pause();
       gameEventBus.emit('level-up', { level: this.run.level, choices: this.run.pendingChoices });
     }
     if (enemy.bossMilestoneId) gameEventBus.emit('boss-defeated', { milestoneId: enemy.bossMilestoneId });
@@ -280,6 +344,8 @@ export class CaravanScene extends Phaser.Scene {
       return;
     }
     this.scene.resume();
+    this.uiPaused = false;
+    gameEventBus.emit('snapshot-request', { reason: 'checkpoint' });
   }
 
   private chooseEvent(eventId: string, choiceId: 'yes' | 'no'): void {
@@ -293,6 +359,8 @@ export class CaravanScene extends Phaser.Scene {
       return;
     }
     this.scene.resume();
+    this.uiPaused = false;
+    gameEventBus.emit('snapshot-request', { reason: 'checkpoint' });
   }
 
   private completeBoss(milestoneId: string): void {
@@ -304,10 +372,12 @@ export class CaravanScene extends Phaser.Scene {
     this.activeBossIsFinal = false;
     const choices = this.levelSystem.presentNextChoice(this.run);
     if (choices.length > 0) {
-      this.scene.pause();
+      this.uiPaused = true; this.scene.pause();
+      gameEventBus.emit('snapshot-request', { reason: 'checkpoint' });
       gameEventBus.emit('level-up', { level: this.run.level, choices });
       return;
     }
+    if (!this.pendingFinalVictory) gameEventBus.emit('snapshot-request', { reason: 'checkpoint' });
     if (this.pendingFinalVictory) this.showVictory();
   }
 
@@ -370,5 +440,28 @@ export class CaravanScene extends Phaser.Scene {
     };
     this.runEndEmitted = true;
     gameEventBus.emit('run-ended', summary);
+  }
+
+  private createRunSnapshot(reason: 'autosave' | 'checkpoint' | 'manual'): void {
+    if (this.run.status !== 'active') return;
+    const resumeAfterSave = !this.uiPaused;
+    this.scene.pause();
+    const activeBoss = this.enemies.find((enemy) => enemy.bossMilestoneId === this.activeBossMilestoneId);
+    const snapshot = createSnapshot({
+      run: this.run, player: { x: this.hero.x, y: this.hero.y }, rngSeed: this.random.getState(),
+      ordinarySpawnCooldownMs: this.spawnCooldownMs,
+      enemies: this.enemies.map((enemy) => ({ id: enemy.id, typeId: enemy.definition.id, x: enemy.x, y: enemy.y, hp: enemy.hp, attackCooldownMs: enemy.attackCooldownMs, bossMilestoneId: enemy.bossMilestoneId, dead: enemy.dead })),
+      activeBossMaxHp: activeBoss?.maxHp, pendingEventId: this.eventSystem.pendingEventId,
+    });
+    gameEventBus.emit('snapshot-ready', { runId: this.run.runId, characterId: this.run.characterId, snapshot, reason, resumeAfterSave });
+  }
+
+  private enemyDefinition(typeId: string): EnemyDefinition {
+    const ordinary = enemyCatalog.find((definition) => definition.id === typeId);
+    if (ordinary) return ordinary;
+    const boss = bossCatalog[typeId as BossId];
+    if (boss) return { id: boss.id, maxHp: boss.maxHp, speed: 48, damage: boss.damage, attackRange: boss.attacks[0]?.range ?? 46, targetPolicy: 'nearest', wagonPriority: false, experience: 0, gold: 0, color: boss.color };
+    if (typeId === 'king-soldier') return { id: typeId, maxHp: 18, speed: 54, damage: 8, attackRange: 40, targetPolicy: 'nearest', wagonPriority: false, experience: 0, gold: 0, color: 0xc5b783 };
+    throw new Error(`Cannot restore unknown saved enemy type: ${typeId}`);
   }
 }

@@ -14,6 +14,15 @@ export class EventSystem {
   private activeEventId: string | null = null;
   constructor(private readonly catalog: readonly StoryEvent[] = eventCatalog) {}
 
+  get pendingEventId(): string | null { return this.activeEventId; }
+
+  restore(eventId: string, run: RunState): StoryEvent | null {
+    const event = this.catalog.find((candidate) => candidate.id === eventId);
+    if (!event || run.status !== 'active' || run.pausedBy !== 'event') return null;
+    this.activeEventId = eventId;
+    return event;
+  }
+
   present(eventId: string, run: RunState): StoryEvent | null {
     const event = this.catalog.find((candidate) => candidate.id === eventId);
     if (!event || run.status !== 'active' || run.pausedBy !== 'none' || run.eventChoiceIds.some((id) => id.startsWith(`${eventId}:`))) return null;

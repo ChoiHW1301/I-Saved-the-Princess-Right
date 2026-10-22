@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import type { PlayerProfile } from './profile.js';
-import { CharacterIdSchema } from './profile.js';
+import { CharacterIdSchema, PlayerProfileSchema, type PlayerProfile } from './profile.js';
 import { BossIdSchema, EndingIdSchema, KarmaTierSchema } from './leaderboard.js';
 import { CounterSchema, IdSchema, UserIdSchema, withDocumentLimit } from './validation.js';
 
@@ -42,6 +41,12 @@ export interface RunReceipt {
   clearBoardUpdated: boolean;
   replayed: boolean;
 }
+
+export const RunReceiptSchema = z.object({
+  runId: IdSchema, score: CounterSchema, goldAward: CounterSchema,
+  unlockedCharacters: z.array(CharacterIdSchema).max(32), profile: PlayerProfileSchema,
+  scoreBoardUpdated: z.boolean(), clearBoardUpdated: z.boolean(), replayed: z.boolean(),
+}).strict();
 
 export const RunSummarySchema = withDocumentLimit(z.object({
   userId: UserIdSchema,

@@ -6,8 +6,10 @@ const PlayerSnapshotSchema = z.object({
   x: CoordinateSchema,
   y: CoordinateSchema,
   hp: CounterSchema,
+  maxHp: CounterSchema.default(100),
   level: CounterSchema,
   xp: CounterSchema,
+  xpToNext: CounterSchema.default(10),
   respawnMs: CounterSchema,
   invulnerableMs: CounterSchema,
 }).strict();
@@ -34,6 +36,7 @@ const ProjectileSnapshotSchema = z.object({
 }).strict();
 
 export const RunSnapshotV1Schema = z.object({
+  characterId: CharacterIdSchema.default('hero'),
   elapsedSeconds: CounterSchema,
   stageId: IdSchema,
   rngSeed: CounterSchema,
@@ -46,7 +49,11 @@ export const RunSnapshotV1Schema = z.object({
   player: PlayerSnapshotSchema,
   wagon: WagonSnapshotSchema,
   runGold: CounterSchema,
+  kills: CounterSchema.default(0),
+  pendingLevelUps: CounterSchema.default(0),
+  pendingChoices: z.array(z.object({ id: IdSchema, nextLevel: CounterSchema, value: z.number().finite() }).strict()).max(3).default([]),
   weaponLevels: z.record(IdSchema, CounterSchema),
+  upgradeStats: z.record(IdSchema, z.number().finite()).default({}),
   upgradeIds: z.array(IdSchema).max(100),
   defeatedBossIds: z.array(IdSchema).max(100),
   enemies: z.array(EnemySnapshotSchema).max(500),

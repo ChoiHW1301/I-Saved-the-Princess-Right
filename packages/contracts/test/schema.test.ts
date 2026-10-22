@@ -17,10 +17,10 @@ const profile = {
 };
 
 const snapshot = {
-  elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
+  characterId: 'hero', elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
   eventChoiceIds: [], ordinarySpawnCooldownMs: 800, activeBoss: null,
-  player: { x: 0, y: 0, hp: 100, level: 1, xp: 0, respawnMs: 0, invulnerableMs: 0 },
-  wagon: { hp: 100, maxHp: 100 }, runGold: 0, weaponLevels: { sword: 1 }, upgradeIds: [],
+  player: { x: 0, y: 0, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, invulnerableMs: 0 },
+  wagon: { hp: 100, maxHp: 100 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, upgradeIds: [],
   defeatedBossIds: [], enemies: [], projectiles: [],
 };
 
@@ -39,6 +39,16 @@ describe('shared document schemas', () => {
       id: userId, boardId: 'score', userId, displayName: 'Hero', score: 500, kills: 5,
       characterId: 'hero', karmaTier: 'good', elapsedSeconds: 120, clear: true, updatedAt: now,
     }).score).toBe(500);
+  });
+
+  it('fills rehydration defaults when loading an earlier version 1 snapshot', () => {
+    const { characterId: _characterId, kills: _kills, pendingLevelUps: _pendingLevelUps, pendingChoices: _pendingChoices, upgradeStats: _upgradeStats, ...oldSnapshotFields } = snapshot;
+    const { maxHp: _maxHp, xpToNext: _xpToNext, ...oldPlayer } = snapshot.player;
+    const parsed = CurrentRunSaveV1Schema.parse({
+      id: 'current', userId, schemaVersion: 1, revision: 1, runId: 'run-1', savedAt: now,
+      snapshot: { ...oldSnapshotFields, player: oldPlayer },
+    });
+    expect(parsed.snapshot).toMatchObject({ characterId: 'hero', kills: 0, pendingChoices: [], player: { maxHp: 100, xpToNext: 10 } });
   });
 
   it('rejects unsupported versions, malformed IDs, invalid counters and Cosmos metadata', () => {

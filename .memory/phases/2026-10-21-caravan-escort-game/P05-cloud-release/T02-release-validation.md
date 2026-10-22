@@ -1,6 +1,6 @@
 # Task: T02 Entra/Azure 운영 설정 및 스모크 검증
 
-## Status: pending
+## Status: done
 
 ## Goal
 운영 담당자가 DEX Entra 앱·그룹과 Azure 리소스를 연결하고, 인증·저장·게임·랭킹의 출시 전 흐름을 검증할 수 있는 절차를 제공한다.
@@ -31,9 +31,9 @@
 - **Error & Exception Handling**: each failed check reports endpoint and expected/actual status but masks bearer tokens and personal details; stop at first auth/config failure; preserve production data.
 
 ## Acceptance Criteria
-- [ ] Operator can configure Entra app and DEX group without secrets in source
-- [ ] Deployment/runbook covers SWA, linked Function, Cosmos managed identity, and app role
-- [ ] Release checklist verifies allow/deny, save/resume, rewards, and both ranking modes
+- [x] Operator can configure Entra app and DEX group without secrets in source
+- [x] Deployment/runbook covers SWA, linked Function, Cosmos managed identity, and app role
+- [x] Release checklist verifies allow/deny, save/resume, rewards, and both ranking modes
 
 ## Validation
 - `npm run test --workspace apps/api -- test/release/authorization.test.ts` — route access rules pass
@@ -53,6 +53,6 @@ Task: T02-release-validation
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] Implementation complete
+- [x] Validation passed (API auth tests 6/6, full build, PowerShell smoke check against local mock)
+- commit: 8a61241

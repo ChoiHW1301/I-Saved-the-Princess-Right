@@ -1,6 +1,8 @@
 import {
   MetaUpgradeIdSchema,
+  PassiveIdSchema,
   type MetaUpgradeId,
+  type PassiveId,
   type PlayerProfile,
 } from '@caravan/contracts';
 import type { Caller } from '../auth/authorize.js';
@@ -10,15 +12,19 @@ import { StorageError } from '../data/repositorySupport.js';
 
 export interface UpgradeDefinition {
   baseCost: number;
+  costGrowth: number;
   maxLevel: number;
 }
 
 export const upgradeCatalog: Readonly<Record<MetaUpgradeId, UpgradeDefinition>> = Object.freeze({
-  'max-health': { baseCost: 100, maxLevel: 5 },
-  armor: { baseCost: 150, maxLevel: 5 },
-  damage: { baseCost: 200, maxLevel: 5 },
-  magnet: { baseCost: 75, maxLevel: 5 },
-  'starting-gold': { baseCost: 250, maxLevel: 5 },
+  'max-health': { baseCost: 100, costGrowth: 1.65, maxLevel: 5 },
+  'attack-damage': { baseCost: 150, costGrowth: 1.7, maxLevel: 5 },
+  'move-speed': { baseCost: 100, costGrowth: 1.6, maxLevel: 5 },
+  'wagon-max-health': { baseCost: 125, costGrowth: 1.65, maxLevel: 5 },
+});
+
+export const passiveCatalog: Readonly<Record<PassiveId, { cost: number }>> = Object.freeze({
+  'iron-will': { cost: 300 }, 'keen-edge': { cost: 350 }, 'swift-step': { cost: 275 },
 });
 
 export interface PurchaseUpgradeRequest {
@@ -42,7 +48,7 @@ export class ProfileService {
     const definition = upgradeCatalog[parsedUpgrade.data];
     const currentLevel = current.permanentUpgradeLevels[parsedUpgrade.data] ?? 0;
     if (currentLevel >= definition.maxLevel) throw new ApiError(400, 'INVALID_UPGRADE');
-    const cost = definition.baseCost * (currentLevel + 1);
+    const cost = Math.ceil(definition.baseCost * definition.costGrowth ** currentLevel);
     if (current.goldBalance < cost) throw new ApiError(409, 'INSUFFICIENT_GOLD');
 
     const upgraded: PlayerProfile = {
@@ -51,6 +57,22 @@ export class ProfileService {
       goldBalance: current.goldBalance - cost,
       permanentUpgradeLevels: { ...current.permanentUpgradeLevels, [parsedUpgrade.data]: currentLevel + 1 },
       updatedAt: new Date().toISOString(),
+    };
+    await this.profiles.save(upgraded);
+    return upgraded;
+  }
+
+  async purchasePassive(caller: Caller, passiveId: PassiveId, expectedProfileVersion: number): Promise<PlayerProfile> {
+    const parsedPassive = PassiveIdSchema.safeParse(passiveId);
+    if (!parsedPassive.success) throw new ApiError(400, 'INVALID_UPGRADE');
+    const current = await this.profiles.getOrCreate(caller);
+    if (current.version !== expectedProfileVersion) throw new StorageError('PROFILE_CONFLICT');
+    if (current.passiveIds.includes(parsedPassive.data)) throw new ApiError(400, 'INVALID_UPGRADE');
+    const cost = passiveCatalog[parsedPassive.data].cost;
+    if (current.goldBalance < cost) throw new ApiError(409, 'INSUFFICIENT_GOLD');
+    const upgraded: PlayerProfile = {
+      ...current, version: current.version + 1, goldBalance: current.goldBalance - cost,
+      passiveIds: [...current.passiveIds, parsedPassive.data], updatedAt: new Date().toISOString(),
     };
     await this.profiles.save(upgraded);
     return upgraded;

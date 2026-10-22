@@ -4,6 +4,7 @@ export type RunStatus = 'active' | 'won' | 'lost';
 
 export * from './gameplay.js';
 export * from './campaign.js';
+export * from './characters.js';
 export * from './profile.js';
 export * from './save.js';
 export * from './leaderboard.js';

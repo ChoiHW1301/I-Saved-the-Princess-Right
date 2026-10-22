@@ -1,6 +1,6 @@
 # Task: T03 캐릭터·무기·영구 성장·해금
 
-## Status: pending
+## Status: done
 
 ## Goal
 용사와 세 해금 캐릭터의 자동 공격·개별 강화 방향을 구성하고, 골드 영구 강화와 첫 플레이/클리어/누적 골드 해금을 제공한다.
@@ -53,10 +53,10 @@
 - **Error & Exception Handling**: duplicate run receipt cannot grant another unlock/award; insufficient gold or max level rejects purchase; unknown catalog ID returns `INVALID_UPGRADE`.
 
 ## Acceptance Criteria
-- [ ] Four first-version characters have distinct starting weapon and upgrade pool
-- [ ] Mage can add ice spear and thunder while retaining fireball’s separate upgrades
-- [ ] Archer unlocks after first run, mage after first clear, merchant at configurable lifetime-gold threshold
-- [ ] Permanent upgrades are capped and one-time passives cannot be bought twice
+- [x] Four first-version characters have distinct starting weapon and upgrade pool
+- [x] Mage can add ice spear and thunder while retaining fireball’s separate upgrades
+- [x] Archer unlocks after first run, mage after first clear, merchant at configurable lifetime-gold threshold
+- [x] Permanent upgrades are capped and one-time passives cannot be bought twice
 
 ## Validation
 - `npm run test --workspace apps/web -- src/game/test/CharacterCatalog.test.ts src/game/test/MetaProgression.test.ts` — catalogs and unlock paths pass
@@ -76,6 +76,6 @@ Task: T03-characters-and-meta
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과
+- commit: feat(progression): add characters weapons and meta unlocks

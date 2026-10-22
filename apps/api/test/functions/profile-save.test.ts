@@ -9,7 +9,7 @@ const caller = {
 };
 vi.mock('../../src/auth/authorize.js', () => ({ authorizeRequest: vi.fn(async () => caller) }));
 
-import { getProfile, purchaseUpgrade } from '../../src/functions/profile.js';
+import { getProfile, purchasePassive, purchaseUpgrade } from '../../src/functions/profile.js';
 import { deleteSave, getSave, putSave } from '../../src/functions/save.js';
 
 const userId = `${caller.tenantId}:${caller.objectId}`;
@@ -53,6 +53,24 @@ describe('profile and save handlers', () => {
     expect((response.jsonBody as PlayerProfile).goldBalance).toBe(900);
     expect((response.jsonBody as PlayerProfile).permanentUpgradeLevels['max-health']).toBe(1);
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ version: 2 }));
+  });
+
+  it('purchases each passive once and persists it through the profile repository', async () => {
+    let current: PlayerProfile = { ...profile, goldBalance: 400 };
+    const repository = {
+      getOrCreate: vi.fn(async () => current),
+      save: vi.fn(async (updated: PlayerProfile) => { current = updated; }),
+    } as any;
+    const first = await purchasePassive(request('POST', 'http://localhost/api/profile/passives', {
+      upgradeId: 'iron-will', expectedProfileVersion: 1,
+    }), repository);
+    expect(first.status).toBe(200);
+    expect((first.jsonBody as PlayerProfile)).toMatchObject({ goldBalance: 100, passiveIds: ['iron-will'], version: 2 });
+    const duplicate = await purchasePassive(request('POST', 'http://localhost/api/profile/passives', {
+      upgradeId: 'iron-will', expectedProfileVersion: 2,
+    }), repository);
+    expect(duplicate.status).toBe(400);
+    expect(duplicate.jsonBody).toMatchObject({ code: 'INVALID_UPGRADE' });
   });
 
   it('saves versioned run state and reports unsupported versions and absent saves', async () => {

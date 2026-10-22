@@ -1,5 +1,5 @@
 import { app, type HttpRequest, type HttpResponseInit } from '@azure/functions';
-import { MetaUpgradeIdSchema } from '@caravan/contracts';
+import { MetaUpgradeIdSchema, PassiveIdSchema } from '@caravan/contracts';
 import { z } from 'zod';
 import { authorizeRequest } from '../auth/authorize.js';
 import { ProfileRepository, type ProfileRepositoryPort } from '../data/profileRepository.js';
@@ -43,10 +43,30 @@ export async function purchaseUpgrade(
   }
 }
 
+export async function purchasePassive(
+  request: HttpRequest,
+  repository?: ProfileRepositoryPort,
+): Promise<HttpResponseInit> {
+  try {
+    const caller = await authorizeRequest(request);
+    const parsed = PurchaseRequestSchema.parse(await readJson(request));
+    const passiveId = PassiveIdSchema.safeParse(parsed.upgradeId);
+    if (!passiveId.success) throw new ApiError(400, 'INVALID_UPGRADE');
+    const service = new ProfileService(repository ?? new ProfileRepository());
+    return { status: 200, jsonBody: await service.purchasePassive(caller, passiveId.data, parsed.expectedProfileVersion) };
+  } catch (error) {
+    return jsonError(error, request);
+  }
+}
+
 app.http('profileGet', {
   methods: ['GET'], route: 'profile', authLevel: 'anonymous', handler: (request) => getProfile(request),
 });
 
 app.http('profileUpgradePurchase', {
   methods: ['POST'], route: 'profile/upgrades', authLevel: 'anonymous', handler: (request) => purchaseUpgrade(request),
+});
+
+app.http('profilePassivePurchase', {
+  methods: ['POST'], route: 'profile/passives', authLevel: 'anonymous', handler: (request) => purchasePassive(request),
 });

@@ -20,10 +20,10 @@ DEX 직원이 Azure Entra ID로 로그인해 플레이하는 1인 브라우저 �
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | 앱 기반, Entra 직원 인증, Cosmos 계정·저장·랭킹 API | [P01](../phases/2026-10-21-caravan-escort-game/P01-foundation-api/phase.md) |
-| P02 | `pending` | Phaser 전투 장면과 생존형 액션 코어 | [P02](../phases/2026-10-21-caravan-escort-game/P02-gameplay-core/phase.md) |
-| P03 | `pending` | 캠페인 시간표, 이벤트, 카르마, 보스, 캐릭터 성장 | [P03](../phases/2026-10-21-caravan-escort-game/P03-campaign-content/phase.md) |
-| P04 | `pending` | React 메뉴, 계정 성장, 임시 저장·이어하기, 랭킹 연동 | [P04](../phases/2026-10-21-caravan-escort-game/P04-account-ui/phase.md) |
+| P01 | `done` | 앱 기반, Entra 직원 인증, Cosmos 계정·저장·랭킹 API | [P01](../phases/2026-10-21-caravan-escort-game/P01-foundation-api/phase.md) |
+| P02 | `done` | Phaser 전투 장면과 생존형 액션 코어 | [P02](../phases/2026-10-21-caravan-escort-game/P02-gameplay-core/phase.md) |
+| P03 | `done` | 캠페인 시간표, 이벤트, 카르마, 보스, 캐릭터 성장 | [P03](../phases/2026-10-21-caravan-escort-game/P03-campaign-content/phase.md) |
+| P04 | `in_progress` | React 메뉴, 계정 성장, 임시 저장·이어하기, 랭킹 연동 | [P04](../phases/2026-10-21-caravan-escort-game/P04-account-ui/phase.md) |
 | P05 | `pending` | Azure 인프라·배포 설정과 배포 검증 절차 | [P05](../phases/2026-10-21-caravan-escort-game/P05-cloud-release/phase.md) |
 
 ## Execution Notes

@@ -1,4 +1,6 @@
 
+import { MERCHANT_GOLD_THRESHOLD } from '@caravan/contracts';
+
 export interface ScoreConfig {
   killWeight: number;
   secondWeight: number;
@@ -25,4 +27,4 @@ export const goldConfig: Readonly<GoldConfig> = Object.freeze({
   clearBonus: 50,
 });
 
-export const merchantUnlockGold = 1000;
+export const merchantUnlockGold = MERCHANT_GOLD_THRESHOLD;

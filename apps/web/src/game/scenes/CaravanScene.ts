@@ -5,7 +5,6 @@ import { Enemy } from '../entities/Enemy.js';
 import { Hero } from '../entities/Hero.js';
 import { enemyCatalog } from '../content/enemies.js';
 import { BackgroundScroll } from '../systems/BackgroundScroll.js';
-import { AutoAttackSystem } from '../systems/AutoAttackSystem.js';
 import { EnemyDirector } from '../systems/EnemyDirector.js';
 import { HealthSystem } from '../systems/HealthSystem.js';
 import { movementFromKeys } from '../systems/MovementInput.js';
@@ -20,13 +19,17 @@ import { CampaignClock } from '../systems/CampaignClock.js';
 import { EventSystem } from '../systems/EventSystem.js';
 import { getBiomeAt } from '../systems/BiomeTransitionSystem.js';
 import type { CampaignMilestone } from '../content/campaignSchedule.js';
-import type { BossId, RunEndingSummary } from '@caravan/contracts';
+import type { BossId, PlayerProfile, RunEndingSummary } from '@caravan/contracts';
 import { getKarmaTier } from '../systems/KarmaSystem.js';
 import { chooseFinalBoss } from '../content/bosses.js';
 import { BossDirector } from '../systems/BossDirector.js';
 import { resolveEnding } from '../systems/EndingSystem.js';
+import { getCharacterDefinition } from '../content/characters.js';
+import { WeaponSystem } from '../systems/WeaponSystem.js';
+import type { CharacterId } from '@caravan/contracts';
+import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 
-export interface RunWorldConfig { width: number; height: number; seed: number }
+export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile }
 
 export class CaravanScene extends Phaser.Scene {
   private hero!: Hero;
@@ -34,7 +37,7 @@ export class CaravanScene extends Phaser.Scene {
   private readonly enemies: Enemy[] = [];
   private run = createRunState();
   private readonly enemyDirector = new EnemyDirector();
-  private readonly autoAttack = new AutoAttackSystem();
+  private readonly weaponSystem = new WeaponSystem();
   private readonly health = new HealthSystem();
   private readonly respawn = new RespawnSystem();
   private levelSystem!: LevelSystem;
@@ -56,7 +59,12 @@ export class CaravanScene extends Phaser.Scene {
   private random = seededRandom(1);
   constructor() { super('CaravanScene'); }
   create(data: RunWorldConfig = { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1 }): void {
-    this.run = createRunState();
+    const selectedCharacter = data.characterId ?? 'hero';
+    if (data.profile && !data.profile.unlockedCharacters.includes(selectedCharacter)) {
+      throw new Error(`Character is locked for this profile: ${selectedCharacter}`);
+    }
+    this.run = createRunState(selectedCharacter);
+    applyPermanentUpgrade(data.profile ?? this.emptyProfile(), this.run);
     this.gameOverShown = false;
     this.runEndEmitted = false;
     this.finalBossForRun = undefined;
@@ -74,6 +82,7 @@ export class CaravanScene extends Phaser.Scene {
     new Caravan(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
     this.hero = new Hero(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2 + 110);
     this.hero.setKarmaTier(getKarmaTier(this.run.karma));
+    this.hero.moveSpeed = getCharacterDefinition(this.run.characterId).baseStats.speed + (this.run.upgradeStats['movement-speed'] ?? 0);
     this.statusText = this.add.text(24, 66, '', { fontFamily: 'system-ui, sans-serif', fontSize: '15px', color: '#f4e7ce' }).setScrollFactor(0).setDepth(100);
     this.heroBar = this.add.graphics().setScrollFactor(0).setDepth(100);
     this.caravanBar = this.add.graphics().setScrollFactor(0).setDepth(100);
@@ -155,8 +164,18 @@ export class CaravanScene extends Phaser.Scene {
       }
     }
     if (!this.run.player.isDead) {
-      const hit = this.autoAttack.update(heroPosition, this.enemies, delta);
-      if (hit?.killed) this.onEnemyDefeated(hit.enemy);
+      for (const enemy of this.weaponSystem.update(this.run, heroPosition, this.enemies, delta, this.random, (projectile) => {
+        const color = projectile.weaponId === 'sword' ? 0xdde8f2 : projectile.weaponId === 'bow' ? 0xd6b475
+          : projectile.weaponId === 'ice-spear' ? 0x91ddf2 : projectile.weaponId === 'thunder' ? 0xffe477
+            : projectile.weaponId === 'gold-shotgun' ? 0xffd54f : 0xff793e;
+        const radius = projectile.weaponId === 'fireball' ? 8 + (this.run.upgradeStats['fireball-size'] ?? 0) / 3 : 4;
+        for (const target of projectile.targets) {
+          const bolt = this.add.circle(this.hero.x, this.hero.y, radius, color).setDepth(12);
+          this.tweens.add({ targets: bolt, x: target.x, y: target.y, duration: 110, onComplete: () => bolt.destroy() });
+        }
+      })) {
+        this.onEnemyDefeated(enemy);
+      }
     }
     const activeBoss = this.enemies.find((enemy) => enemy.bossMilestoneId === this.activeBossMilestoneId);
     if (activeBoss) this.bossDirector.syncBoss(activeBoss.hp, activeBoss.attackCooldownMs);
@@ -291,7 +310,7 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private applyUpgrade(stat: string, value: number): void {
-    if (stat === 'sword-damage' || stat === 'sword-range') this.autoAttack.applyUpgrade(stat, value);
+    if (stat.startsWith('add-weapon:')) this.weaponSystem.addWeapon(this.run, stat.slice('add-weapon:'.length));
     if (stat === 'movement-speed') this.hero.moveSpeed += value;
     if (stat === 'hero-max-health') {
       this.run.player.maxHp += value;
@@ -308,6 +327,11 @@ export class CaravanScene extends Phaser.Scene {
     if (!enemy) return;
     this.enemies.splice(index, 1);
     enemy.destroy();
+  }
+
+  private emptyProfile(): PlayerProfile {
+    return { id: 'profile', userId: 'local', tenantId: 'local', objectId: 'local', version: 0, displayName: 'Adventurer',
+      goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['hero'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: new Date(0).toISOString() };
   }
 
   private refreshHud(): void {

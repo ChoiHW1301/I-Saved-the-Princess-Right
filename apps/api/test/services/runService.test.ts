@@ -86,4 +86,24 @@ describe('run rewards and idempotency', () => {
     expect(result.profile.goldBalance).toBe(75);
     expect(profiles.applyRunOnce).not.toHaveBeenCalled();
   });
+
+  it('uses the configured lifetime-gold threshold to unlock the merchant after a loss', async () => {
+    let current = { ...profile(), lifetimeGoldEarned: 499 };
+    const profiles = {
+      getOrCreate: vi.fn(async () => current),
+      getRunReceipt: vi.fn(async () => null),
+      applyRunOnce: vi.fn(async (_caller: unknown, _receipt: RunReceiptDocument, updated: PlayerProfile) => { current = updated; return true; }),
+    } as any;
+    const service = new RunService({
+      profiles,
+      leaderboards: { upsertBest: vi.fn(async () => undefined) } as any,
+      saves: { get: vi.fn(async () => null), delete: vi.fn(async () => undefined) } as any,
+    });
+    const result = await service.submitRun(caller, {
+      runId: 'run-merchant-threshold', characterId: 'hero', status: 'lost', elapsedSeconds: 0, kills: 1,
+      defeatedBossIds: [], karma: 0, endingId: 'caravan-lost',
+    }, 'corr-merchant');
+    expect(result.profile.lifetimeGoldEarned).toBe(500);
+    expect(result.unlockedCharacters).toEqual(['hero', 'archer', 'merchant']);
+  });
 });

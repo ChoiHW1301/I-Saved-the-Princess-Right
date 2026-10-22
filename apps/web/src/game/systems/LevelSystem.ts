@@ -1,5 +1,5 @@
 import { getXpToNextLevel, type RunState, type UpgradeChoice, type UpgradeDefinition } from '@caravan/contracts';
-import { upgradeCatalog } from '../content/upgrades.js';
+import { getAvailableUpgrades, upgradeCatalog } from '../content/upgrades.js';
 
 export interface AddExperienceResult { state: RunState; levelUps: number }
 
@@ -27,10 +27,10 @@ export class LevelSystem {
   }
 
   rollChoices(state: RunState): UpgradeChoice[] {
-    const eligible = this.catalog.filter((upgrade) => {
-      const currentLevel = state.weaponLevels[upgrade.id] ?? 0;
-      return currentLevel < upgrade.maxLevel && (!upgrade.characterIds || upgrade.characterIds.includes(state.characterId));
-    });
+    const eligible = this.catalog === upgradeCatalog
+      ? getAvailableUpgrades(state.characterId, state)
+      : this.catalog.filter((upgrade) => (state.weaponLevels[upgrade.id] ?? 0) < upgrade.maxLevel
+        && (!upgrade.characterIds || upgrade.characterIds.includes(state.characterId)));
     const choices: UpgradeChoice[] = [];
     while (eligible.length > 0 && choices.length < 3) {
       const totalWeight = eligible.reduce((sum, item) => sum + item.weight, 0);

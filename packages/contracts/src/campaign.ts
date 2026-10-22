@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BossIdSchema, EndingIdSchema, KarmaTierSchema } from './leaderboard.js';
+import { CharacterIdSchema } from './profile.js';
 
 export { BossIdSchema, EndingIdSchema, KarmaTierSchema } from './leaderboard.js';
 export type { BossId, EndingId, KarmaTier } from './leaderboard.js';
@@ -13,7 +14,7 @@ export const RunEndingSummarySchema = z.object({
   elapsedSeconds: z.number().finite().nonnegative(),
   kills: z.number().int().nonnegative(),
   runGold: z.number().int().nonnegative(),
-  characterId: z.string().min(1).max(64),
+  characterId: CharacterIdSchema,
   defeatedBossIds: z.array(BossIdSchema).max(3),
 }).strict();
 export type RunEndingSummary = z.infer<typeof RunEndingSummarySchema>;

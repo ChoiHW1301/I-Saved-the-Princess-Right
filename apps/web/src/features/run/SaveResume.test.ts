@@ -6,9 +6,9 @@ import { createRunState } from '../../game/state/createRunState.js';
 import { createSnapshot, restoreSnapshot } from '../../game/systems/SaveSnapshotSystem.js';
 
 const userId = '11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222';
-const profile: PlayerProfile = { id: 'profile', userId, tenantId: userId.split(':')[0]!, objectId: userId.split(':')[1]!, version: 1, displayName: 'Hero', goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['hero'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: '2026-10-22T00:00:00.000Z' };
+const profile: PlayerProfile = { id: 'profile', userId, tenantId: userId.split(':')[0]!, objectId: userId.split(':')[1]!, version: 1, displayName: 'Warrior', goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: '2026-10-22T00:00:00.000Z' };
 const snapshot: RunSnapshotV1 = {
-  characterId: 'hero', elapsedSeconds: 30, stageId: 'demon-castle', rngSeed: 99, karma: 0, status: 'active', pendingEventId: null, eventChoiceIds: [], ordinarySpawnCooldownMs: 500, activeBoss: null,
+  characterId: 'warrior', worldWidth: 1280, roadCenterY: 267, elapsedSeconds: 30, stageId: 'demon-castle', rngSeed: 99, karma: 0, status: 'active', pendingEventId: null, approachingEvent: null, rewardPickups: [], eventChoiceIds: [], ordinarySpawnCooldownMs: 500, activeBoss: null,
   player: { x: 320, y: 340, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, invulnerableMs: 0 }, wagon: { hp: 250, maxHp: 250 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, upgradeIds: [], defeatedBossIds: [], enemies: [], projectiles: [],
 };
 function save(runId = 'run-1', revision = 0, state = snapshot): CurrentRunSaveV1 { return { id: 'current', userId, schemaVersion: 1, revision, runId, savedAt: '2026-10-22T00:00:00.000Z', snapshot: state }; }
@@ -30,10 +30,15 @@ describe('run save, resume, and result flow', () => {
     run.runId = 'run-restore'; run.elapsedSeconds = 180; run.level = 3; run.xp = 5; run.xpToNext = 27; run.karma = 42; run.kills = 19; run.runGold = 11;
     run.weaponLevels['arrow-damage'] = 2; run.selectedUpgradeIds = ['arrow-damage']; run.upgradeStats['bow-damage'] = 4;
     run.pendingLevelUps = 1; run.pendingChoices = [{ id: 'arrow-range', nextLevel: 1, value: 30 }];
-    const snapshot = createSnapshot({ run, player: { x: 400, y: 300 }, rngSeed: 1234, ordinarySpawnCooldownMs: 600, enemies: [] });
+    const snapshot = createSnapshot({ run, player: { x: 400, y: 300 }, rngSeed: 1234, ordinarySpawnCooldownMs: 600, enemies: [], worldWidth: 960, roadCenterY: 360,
+      approachingEvent: { eventId: 'wounded-messenger', x: 830 },
+      rewardPickups: [{ id: 'drop-1', type: 'caravan-repair', x: 500, y: 360, amount: 40, remainingMs: 12_000 }],
+    });
     const restored = restoreSnapshot(save('run-restore', 1, snapshot));
     expect(restored).toMatchObject({ runId: 'run-restore', characterId: 'archer', elapsedSeconds: 180, level: 3, xp: 5, karma: 42, kills: 19, runGold: 11, pendingChoices: [{ id: 'arrow-range' }], equippedWeaponIds: ['bow'] });
-    expect(snapshot).toMatchObject({ rngSeed: 1234, player: { x: 400, y: 300 }, ordinarySpawnCooldownMs: 600 });
+    expect(snapshot).toMatchObject({ rngSeed: 1234, player: { x: 400, y: 300 }, ordinarySpawnCooldownMs: 600,
+      approachingEvent: { eventId: 'wounded-messenger', x: 830 }, rewardPickups: [{ id: 'drop-1', remainingMs: 12_000 }],
+    });
   });
 
   it('stores a failed autosave locally, pauses, then synchronizes with the server revision', async () => {
@@ -59,8 +64,8 @@ describe('run save, resume, and result flow', () => {
 
   it('retries the same pending result after an API failure', async () => {
     const local = new MemoryStore();
-    const result: RunSubmission = { runId: 'run-1', characterId: 'hero', status: 'lost', elapsedSeconds: 45, kills: 2, defeatedBossIds: [], karma: 0, endingId: 'caravan-lost' };
-    const receipt = { runId: 'run-1', score: 80, goldAward: 3, unlockedCharacters: ['hero', 'archer'], profile: { ...profile, version: 2, goldBalance: 3, lifetimeGoldEarned: 3, unlockedCharacters: ['hero', 'archer'] }, scoreBoardUpdated: true, clearBoardUpdated: false, replayed: false };
+    const result: RunSubmission = { runId: 'run-1', characterId: 'warrior', status: 'lost', elapsedSeconds: 45, kills: 2, defeatedBossIds: [], karma: 0, endingId: 'caravan-lost' };
+    const receipt = { runId: 'run-1', score: 80, goldAward: 3, unlockedCharacters: ['warrior', 'archer'], newlyUnlockedCharacters: ['archer'], profile: { ...profile, version: 2, goldBalance: 3, lifetimeGoldEarned: 3, unlockedCharacters: ['warrior', 'archer'] }, scoreBoardUpdated: true, clearBoardUpdated: false, replayed: false };
     const fetchMock = vi.fn().mockResolvedValueOnce(response({ code: 'STORAGE_UNAVAILABLE' }, 503)).mockResolvedValueOnce(response(receipt, 201));
     vi.stubGlobal('fetch', fetchMock);
     const controller = new RunController(async () => 'token', profile, local);

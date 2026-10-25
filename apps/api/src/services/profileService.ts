@@ -1,6 +1,7 @@
 import {
   MetaUpgradeIdSchema,
   PassiveIdSchema,
+  MERCHANT_RECRUIT_COST,
   type MetaUpgradeId,
   type PassiveId,
   type PlayerProfile,
@@ -76,5 +77,21 @@ export class ProfileService {
     };
     await this.profiles.save(upgraded);
     return upgraded;
+  }
+
+  async recruitMerchant(caller: Caller, expectedProfileVersion: number): Promise<PlayerProfile> {
+    const current = await this.profiles.getOrCreate(caller);
+    if (current.version !== expectedProfileVersion) throw new StorageError('PROFILE_CONFLICT');
+    if (current.unlockedCharacters.includes('merchant')) throw new ApiError(400, 'INVALID_UPGRADE');
+    if (current.goldBalance < MERCHANT_RECRUIT_COST) throw new ApiError(409, 'INSUFFICIENT_GOLD');
+    const recruited: PlayerProfile = {
+      ...current,
+      version: current.version + 1,
+      goldBalance: current.goldBalance - MERCHANT_RECRUIT_COST,
+      unlockedCharacters: [...current.unlockedCharacters, 'merchant'],
+      updatedAt: new Date().toISOString(),
+    };
+    await this.profiles.save(recruited);
+    return recruited;
   }
 }

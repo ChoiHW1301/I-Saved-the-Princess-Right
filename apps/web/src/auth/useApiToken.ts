@@ -1,13 +1,14 @@
 import { useCallback } from 'react';
 import { InteractionRequiredAuthError, InteractionStatus } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
-import { loginRequest } from './msalConfig.js';
+import { isLocalPlaytest, loginRequest } from './msalConfig.js';
 
 export function useApiToken(): { getToken(): Promise<string> } {
   const { instance, accounts, inProgress } = useMsal();
   const accountHomeId = accounts[0]?.homeAccountId;
 
   const getToken = useCallback(async () => {
+    if (isLocalPlaytest) return 'local-playtest-token';
     const account = accountHomeId
       ? instance.getAllAccounts().find((candidate) => candidate.homeAccountId === accountHomeId)
       : undefined;

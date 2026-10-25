@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   CurrentRunSaveV1Schema,
+  EndingIdSchema,
   LeaderboardEntrySchema,
   PlayerProfileSchema,
   RunReceiptDocumentSchema,
+  RunSnapshotV1Schema,
   RunSubmissionSchema,
 } from '../src/index.js';
 
@@ -12,12 +14,12 @@ const now = '2026-10-21T00:00:00.000Z';
 
 const profile = {
   id: 'profile', userId, tenantId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  objectId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', version: 1, displayName: 'Hero', goldBalance: 0,
-  lifetimeGoldEarned: 0, unlockedCharacters: ['hero'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
+  objectId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', version: 1, displayName: 'Warrior', goldBalance: 0,
+  lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
 };
 
 const snapshot = {
-  characterId: 'hero', elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
+  characterId: 'warrior', elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
   eventChoiceIds: [], ordinarySpawnCooldownMs: 800, activeBoss: null,
   player: { x: 0, y: 0, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, invulnerableMs: 0 },
   wagon: { hp: 100, maxHp: 100 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, upgradeIds: [],
@@ -25,6 +27,12 @@ const snapshot = {
 };
 
 describe('shared document schemas', () => {
+  it('normalizes legacy hero identifiers to the warrior naming', () => {
+    expect(PlayerProfileSchema.parse({ ...profile, unlockedCharacters: ['hero', 'dark-hero'] }).unlockedCharacters).toEqual(['warrior', 'dark-warrior']);
+    expect(EndingIdSchema.parse('hero-new-demon-king')).toBe('warrior-new-demon-king');
+    expect(RunSnapshotV1Schema.parse({ ...snapshot, characterId: 'hero', upgradeStats: { 'hero-reflect': 3 }, upgradeIds: ['hero-reflect'] }))
+      .toMatchObject({ characterId: 'warrior', upgradeStats: { 'warrior-reflect': 3 }, upgradeIds: ['warrior-reflect'] });
+  });
   it('accepts a profile, version 1 save, receipt, and leaderboard entry', () => {
     expect(PlayerProfileSchema.parse(profile).userId).toBe(userId);
     expect(CurrentRunSaveV1Schema.parse({
@@ -32,12 +40,12 @@ describe('shared document schemas', () => {
     }).snapshot.status).toBe('active');
     expect(RunReceiptDocumentSchema.parse({
       id: 'run:run-1', userId, runId: 'run-1', score: 500, goldAward: 10,
-      status: 'won', endingId: 'princess-purified', characterId: 'hero', elapsedSeconds: 120,
+      status: 'won', endingId: 'princess-purified', characterId: 'warrior', elapsedSeconds: 120,
       kills: 5, defeatedBossIds: ['castle-warlord'], karma: 50, createdAt: now,
     }).status).toBe('won');
     expect(LeaderboardEntrySchema.parse({
-      id: userId, boardId: 'score', userId, displayName: 'Hero', score: 500, kills: 5,
-      characterId: 'hero', karmaTier: 'good', elapsedSeconds: 120, clear: true, updatedAt: now,
+      id: userId, boardId: 'score', userId, displayName: 'Warrior', score: 500, kills: 5,
+      characterId: 'warrior', karmaTier: 'good', elapsedSeconds: 120, clear: true, updatedAt: now,
     }).score).toBe(500);
   });
 
@@ -48,7 +56,7 @@ describe('shared document schemas', () => {
       id: 'current', userId, schemaVersion: 1, revision: 1, runId: 'run-1', savedAt: now,
       snapshot: { ...oldSnapshotFields, player: oldPlayer },
     });
-    expect(parsed.snapshot).toMatchObject({ characterId: 'hero', kills: 0, pendingChoices: [], player: { maxHp: 100, xpToNext: 10 } });
+    expect(parsed.snapshot).toMatchObject({ characterId: 'warrior', worldWidth: 1280, roadCenterY: 267, approachingEvent: null, rewardPickups: [], kills: 0, pendingChoices: [], player: { maxHp: 100, xpToNext: 10 } });
   });
 
   it('rejects unsupported versions, malformed IDs, invalid counters and Cosmos metadata', () => {
@@ -75,10 +83,10 @@ describe('shared document schemas', () => {
 
   it('accepts known boss result IDs and rejects unknown boss IDs or out-of-range run stats', () => {
     const run = {
-      runId: 'run-1', characterId: 'hero', status: 'won', elapsedSeconds: 900, kills: 10000,
-      defeatedBossIds: ['castle-warlord', 'princess-demon'], karma: 100, endingId: 'princess-purified',
+      runId: 'run-1', characterId: 'warrior', status: 'won', elapsedSeconds: 1200, kills: 10000,
+      defeatedBossIds: ['castle-warlord', 'lava-behemoth', 'forest-warden', 'princess-demon'], karma: 100, endingId: 'princess-purified',
     };
-    expect(RunSubmissionSchema.parse(run).defeatedBossIds).toHaveLength(2);
+    expect(RunSubmissionSchema.parse(run).defeatedBossIds).toHaveLength(4);
     expect(() => RunSubmissionSchema.parse({ ...run, defeatedBossIds: ['unknown-boss'] })).toThrow();
     expect(() => RunSubmissionSchema.parse({ ...run, kills: 10001 })).toThrow();
   });

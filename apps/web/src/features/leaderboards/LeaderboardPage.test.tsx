@@ -5,7 +5,7 @@ import { ClearBoard } from './ClearBoard.js';
 import { ScoreBoard } from './ScoreBoard.js';
 import { getClearBoard, getScoreBoard, type LeaderboardResponse } from './leaderboardApi.js';
 
-const entry = (rank: number) => ({ rank, displayName: `Hero ${rank}`, score: 1200 - rank, kills: 42, characterId: 'hero' as const, karmaTier: 'good' as const, elapsedSeconds: 185, clear: true, updatedAt: '2026-10-22T00:00:00.000Z' });
+const entry = (rank: number) => ({ rank, displayName: `Warrior ${rank}`, score: 1200 - rank, kills: 42, characterId: 'warrior' as const, karmaTier: 'good' as const, elapsedSeconds: 185, clear: true, updatedAt: '2026-10-22T00:00:00.000Z' });
 const board: LeaderboardResponse = { entries: Array.from({ length: 12 }, (_, index) => entry(index + 1)), myRank: 12, totalEntries: 43 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -15,9 +15,9 @@ describe('leaderboard screens and API', () => {
     const html = renderToStaticMarkup(createElement(ScoreBoard, { data: board }));
     expect(html).toContain('내 순위: 12위');
     expect(html).toContain('전체 기록 43건');
-    expect(html).toContain('Hero 10');
-    expect(html).not.toContain('Hero 11');
-    expect(html).not.toContain('Hero 12');
+    expect(html).toContain('Warrior 10');
+    expect(html).not.toContain('Warrior 11');
+    expect(html).not.toContain('Warrior 12');
     expect(html).not.toContain('userId');
   });
 
@@ -29,7 +29,7 @@ describe('leaderboard screens and API', () => {
     expect(html).toContain('value="mage"');
     expect(html).toContain('value="evil"');
     expect(html).toContain('다시 시도');
-    expect(html).toContain('Hero 1');
+    expect(html).toContain('Warrior 1');
     expect(html).toContain('랭킹을 불러오지 못했습니다.');
   });
 

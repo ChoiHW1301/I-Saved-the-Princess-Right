@@ -15,6 +15,6 @@ export const RunEndingSummarySchema = z.object({
   kills: z.number().int().nonnegative(),
   runGold: z.number().int().nonnegative(),
   characterId: CharacterIdSchema,
-  defeatedBossIds: z.array(BossIdSchema).max(3),
+  defeatedBossIds: z.array(BossIdSchema).max(4),
 }).strict();
 export type RunEndingSummary = z.infer<typeof RunEndingSummarySchema>;

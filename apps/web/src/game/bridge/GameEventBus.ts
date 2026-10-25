@@ -7,6 +7,7 @@ interface GameEvents {
   'upgrade-choice': { upgradeId: string };
   'level-up-complete': null;
   'story-event': StoryEvent;
+  'mini-boss-warning': { milestoneId: string; remainingSeconds: number };
   'event-choice': { eventId: string; choiceId: 'yes' | 'no' };
   'event-complete': { eventId: string };
   'boss-encounter': CampaignMilestone & { bossId: BossId };

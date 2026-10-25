@@ -1,7 +1,7 @@
 export type CampaignMilestoneKind = 'event' | 'miniboss' | 'final-boss';
 export interface CampaignMilestone { atSeconds: number; kind: CampaignMilestoneKind; id: string }
 
-export const CAMPAIGN_DURATION_SECONDS = 900;
+export const CAMPAIGN_DURATION_SECONDS = 1200;
 export const BIOME_TRANSITION_SECONDS = 30;
 
 export const campaignSchedule: readonly CampaignMilestone[] = [
@@ -11,7 +11,9 @@ export const campaignSchedule: readonly CampaignMilestone[] = [
   { atSeconds: 540, kind: 'event', id: 'captured-scout' },
   { atSeconds: 600, kind: 'miniboss', id: 'lava-behemoth' },
   { atSeconds: 720, kind: 'event', id: 'village-refugees' },
-  { atSeconds: 900, kind: 'final-boss', id: 'princess-demon' },
+  { atSeconds: 900, kind: 'miniboss', id: 'forest-warden' },
+  { atSeconds: 1080, kind: 'event', id: 'forest-wayfarer' },
+  { atSeconds: 1200, kind: 'final-boss', id: 'princess-demon' },
 ];
 
 export function validateCampaignSchedule(schedule: readonly CampaignMilestone[]): void {

@@ -25,3 +25,29 @@
 .leaderboard-error { margin: 14px 0; padding: 15px; border: 1px solid #8a6541; color: #f1d7a3; background: #2b2117; }
 .leaderboard-error p { margin: 7px 0 12px; color: #c5b99f; font-size: 13px; }
 @media (max-width: 600px) { .leaderboard-board-heading { align-items: start; flex-direction: column; }.leaderboard-mode-tabs button { padding: 0 10px; font-size: 12px; }.leaderboard-table { font-size: 12px; }.leaderboard-table th, .leaderboard-table td { padding: 10px 8px; } }
+
+/* Match the camp's warm parchment palette instead of the old night-camp colors. */
+.leaderboard-page { color: #49351f; }
+.leaderboard-page .leaderboard-mode-tabs { border-color: #ddc9a8; }
+.leaderboard-page .leaderboard-mode-tabs button { color: #725d43; }
+.leaderboard-page .leaderboard-mode-tabs button.active { border-color: #dfbd83; border-bottom-color: #bc5538; color: #573a20; background: #fff0d1; }
+.leaderboard-page .leaderboard-mode-tabs .leaderboard-refresh { color: #a96824; }
+.leaderboard-page .leaderboard-board { border-color: #dfc9a5; background: linear-gradient(145deg, #fff9eb, #f3e5ce); box-shadow: 0 4px 0 #ddc8a6; }
+.leaderboard-page .leaderboard-board-heading h2 { color: #563b24; }
+.leaderboard-page .leaderboard-total { color: #806d54; }
+.leaderboard-page .leaderboard-my-rank { border-color: #d7bd92; color: #755026; background: #fff1cf; }
+.leaderboard-page .leaderboard-filters label { color: #765c3b; }
+.leaderboard-page .leaderboard-filters select { border-color: #d7bd92; border-radius: 6px; color: #563b24; background: #fffaf0; }
+.leaderboard-page .leaderboard-table { color: #604c34; }
+.leaderboard-page .leaderboard-table th { color: #8b704c; border-color: #ddc9a8; }
+.leaderboard-page .leaderboard-table td { border-color: #eadbc1; }
+.leaderboard-page .leaderboard-table td small { color: #8a7558; }
+.leaderboard-page .rank-medal { border-color: #d4c09f; color: #70583a; }
+.leaderboard-page .rank-1 { color: #704619; border-color: #c9963e; background: #ffe7a7; }
+.leaderboard-page .rank-2 { color: #665c4c; }
+.leaderboard-page .rank-3 { color: #8f5638; }
+.leaderboard-page .score-cell { color: #9a5927; }
+.leaderboard-page .clear-result { color: #6d762e; }
+.leaderboard-page .leaderboard-empty, .leaderboard-page .leaderboard-loading { color: #806d54; }
+.leaderboard-page .leaderboard-error { border-color: #d49863; color: #743b26; background: #fff0dc; }
+.leaderboard-page .leaderboard-error p { color: #806d54; }

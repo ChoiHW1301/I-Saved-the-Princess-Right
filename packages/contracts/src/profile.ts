@@ -6,7 +6,9 @@ export type MetaUpgradeId = z.infer<typeof MetaUpgradeIdSchema>;
 export const PassiveIdSchema = z.enum(['iron-will', 'keen-edge', 'swift-step']);
 export type PassiveId = z.infer<typeof PassiveIdSchema>;
 
-export const CharacterIdSchema = z.enum(['hero', 'archer', 'mage', 'merchant', 'dark-hero']);
+const CurrentCharacterIdSchema = z.enum(['warrior', 'archer', 'mage', 'merchant', 'dark-warrior']);
+const LegacyCharacterIdSchema = z.enum(['hero', 'dark-hero']).transform((id) => id === 'hero' ? 'warrior' as const : 'dark-warrior' as const);
+export const CharacterIdSchema = z.union([CurrentCharacterIdSchema, LegacyCharacterIdSchema]);
 export type CharacterId = z.infer<typeof CharacterIdSchema>;
 
 export const PlayerProfileSchema = withDocumentLimit(z.object({

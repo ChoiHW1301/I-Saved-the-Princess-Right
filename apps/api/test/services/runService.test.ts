@@ -11,7 +11,7 @@ const caller = {
 const userId = `${caller.tenantId}:${caller.objectId}`;
 const now = '2026-10-21T00:00:00.000Z';
 const submission: RunSubmission = {
-  runId: 'run-1', characterId: 'hero', status: 'won', elapsedSeconds: 180, kills: 10,
+  runId: 'run-1', characterId: 'warrior', status: 'won', elapsedSeconds: 180, kills: 10,
   defeatedBossIds: ['castle-warlord', 'princess-demon'], karma: 60, endingId: 'princess-purified',
 };
 
@@ -19,7 +19,7 @@ function profile(): PlayerProfile {
   return {
     id: 'profile', userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 1,
     displayName: caller.displayName, goldBalance: 0, lifetimeGoldEarned: 0,
-    unlockedCharacters: ['hero'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
+    unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
   };
 }
 
@@ -51,7 +51,8 @@ describe('run rewards and idempotency', () => {
     expect(first.replayed).toBe(false);
     expect(first.profile.goldBalance).toBe(75);
     expect(first.profile.lifetimeGoldEarned).toBe(75);
-    expect(first.unlockedCharacters).toEqual(['hero', 'archer', 'mage']);
+    expect(first.unlockedCharacters).toEqual(['warrior', 'archer', 'mage']);
+    expect(first.newlyUnlockedCharacters).toEqual(['archer', 'mage']);
     expect(upsertBest).toHaveBeenCalledTimes(2);
 
     const second = await service.submitRun(caller, submission, 'corr-2');
@@ -67,8 +68,8 @@ describe('run rewards and idempotency', () => {
   it('does not grant rewards if a receipt is already applied concurrently', async () => {
     let current = profile();
     const prior: RunReceiptDocument = {
-      id: 'run:run-1', userId, runId: 'run-1', score: 4180, goldAward: 75, status: 'won',
-      endingId: 'princess-purified', characterId: 'hero', elapsedSeconds: 180, kills: 10,
+      id: 'run:run-1', userId, runId: 'run-1', score: 4180, goldAward: 75, newlyUnlockedCharacters: ['archer', 'mage'], status: 'won',
+      endingId: 'princess-purified', characterId: 'warrior', elapsedSeconds: 180, kills: 10,
       defeatedBossIds: ['castle-warlord', 'princess-demon'], karma: 60, createdAt: now,
     };
     const profiles = {
@@ -87,7 +88,7 @@ describe('run rewards and idempotency', () => {
     expect(profiles.applyRunOnce).not.toHaveBeenCalled();
   });
 
-  it('uses the configured lifetime-gold threshold to unlock the merchant after a loss', async () => {
+  it('does not unlock the merchant automatically from earned gold', async () => {
     let current = { ...profile(), lifetimeGoldEarned: 499 };
     const profiles = {
       getOrCreate: vi.fn(async () => current),
@@ -100,10 +101,10 @@ describe('run rewards and idempotency', () => {
       saves: { get: vi.fn(async () => null), delete: vi.fn(async () => undefined) } as any,
     });
     const result = await service.submitRun(caller, {
-      runId: 'run-merchant-threshold', characterId: 'hero', status: 'lost', elapsedSeconds: 0, kills: 1,
+      runId: 'run-merchant-threshold', characterId: 'warrior', status: 'lost', elapsedSeconds: 0, kills: 1,
       defeatedBossIds: [], karma: 0, endingId: 'caravan-lost',
     }, 'corr-merchant');
     expect(result.profile.lifetimeGoldEarned).toBe(500);
-    expect(result.unlockedCharacters).toEqual(['hero', 'archer', 'merchant']);
+    expect(result.unlockedCharacters).toEqual(['warrior', 'archer']);
   });
 });

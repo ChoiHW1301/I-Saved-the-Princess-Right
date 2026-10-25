@@ -2,11 +2,27 @@ import type { CurrentRunSaveV1, RunSnapshotV1, RunState } from '@caravan/contrac
 import { getCharacterDefinition } from '../content/characters.js';
 import { upgradeCatalog } from '../content/upgrades.js';
 import { getBiomeAt } from './BiomeTransitionSystem.js';
+import type { RewardPickupState } from './RewardPickupSystem.js';
 
 export interface SnapshotEnemy { id: string; typeId: string; x: number; y: number; hp: number; attackCooldownMs: number; bossMilestoneId?: string; dead?: boolean }
 export interface SnapshotInput {
   run: RunState; player: { x: number; y: number }; rngSeed: number; ordinarySpawnCooldownMs: number;
-  enemies: readonly SnapshotEnemy[]; activeBossMaxHp?: number; pendingEventId?: string | null;
+  enemies: readonly SnapshotEnemy[]; worldWidth: number; roadCenterY: number; activeBossMaxHp?: number; pendingEventId?: string | null;
+  approachingEvent?: { eventId: string; x: number } | null;
+  rewardPickups?: readonly RewardPickupState[];
+}
+
+export interface WorldPoint { x: number; y: number }
+
+export function mapSnapshotWorldPoint(
+  point: WorldPoint,
+  snapshot: Pick<RunSnapshotV1, 'worldWidth' | 'roadCenterY'>,
+  target: { width: number; height: number; roadCenterY: number },
+): WorldPoint {
+  return {
+    x: Math.max(0, Math.min(target.width, point.x * target.width / snapshot.worldWidth)),
+    y: Math.max(0, Math.min(target.height, point.y + target.roadCenterY - snapshot.roadCenterY)),
+  };
 }
 
 export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
@@ -14,12 +30,16 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
   const boss = input.enemies.find((enemy) => enemy.bossMilestoneId);
   return {
     characterId: run.characterId,
+    worldWidth: input.worldWidth,
+    roadCenterY: input.roadCenterY,
     elapsedSeconds: Math.floor(run.elapsedSeconds),
-    stageId: getBiomeAt(run.elapsedSeconds).to,
+    stageId: getBiomeAt(run.elapsedSeconds, run.defeatedBossIds).to,
     rngSeed: input.rngSeed >>> 0,
     karma: run.karma,
     status: run.status === 'active' ? 'active' : run.status,
     pendingEventId: input.pendingEventId ?? null,
+    approachingEvent: input.approachingEvent ?? null,
+    rewardPickups: (input.rewardPickups ?? []).map((pickup) => ({ ...pickup })),
     eventChoiceIds: [...run.eventChoiceIds],
     ordinarySpawnCooldownMs: Math.max(0, Math.floor(input.ordinarySpawnCooldownMs)),
     activeBoss: boss ? { id: boss.bossMilestoneId!, typeId: boss.typeId, hp: Math.ceil(boss.hp), maxHp: Math.ceil(input.activeBossMaxHp ?? boss.hp) } : null,

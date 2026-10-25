@@ -48,7 +48,7 @@ export class ProfileRepository implements ProfileRepositoryPort {
       displayName: caller.displayName,
       goldBalance: 0,
       lifetimeGoldEarned: 0,
-      unlockedCharacters: ['hero'],
+      unlockedCharacters: ['warrior'],
       permanentUpgradeLevels: {},
       passiveIds: [],
       updatedAt: new Date().toISOString(),

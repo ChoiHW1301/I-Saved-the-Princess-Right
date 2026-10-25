@@ -4,14 +4,14 @@ import { CharacterIdSchema } from './profile.js';
 
 export const UpgradeDefinitionSchema = z.object({
   id: z.string().min(1).max(64), name: z.string().min(1).max(100), description: z.string().min(1).max(240),
-  maxLevel: z.number().int().min(1).max(20), appliesTo: z.enum(['hero', 'weapon', 'caravan']),
+  maxLevel: z.number().int().min(1).max(20), appliesTo: z.enum(['warrior', 'weapon', 'caravan']),
   stat: z.string().min(1).max(64), values: z.array(z.number().finite()).min(1).max(20),
   weight: z.number().finite().positive().max(1000), characterIds: z.array(CharacterIdSchema).max(5).optional(),
 }).strict().refine((upgrade) => upgrade.values.length === upgrade.maxLevel, {
   message: 'Each upgrade level must have exactly one configured value.',
 });
 export interface UpgradeDefinition {
-  id: string; name: string; description: string; maxLevel: number; appliesTo: 'hero' | 'weapon' | 'caravan';
+  id: string; name: string; description: string; maxLevel: number; appliesTo: 'warrior' | 'weapon' | 'caravan';
   stat: string; values: number[]; weight: number; characterIds?: CharacterId[];
 }
 
@@ -37,7 +37,7 @@ export const RunStateSchema = z.object({
   selectedUpgradeIds: z.array(z.string().min(1).max(64)).max(500), weaponLevels: z.record(z.string().min(1).max(64), z.number().int().nonnegative()),
   equippedWeaponIds: z.array(z.string().min(1).max(64)).max(20),
   eventChoiceIds: z.array(z.string().min(1).max(128)).max(100),
-  defeatedBossIds: z.array(z.enum(['castle-warlord', 'lava-behemoth', 'princess-demon', 'king-guard'])).max(3),
+  defeatedBossIds: z.array(z.enum(['castle-warlord', 'lava-behemoth', 'forest-warden', 'princess-demon', 'king-guard'])).max(4),
   pausedBy: z.enum(['none', 'level-up', 'event', 'boss', 'network']), player: PlayerRunStateSchema, caravan: CaravanRunStateSchema,
   pendingChoices: z.array(UpgradeChoiceSchema).max(3), pendingLevelUps: z.number().int().nonnegative(),
   upgradeStats: z.record(z.string().min(1).max(64), z.number().finite()),

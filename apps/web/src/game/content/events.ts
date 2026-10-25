@@ -39,4 +39,10 @@ export const eventCatalog: readonly StoryEvent[] = [
     yes: { id: 'yes', label: 'Yes', karmaDelta: 16, wagonHpDelta: -18, goldDelta: -3 },
     no: { id: 'no', label: 'No', karmaDelta: -13, wagonHpDelta: 0, goldDelta: 6 },
   },
+  {
+    id: 'forest-wayfarer', atSeconds: 1080, title: '숲길의 약초꾼',
+    body: '약초꾼이 다친 여행자에게 약을 나눠주려 합니다. 잠시 멈추면 몬스터가 다가올 수 있습니다.',
+    yes: { id: 'yes', label: 'Yes', karmaDelta: 10, wagonHpDelta: -10, goldDelta: 0 },
+    no: { id: 'no', label: 'No', karmaDelta: -5, wagonHpDelta: 0, goldDelta: 5 },
+  },
 ];

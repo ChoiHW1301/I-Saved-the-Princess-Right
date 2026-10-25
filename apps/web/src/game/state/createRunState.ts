@@ -4,7 +4,7 @@ import { getStartingWeaponId } from '../content/weapons.js';
 
 let nextRunSequence = 1;
 
-export function createRunState(characterId: CharacterId = 'hero'): RunState {
+export function createRunState(characterId: CharacterId = 'warrior'): RunState {
   const sequence = nextRunSequence++;
   const character = getCharacterDefinition(characterId);
   const weaponId = getStartingWeaponId(characterId);

@@ -15,7 +15,7 @@ export function ClearBoard({ data, characterId, karmaTier, onCharacterChange, on
   return <>
     <div className="leaderboard-filters">
       <label>캐릭터<select value={characterId} onChange={(event) => onCharacterChange(event.target.value as CharacterId)}>
-        <option value="hero">용사</option><option value="archer">궁수</option><option value="mage">마법사</option><option value="merchant">상인</option><option value="dark-hero">흑화 용사</option>
+        <option value="warrior">전사</option><option value="archer">궁수</option><option value="mage">마법사</option><option value="merchant">상인</option><option value="dark-warrior">흑화 전사</option>
       </select></label>
       <label>카르마<select value={karmaTier} onChange={(event) => onKarmaChange(event.target.value as KarmaTier)}>
         <option value="good">선</option><option value="neutral">중립</option><option value="evil">악</option>

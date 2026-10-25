@@ -2,12 +2,13 @@ import type { UpgradeDefinition } from '@caravan/contracts';
 import type { CharacterId, RunState } from '@caravan/contracts';
 
 export const upgradeCatalog: readonly UpgradeDefinition[] = [
-  { id: 'sword-damage', name: '날카로운 검', description: '검 공격 피해 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'sword-damage', values: [4, 5, 6, 8, 10], weight: 10, characterIds: ['hero'] },
-  { id: 'sword-range', name: '검풍 연마', description: '검 공격 거리 증가', maxLevel: 4, appliesTo: 'weapon', stat: 'sword-range', values: [18, 22, 28, 35], weight: 8, characterIds: ['hero'] },
-  { id: 'sword-wave', name: '초승달 검기', description: '검 공격이 주변 적에게도 닿습니다.', maxLevel: 3, appliesTo: 'weapon', stat: 'sword-wave-radius', values: [28, 42, 58], weight: 6, characterIds: ['hero'] },
-  { id: 'hero-max-health', name: '강철의 맷집', description: '최대 체력과 현재 체력 증가', maxLevel: 5, appliesTo: 'hero', stat: 'hero-max-health', values: [20, 25, 30, 35, 40], weight: 8 },
-  { id: 'hero-reflect', name: '가시 갑옷', description: '피격 시 적에게 반사 피해', maxLevel: 5, appliesTo: 'hero', stat: 'hero-reflect', values: [2, 3, 4, 5, 7], weight: 6 },
-  { id: 'movement-speed', name: '질풍의 발걸음', description: '이동 속도 증가', maxLevel: 4, appliesTo: 'hero', stat: 'movement-speed', values: [18, 22, 26, 30], weight: 7 },
+  { id: 'sword-damage', name: '날카로운 검', description: '검 공격 피해 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'sword-damage', values: [4, 5, 6, 8, 10], weight: 10, characterIds: ['warrior'] },
+  { id: 'sword-range', name: '크게 휘둘러라', description: '검 공격 범위 증가', maxLevel: 4, appliesTo: 'weapon', stat: 'sword-range', values: [18, 22, 28, 35], weight: 8, characterIds: ['warrior'] },
+  { id: 'warrior-regeneration', name: '들끓는 심장', description: '초당 체력을 0.2 회복합니다.', maxLevel: 5, appliesTo: 'warrior', stat: 'health-regeneration', values: [0.2, 0.2, 0.2, 0.2, 0.2], weight: 7, characterIds: ['warrior'] },
+  { id: 'warrior-attack-speed', name: '수련의 성과', description: '공격 속도 15% 증가', maxLevel: 5, appliesTo: 'warrior', stat: 'attack-speed', values: [0.15, 0.15, 0.15, 0.15, 0.15], weight: 7, characterIds: ['warrior'] },
+  { id: 'warrior-max-health', name: '강철의 맷집', description: '최대 체력과 현재 체력 증가', maxLevel: 5, appliesTo: 'warrior', stat: 'warrior-max-health', values: [20, 25, 30, 35, 40], weight: 8 },
+  { id: 'warrior-reflect', name: '가시 갑옷', description: '피격 시 적에게 반사 피해', maxLevel: 5, appliesTo: 'warrior', stat: 'warrior-reflect', values: [2, 3, 4, 5, 7], weight: 6 },
+  { id: 'movement-speed', name: '질풍의 발걸음', description: '이동 속도 증가', maxLevel: 4, appliesTo: 'warrior', stat: 'movement-speed', values: [18, 22, 26, 30], weight: 7 },
   { id: 'caravan-max-health', name: '마차 보강', description: '마차 최대 내구도 증가', maxLevel: 5, appliesTo: 'caravan', stat: 'caravan-max-health', values: [35, 40, 45, 50, 60], weight: 7 },
 
   { id: 'arrow-damage', name: '가시 화살촉', description: '화살 피해 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'bow-damage', values: [3, 4, 5, 7, 9], weight: 8, characterIds: ['archer'] },

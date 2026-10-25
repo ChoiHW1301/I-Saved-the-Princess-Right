@@ -59,6 +59,20 @@ export async function purchasePassive(
   }
 }
 
+export async function recruitMerchant(
+  request: HttpRequest,
+  repository?: ProfileRepositoryPort,
+): Promise<HttpResponseInit> {
+  try {
+    const caller = await authorizeRequest(request);
+    const parsed = PurchaseRequestSchema.parse(await readJson(request));
+    const service = new ProfileService(repository ?? new ProfileRepository());
+    return { status: 200, jsonBody: await service.recruitMerchant(caller, parsed.expectedProfileVersion) };
+  } catch (error) {
+    return jsonError(error, request);
+  }
+}
+
 app.http('profileGet', {
   methods: ['GET'], route: 'profile', authLevel: 'anonymous', handler: (request) => getProfile(request),
 });
@@ -69,4 +83,8 @@ app.http('profileUpgradePurchase', {
 
 app.http('profilePassivePurchase', {
   methods: ['POST'], route: 'profile/passives', authLevel: 'anonymous', handler: (request) => purchasePassive(request),
+});
+
+app.http('profileMerchantRecruit', {
+  methods: ['POST'], route: 'profile/characters/merchant', authLevel: 'anonymous', handler: (request) => recruitMerchant(request),
 });

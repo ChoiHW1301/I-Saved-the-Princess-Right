@@ -20,7 +20,7 @@ export function EventChoiceOverlay({ event, onChoose }: EventChoiceOverlayProps)
 
   const choices = [event.yes, event.no] as const;
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="event-title" style={{ position: 'absolute', inset: 0, zIndex: 21, display: 'grid', placeItems: 'center', background: '#090b0be3', color: '#f2e3c9', fontFamily: 'system-ui, sans-serif' }}>
+    <div role="dialog" aria-modal="true" aria-labelledby="event-title" style={{ position: 'absolute', inset: 0, zIndex: 21, display: 'grid', placeItems: 'center', background: '#090b0be3', color: '#f2e3c9', fontFamily: 'DungGeunMo, monospace' }}>
       <article style={{ width: 'min(640px, 90%)', padding: 34, border: '1px solid #8f754f', borderRadius: 14, background: 'linear-gradient(145deg, #302b25, #171d1b)', boxShadow: '0 22px 70px #000b' }}>
         <p style={{ color: '#e4b96e', letterSpacing: '.18em', margin: 0 }}>ROAD ENCOUNTER · {Math.floor(event.atSeconds / 60)} MIN</p>
         <h2 id="event-title" style={{ fontSize: 30, color: '#f0ce8f' }}>{event.title}</h2>

@@ -1,5 +1,13 @@
+@font-face {
+  font-family: "DungGeunMo";
+  src: url("/fonts/DungGeunMo.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
-  font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+  font-family: "DungGeunMo", monospace;
   color: #f0e2c6;
   background: #11120f;
   font-synthesis: none;

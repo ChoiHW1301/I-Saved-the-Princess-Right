@@ -5,6 +5,7 @@ const clientId = import.meta.env.VITE_ENTRA_WEB_CLIENT_ID?.trim() ?? '';
 const apiScope = import.meta.env.VITE_ENTRA_API_SCOPE?.trim() ?? '';
 
 export const isAuthConfigured = Boolean(tenantId && clientId && apiScope);
+export const isLocalPlaytest = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PLAYTEST === 'true';
 
 const msalConfiguration: Configuration = {
   auth: {

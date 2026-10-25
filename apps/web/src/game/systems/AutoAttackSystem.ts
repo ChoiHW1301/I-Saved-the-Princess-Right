@@ -23,12 +23,12 @@ export class AutoAttackSystem {
     if (stat === 'sword-damage') this.weapon.damage += amount;
     if (stat === 'sword-range') this.weapon.range += amount;
   }
-  update(hero: Vector2, enemies: readonly Enemy[], delta: number): AutoAttackHit | null {
+  update(warrior: Vector2, enemies: readonly Enemy[], delta: number): AutoAttackHit | null {
     this.cooldownMs = Math.max(0, this.cooldownMs - delta);
     if (this.cooldownMs > 0) return null;
-    const target = selectNearestEnemy(hero, enemies, this.weapon.range);
+    const target = selectNearestEnemy(warrior, enemies, this.weapon.range);
     if (!target) return null;
-    const hit = resolveHit(target, this.weapon.damage, 'hero-sword');
+    const hit = resolveHit(target, this.weapon.damage, 'warrior-sword');
     if (!hit) return null;
     this.cooldownMs = this.weapon.cooldownMs;
     return { enemy: target, damage: hit.damage, killed: hit.killed };

@@ -11,17 +11,19 @@ describe('character and weapon catalogs', () => {
     const roster = Object.values(characterCatalog);
     roster.forEach((character) => CharacterDefinitionSchema.parse(character));
     expect(roster.map(({ id, startingWeaponId }) => [id, startingWeaponId])).toEqual([
-      ['hero', 'sword'], ['archer', 'bow'], ['mage', 'fireball'], ['merchant', 'gold-shotgun'],
+      ['warrior', 'sword'], ['archer', 'bow'], ['mage', 'fireball'], ['merchant', 'gold-shotgun'],
     ]);
     Object.values(weaponCatalog).forEach((weapon) => WeaponDefinitionSchema.parse(weapon));
-    expect(() => createRunState('dark-hero')).toThrow('Character is not available');
+    expect(weaponCatalog.sword?.kind).toBe('melee');
+    expect(() => createRunState('dark-warrior')).toThrow('Character is not available');
   });
 
   it('gives each class an exclusive upgrade pool and mage spell unlocks', () => {
-    const ids = (characterId: 'hero' | 'archer' | 'mage' | 'merchant'): string[] =>
+    const ids = (characterId: 'warrior' | 'archer' | 'mage' | 'merchant'): string[] =>
       getAvailableUpgrades(characterId, createRunState(characterId)).map(({ id }) => id);
-    expect(ids('hero')).toContain('sword-wave');
-    expect(ids('hero')).not.toContain('arrow-damage');
+    expect(ids('warrior')).toEqual(expect.arrayContaining(['sword-damage', 'sword-range', 'warrior-regeneration', 'warrior-attack-speed']));
+    expect(ids('warrior')).not.toContain('sword-wave');
+    expect(ids('warrior')).not.toContain('arrow-damage');
     expect(ids('archer')).toContain('arrow-penetration');
     expect(ids('mage')).toEqual(expect.arrayContaining(['fireball-size', 'ice-spear', 'thunder']));
     expect(ids('merchant')).toContain('spread-tightness');

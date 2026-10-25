@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MetaUpgradeId, PlayerProfile } from '@caravan/contracts';
 import { useApiToken } from '../../auth/useApiToken.js';
-import { getProfile, hasCurrentSave, ProfileApiError, purchasePassive, purchaseUpgrade } from './profileApi.js';
+import { getProfile, hasCurrentSave, ProfileApiError, purchasePassive, purchaseUpgrade, recruitMerchant } from './profileApi.js';
 import { IndexedDbLocalSaveStore } from '../run/localSaveStore.js';
 
 const localSaveStore = new IndexedDbLocalSaveStore();
@@ -11,6 +11,7 @@ export function useProfile(): {
   data: HomeProfileState | null; loading: boolean; error: ProfileApiError | Error | null;
   refresh(): Promise<void>; replaceProfile(profile: PlayerProfile, hasSave?: boolean): void;
   buyUpgrade(id: MetaUpgradeId): Promise<PlayerProfile | undefined>; buyPassive(id: 'iron-will' | 'keen-edge' | 'swift-step'): Promise<PlayerProfile | undefined>;
+  recruitMerchant(): Promise<PlayerProfile | undefined>;
 } {
   const { getToken } = useApiToken();
   const [data, setData] = useState<HomeProfileState | null>(null);
@@ -48,5 +49,6 @@ export function useProfile(): {
   }, [data, getToken, refresh]);
   const buyUpgrade = useCallback((id: MetaUpgradeId) => buy((token, version) => purchaseUpgrade(token, id, version)), [buy]);
   const buyPassive = useCallback((id: 'iron-will' | 'keen-edge' | 'swift-step') => buy((token, version) => purchasePassive(token, id, version)), [buy]);
-  return { data, loading, error, refresh, replaceProfile, buyUpgrade, buyPassive };
+  const buyMerchant = useCallback(() => buy((token, version) => recruitMerchant(token, version)), [buy]);
+  return { data, loading, error, refresh, replaceProfile, buyUpgrade, buyPassive, recruitMerchant: buyMerchant };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getXpToNextLevel, RunStateSchema, UpgradeDefinitionSchema } from '../src/index.js';
 
 const runState = {
-  runId: 'run-1', status: 'active', elapsedSeconds: 0, characterId: 'hero', level: 1, xp: 0, xpToNext: 10,
+  runId: 'run-1', status: 'active', elapsedSeconds: 0, characterId: 'warrior', level: 1, xp: 0, xpToNext: 10,
   karma: 0, runGold: 0, kills: 0, selectedUpgradeIds: [], weaponLevels: { sword: 1 }, equippedWeaponIds: ['sword'], eventChoiceIds: [], defeatedBossIds: [], pausedBy: 'none',
   player: { hp: 100, maxHp: 100, isDead: false, respawnMs: 0, invulnerableMs: 0 }, caravan: { hp: 250, maxHp: 250 },
   pendingChoices: [], pendingLevelUps: 0, upgradeStats: {},

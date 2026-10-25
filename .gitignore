@@ -10,3 +10,4 @@ coverage/
 !.env.example
 !.env.*.example
 apps/api/local.settings.json
+.dev-server.log

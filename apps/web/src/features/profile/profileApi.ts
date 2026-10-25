@@ -43,3 +43,9 @@ export async function purchasePassive(token: string, passiveId: string, expected
     method: 'POST', body: JSON.stringify({ upgradeId: passiveId, expectedProfileVersion }),
   }));
 }
+
+export async function recruitMerchant(token: string, expectedProfileVersion: number): Promise<PlayerProfile> {
+  return PlayerProfileSchema.parse(await request<unknown>('/profile/characters/merchant', token, {
+    method: 'POST', body: JSON.stringify({ expectedProfileVersion }),
+  }));
+}

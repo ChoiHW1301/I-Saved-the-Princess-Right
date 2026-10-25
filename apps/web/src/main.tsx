@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
 import { AuthProvider } from './auth/AuthProvider.js';
-import { isAuthConfigured } from './auth/msalConfig.js';
+import { isAuthConfigured, isLocalPlaytest } from './auth/msalConfig.js';
 import { RequireAuth } from './auth/RequireAuth.js';
 
 const rootElement = document.getElementById('root');
@@ -13,7 +13,9 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    {isAuthConfigured ? (
+    {isLocalPlaytest ? (
+      <AuthProvider><App /></AuthProvider>
+    ) : isAuthConfigured ? (
       <AuthProvider>
         <RequireAuth>
           <App />

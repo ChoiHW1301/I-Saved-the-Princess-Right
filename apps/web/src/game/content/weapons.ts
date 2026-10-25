@@ -2,7 +2,7 @@ import { WeaponDefinitionSchema, type CharacterId, type WeaponDefinition } from 
 import { getCharacterDefinition } from './characters.js';
 
 const definitions: WeaponDefinition[] = [
-  { id: 'sword', owner: 'hero', kind: 'melee', intervalMs: 600, damage: 12, range: 125, projectileCount: 1, penetration: 0 },
+  { id: 'sword', owner: 'warrior', kind: 'melee', intervalMs: 1250, damage: 12, range: 125, projectileCount: 1, penetration: 0 },
   { id: 'bow', owner: 'archer', kind: 'projectile', intervalMs: 680, damage: 10, range: 230, projectileCount: 1, penetration: 0 },
   { id: 'fireball', owner: 'mage', kind: 'spell', intervalMs: 880, damage: 15, range: 200, projectileCount: 1, penetration: 0, statusEffect: 'burn' },
   { id: 'ice-spear', owner: 'mage', kind: 'spell', intervalMs: 1050, damage: 9, range: 240, projectileCount: 1, penetration: 3 },

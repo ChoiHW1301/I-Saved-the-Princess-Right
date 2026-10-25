@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useMsal } from '@azure/msal-react';
 import type { CharacterId, CurrentRunSaveV1, MetaUpgradeId, PassiveId, PlayerProfile, RunSubmission } from '@caravan/contracts';
 import { useApiToken } from '../../auth/useApiToken.js';
-import { loginRequest } from '../../auth/msalConfig.js';
+import { isLocalPlaytest, loginRequest } from '../../auth/msalConfig.js';
 import { GameCanvas } from '../../game/GameCanvas.js';
-import { characterCatalog } from '../../game/content/characters.js';
 import { CharacterSelect } from '../characters/CharacterSelect.js';
 import { MetaShop } from '../progression/MetaShop.js';
 import { useProfile } from '../profile/useProfile.js';
@@ -17,13 +16,13 @@ type Section = 'home' | 'characters' | 'shop' | 'leaderboard';
 
 export function HomePage(): JSX.Element {
   const { instance, accounts } = useMsal();
-  const { data, loading, error, refresh, replaceProfile, buyUpgrade, buyPassive } = useProfile();
+  const { data, loading, error, refresh, replaceProfile, buyUpgrade, buyPassive, recruitMerchant } = useProfile();
   const { getToken } = useApiToken();
   const [section, setSection] = useState<Section>('home');
   const [playing, setPlaying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyUpgrade, setBusyUpgrade] = useState(false);
-  const [selectedCharacter, setSelectedCharacter] = useState<CharacterId>('hero');
+  const [selectedCharacter, setSelectedCharacter] = useState<CharacterId>('warrior');
   const [runLaunch, setRunLaunch] = useState<{ runId: string; save?: CurrentRunSaveV1 } | null>(null);
   const [pendingResult, setPendingResult] = useState<RunSubmission | null>(null);
   const controller = useMemo(() => data ? new RunController(getToken, data.profile) : null, [getToken, data?.profile.userId]);
@@ -35,8 +34,13 @@ export function HomePage(): JSX.Element {
     try { return passive ? await buyPassive(id as PassiveId) : await buyUpgrade(id as MetaUpgradeId); }
     finally { setBusyUpgrade(false); }
   }
-  async function signOut(): Promise<void> { await instance.logoutRedirect({ account: accounts[0] }); }
-  async function signIn(): Promise<void> { await instance.loginRedirect(loginRequest); }
+  async function recruitMerchantFromShop(): Promise<PlayerProfile | undefined> {
+    setBusyUpgrade(true);
+    try { return await recruitMerchant(); }
+    finally { setBusyUpgrade(false); }
+  }
+  async function signOut(): Promise<void> { if (!isLocalPlaytest) await instance.logoutRedirect({ account: accounts[0] }); }
+  async function signIn(): Promise<void> { if (!isLocalPlaytest) await instance.loginRedirect(loginRequest); }
   async function startNewRun(id: CharacterId): Promise<void> {
     if (!controller) return;
     if (pendingResult) { setNotice('이전 원정 결과를 먼저 계정에 기록해 주세요.'); return; }
@@ -68,9 +72,8 @@ export function HomePage(): JSX.Element {
       : '계정 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 
   if (playing && profile && controller && runLaunch) return <main className="game-shell">
-    <header className="game-topbar"><strong>CARAVAN ESCORT</strong><span>{profile.displayName} · {selectedCharacter}</span></header>
+    <header className="game-topbar"><strong>공주님을 구했다!?</strong><span>{isLocalPlaytest && <b className="playtest-badge">LOCAL PLAYTEST</b>} {profile.displayName} · {selectedCharacter}</span></header>
     <section className="game-frame"><GameCanvas key={runLaunch.runId} characterId={selectedCharacter} profile={profile} runId={runLaunch.runId} resumeSave={runLaunch.save} controller={controller} onExit={returnToHome} onProfileUpdated={onRunProfileUpdated} onSaved={() => replaceProfile(profile, true)} /></section>
-    <p className="game-hint">WASD 또는 방향키로 이동하세요. 용사는 자동으로 적을 공격합니다.</p>
   </main>;
 
   if (loading && !profile) return <main className="home-state" aria-live="polite"><span className="loading-seal" aria-hidden="true">✦</span><h1>원정 기록을 불러오는 중</h1><p>DEX 계정과 모험 기록을 확인하고 있습니다.</p></main>;
@@ -78,27 +81,26 @@ export function HomePage(): JSX.Element {
   if (!profile) return <main className="home-state"><p role="alert">계정 정보를 표시할 수 없습니다.</p></main>;
 
   return <main className="home-shell">
-    <header className="home-topbar"><a className="brand-mark" href="#home" onClick={() => { setSection('home'); setNotice(null); }}><span className="brand-icon" aria-hidden="true">✦</span><span>CARAVAN<br /><b>ESCORT</b></span></a>
+    <header className="home-topbar"><a className="brand-mark" href="#home" onClick={() => { setSection('home'); setNotice(null); }}><span className="brand-icon" aria-hidden="true">✦</span><span>공주님을<br /><b>구했다!?</b></span></a>
+      {isLocalPlaytest && <span className="playtest-badge">LOCAL PLAYTEST · SERVER DATA RESETS ON RESTART</span>}
       <div className="account-tools"><span className="account-name">{profile.displayName}</span><span className="gold-badge" aria-label={`보유 골드 ${profile.goldBalance}`}>◈ {profile.goldBalance.toLocaleString()} G</span><button type="button" className="signout-button" onClick={() => void signOut()}>로그아웃</button></div>
     </header>
     <div className="home-layout">
       <aside className="side-nav" aria-label="메인 메뉴"><span className="nav-label">CAMP</span>
-        {([['home', '야영지'], ['characters', '캐릭터'], ['shop', '영구 강화'], ['leaderboard', '랭킹']] as const).map(([key, title]) => <button type="button" key={key} className={`nav-item${section === key ? ' active' : ''}`} onClick={() => { setSection(key); setNotice(null); }} aria-current={section === key ? 'page' : undefined}><span aria-hidden="true">{key === 'home' ? '⌂' : key === 'characters' ? '♙' : key === 'shop' ? '⚒' : '♜'}</span>{title}</button>)}
-        <div className="nav-note"><span className="eyebrow">YOUR VOW</span><p>마차를 지키고<br />공주를 귀환시키세요.</p></div>
+        {([['home', '야영지'], ['shop', '상점'], ['leaderboard', '랭킹']] as const).map(([key, title]) => <button type="button" key={key} className={`nav-item${section === key ? ' active' : ''}`} onClick={() => { setSection(key); setNotice(null); }} aria-current={section === key ? 'page' : undefined}><span aria-hidden="true">{key === 'home' ? '⌂' : key === 'shop' ? '⚒' : '♜'}</span>{title}</button>)}
+        <div className="nav-note"><span className="eyebrow">왕국 귀환 작전</span><p>마차를 지키고<br />모두 무사히 돌아가세요.</p></div>
       </aside>
       <div className="home-content">
         {notice && <p className="home-notice" role="status">{notice}</p>}
         {pendingResult && <div className="home-notice pending-result" role="status"><span>이전 원정 결과가 아직 계정에 기록되지 않았습니다.</span><button type="button" className="button button-secondary" onClick={() => void retryPendingResult()}>결과 다시 제출</button></div>}
         {section === 'home' && <>
-          <section className="welcome-banner"><div className="banner-copy"><span className="eyebrow">THE DEMON KEEP · JOURNEY 01</span><h1>마차의 호위대를<br /><em>준비하세요</em></h1><p>어둠의 성에서 공주를 구출하고, 왕국으로 돌아가는 길을 열어라.</p><div className="banner-actions"><button type="button" className="button button-primary" disabled={Boolean(pendingResult)} onClick={() => { setSection('characters'); setNotice(null); }}>새 원정 시작 <span aria-hidden="true">→</span></button><button type="button" className="button button-ghost" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>이어하기 {data.hasCurrentSave ? '· 저장 있음' : '· 저장 없음'}</button></div></div><div className="banner-art" aria-hidden="true"><span className="moon" /><span className="castle castle-a" /><span className="castle castle-b" /><span className="road" /><span className="wagon">♜</span></div></section>
-          <div className="home-summary"><article className="summary-card"><span className="eyebrow">해금한 캐릭터</span><strong>{profile.unlockedCharacters.length}<small> / {Object.keys(characterCatalog).length}</small></strong><button type="button" onClick={() => setSection('characters')}>캐릭터 확인 →</button></article><article className="summary-card"><span className="eyebrow">영구 성장</span><strong>{Object.values(profile.permanentUpgradeLevels).reduce((sum, level) => sum + level, 0)}<small> 강화 레벨</small></strong><button type="button" onClick={() => setSection('shop')}>강화 상점 →</button></article><article className="summary-card"><span className="eyebrow">현재 원정 저장</span><strong>{data.hasCurrentSave ? '보관 중' : '없음'}</strong><button type="button" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>저장 이어하기 →</button></article></div>
-          <section className="camp-tip"><span aria-hidden="true">✧</span><div><strong>여정의 첫걸음</strong><p>첫 플레이를 마치면 궁수, 첫 클리어 후 마법사를 만날 수 있습니다.</p></div><button type="button" aria-label="캐릭터 선택" onClick={() => setSection('characters')}>→</button></section>
+          <section className="welcome-banner"><div className="banner-copy"><span className="eyebrow">구출은 성공했다. 귀환은 이제부터.</span><h1 className="game-logo"><img src="/game-assets/logo-princess-rescued.png" alt="공주님을 구했다!?" /></h1><p>공주를 태운 마차가 왕국에 닿을 때까지.<br /><strong>왕국으로 무사 귀환하라.</strong></p><div className="banner-actions"><button type="button" className="button button-primary" disabled={Boolean(pendingResult)} onClick={() => { setSection('characters'); setNotice(null); }}>새 원정 시작 <span aria-hidden="true">→</span></button><button type="button" className="button button-ghost" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>이어하기 {data.hasCurrentSave ? '· 저장 있음' : '· 저장 없음'}</button></div></div><div className="banner-art" aria-hidden="true"><img src="/game-assets/homecoming-scene.png" alt="" /></div></section>
         </>}
-        {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1><p>해금한 캐릭터를 선택해 마차와 함께 출발하세요.</p></div><CharacterSelect profile={profile} onStart={(id) => void startNewRun(id)} /></>}
-        {section === 'shop' && <><div className="page-intro"><span className="eyebrow">CAMP PROVISIONS</span><h1>영구 강화</h1><p>원정에서 모은 골드를 사용해 계정 능력을 강화합니다.</p></div><MetaShop profile={profile} onPurchased={() => undefined} onBuyUpgrade={(id) => buy(id)} onBuyPassive={(id) => buy(id, true)} busy={busyUpgrade || loading} error={error ? errorMessage : null} /></>}
+        {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1></div><CharacterSelect profile={profile} onStart={(id) => void startNewRun(id)} /></>}
+        {section === 'shop' && <><div className="page-intro"><span className="eyebrow">CAMP PROVISIONS</span><h1>상점</h1><p>원정에서 모은 골드로 다음 여정을 준비합니다.</p></div><MetaShop profile={profile} onPurchased={(updated) => replaceProfile(updated)} onBuyUpgrade={(id) => buy(id)} onBuyPassive={(id) => buy(id, true)} onRecruitMerchant={recruitMerchantFromShop} busy={busyUpgrade || loading} error={error ? errorMessage : null} /></>}
         {section === 'leaderboard' && <LeaderboardPage getToken={getToken} onSignIn={() => void signIn()} />}
       </div>
     </div>
-    <footer className="home-footer"><span>© CARAVAN ESCORT</span><span>왕국의 길은 아직 멀다</span></footer>
+    <footer className="home-footer"><span>✦ 공주님을 구했다!?</span><span>웃음 뒤에 남은 긴 귀환길</span></footer>
   </main>;
 }

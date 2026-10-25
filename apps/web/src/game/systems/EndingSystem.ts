@@ -11,7 +11,7 @@ export function resolveEnding(status: RunStatus, finalKarma: number, finalBossId
   else {
     const expectedBoss = chooseFinalBoss(tier);
     if (finalBossId !== expectedBoss) throw new Error(`Final boss ${String(finalBossId)} does not match ${tier} karma route.`);
-    id = tier === 'evil' ? 'hero-new-demon-king' : tier === 'good' ? 'princess-purified' : 'princess-died';
+    id = tier === 'evil' ? 'warrior-new-demon-king' : tier === 'good' ? 'princess-purified' : 'princess-died';
   }
   return endingCatalog[id];
 }

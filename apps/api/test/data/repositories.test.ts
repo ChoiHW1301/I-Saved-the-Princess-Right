@@ -5,10 +5,10 @@ import { SaveRepository } from '../../src/data/saveRepository.js';
 import { LeaderboardRepository } from '../../src/data/leaderboardRepository.js';
 
 const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-const caller = { tenantId: userId.split(':')[0]!, objectId: userId.split(':')[1]!, displayName: 'Hero' };
+const caller = { tenantId: userId.split(':')[0]!, objectId: userId.split(':')[1]!, displayName: 'Warrior' };
 const now = '2026-10-21T00:00:00.000Z';
 const snapshot = {
-  characterId: 'hero', elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
+  characterId: 'warrior', elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
   eventChoiceIds: [], ordinarySpawnCooldownMs: 800, activeBoss: null,
   player: { x: 0, y: 0, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, invulnerableMs: 0 },
   wagon: { hp: 100, maxHp: 100 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, upgradeIds: [],
@@ -57,11 +57,11 @@ function mockedContainer(): {
 }
 
 describe('Cosmos repositories', () => {
-  it('creates a profile in the user partition and returns a default hero profile', async () => {
+  it('creates a profile in the user partition and returns a default warrior profile', async () => {
     const mock = mockedContainer();
     const repository = new ProfileRepository(mock.container);
     const profile = await repository.getOrCreate(caller);
-    expect(profile.unlockedCharacters).toEqual(['hero']);
+    expect(profile.unlockedCharacters).toEqual(['warrior']);
     expect(mock.item).toHaveBeenCalledWith('profile', userId);
     expect(mock.create).toHaveBeenCalledOnce();
   });
@@ -70,18 +70,18 @@ describe('Cosmos repositories', () => {
     const mock = mockedContainer();
     mock.documents.set(`${userId}/profile`, {
       id: 'profile', userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 1,
-      displayName: caller.displayName, goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['hero'],
+      displayName: caller.displayName, goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'],
       permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
     });
     const repository = new ProfileRepository(mock.container);
     const receipt = {
       id: 'run:run-1', userId, runId: 'run-1', score: 100, goldAward: 10,
-      status: 'won' as const, endingId: 'princess-purified' as const, characterId: 'hero' as const,
+      status: 'won' as const, endingId: 'princess-purified' as const, characterId: 'warrior' as const,
       elapsedSeconds: 120, kills: 1, defeatedBossIds: ['castle-warlord', 'princess-demon'], karma: 50, createdAt: now,
     };
     const updated = {
       id: 'profile' as const, userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 2,
-      displayName: caller.displayName, goldBalance: 10, lifetimeGoldEarned: 10, unlockedCharacters: ['hero'] as ['hero'],
+      displayName: caller.displayName, goldBalance: 10, lifetimeGoldEarned: 10, unlockedCharacters: ['warrior'] as ['warrior'],
       permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
     };
     await expect(repository.applyRunOnce(caller, receipt, updated)).resolves.toBe(true);
@@ -103,13 +103,13 @@ describe('Cosmos repositories', () => {
     const mock = mockedContainer();
     (mock.container.items as any).query = query;
     mock.documents.set(`score/${userId}`, {
-      id: userId, boardId: 'score', userId, displayName: 'Hero', score: 200,
-      kills: 2, characterId: 'hero', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
+      id: userId, boardId: 'score', userId, displayName: 'Warrior', score: 200,
+      kills: 2, characterId: 'warrior', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
     });
     const repository = new LeaderboardRepository(mock.container);
     await repository.upsertBest({
-      id: userId, boardId: 'score', userId, displayName: 'Hero', score: 100,
-      kills: 1, characterId: 'hero', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
+      id: userId, boardId: 'score', userId, displayName: 'Warrior', score: 100,
+      kills: 1, characterId: 'warrior', karmaTier: 'good', elapsedSeconds: 30, clear: true, updatedAt: now,
     });
     expect(mock.upsert).not.toHaveBeenCalled();
     await repository.listTop('score', 10);

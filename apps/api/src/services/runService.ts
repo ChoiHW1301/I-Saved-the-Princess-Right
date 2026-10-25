@@ -11,7 +11,7 @@ import {
   type RunSubmission,
 } from '@caravan/contracts';
 import type { Caller } from '../auth/authorize.js';
-import { goldConfig, merchantUnlockGold, scoreConfig } from '../config/gameRewards.js';
+import { goldConfig, scoreConfig } from '../config/gameRewards.js';
 import type { LeaderboardRepositoryPort } from '../data/leaderboardRepository.js';
 import type { ProfileRepositoryPort } from '../data/profileRepository.js';
 import type { SaveRepositoryPort } from '../data/saveRepository.js';
@@ -71,7 +71,8 @@ export class RunService {
     if (!profile.unlockedCharacters.includes(submission.characterId)) throw new ApiError(400, 'INVALID_RUN');
     const score = calculateScore(submission);
     const goldAward = calculateGoldAward(submission);
-    const unlockedCharacters = unlockCharacters(profile, submission, goldAward);
+    const unlockedCharacters = unlockCharacters(profile, submission);
+    const newlyUnlockedCharacters = unlockedCharacters.filter((id) => !profile.unlockedCharacters.includes(id));
     const updatedProfile: PlayerProfile = {
       ...profile,
       version: profile.version + 1,
@@ -86,6 +87,7 @@ export class RunService {
       runId: submission.runId,
       score,
       goldAward,
+      newlyUnlockedCharacters,
       status: submission.status,
       endingId: submission.endingId,
       characterId: submission.characterId,
@@ -130,6 +132,7 @@ export class RunService {
       score: receipt.score,
       goldAward: receipt.goldAward,
       unlockedCharacters: profile.unlockedCharacters,
+      newlyUnlockedCharacters: receipt.newlyUnlockedCharacters,
       profile,
       scoreBoardUpdated: true,
       clearBoardUpdated: Boolean(entries.clear),
@@ -138,11 +141,10 @@ export class RunService {
   }
 }
 
-function unlockCharacters(profile: PlayerProfile, submission: RunSubmission, goldAward: number): CharacterId[] {
+function unlockCharacters(profile: PlayerProfile, submission: RunSubmission): CharacterId[] {
   const unlocked = new Set<CharacterId>(profile.unlockedCharacters);
   unlocked.add('archer');
   if (submission.status === 'won') unlocked.add('mage');
-  if (profile.lifetimeGoldEarned + goldAward >= merchantUnlockGold) unlocked.add('merchant');
   return [...unlocked];
 }
 

@@ -6,7 +6,7 @@ import { metaUpgradeCatalog } from '../content/metaProgression.js';
 
 const profile: PlayerProfile = {
   id: 'profile', userId: 'user', tenantId: 'tenant', objectId: 'object', version: 1, displayName: 'Player',
-  goldBalance: 1000, lifetimeGoldEarned: 499, unlockedCharacters: ['hero'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: '2026-10-22T00:00:00.000Z',
+  goldBalance: 1000, lifetimeGoldEarned: 499, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: '2026-10-22T00:00:00.000Z',
 };
 
 describe('gold meta progression', () => {
@@ -22,11 +22,11 @@ describe('gold meta progression', () => {
     expect(run.caravan).toMatchObject({ hp: 270, maxHp: 270 });
   });
 
-  it('unlocks archer after any run, mage after a clear, and merchant at the gold threshold', () => {
-    const result: UnlockRunSummary = { runId: 'run', characterId: 'hero', endingId: 'caravan-lost', karma: 0, kills: 0, elapsedSeconds: 10, status: 'lost', goldAward: 1 };
+  it('unlocks archer after any run and mage after a clear; merchant is recruited in the shop', () => {
+    const result: UnlockRunSummary = { runId: 'run', characterId: 'warrior', endingId: 'caravan-lost', karma: 0, kills: 0, elapsedSeconds: 10, status: 'lost', goldAward: 1 };
     const lost = checkUnlocks(profile, result);
-    expect(lost.unlockedCharacters).toEqual(['hero', 'archer', 'merchant']);
-    expect(checkUnlocks(profile, { ...result, status: 'won', endingId: 'princess-purified', goldAward: 0 }).unlockedCharacters).toEqual(['hero', 'archer', 'mage']);
+    expect(lost.unlockedCharacters).toEqual(['warrior', 'archer']);
+    expect(checkUnlocks(profile, { ...result, status: 'won', endingId: 'princess-purified', goldAward: 0 }).unlockedCharacters).toEqual(['warrior', 'archer', 'mage']);
   });
 
   it('limits permanent upgrades and one-time passive purchases by balance', () => {

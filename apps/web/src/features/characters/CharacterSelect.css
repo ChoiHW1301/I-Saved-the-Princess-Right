@@ -1,2 +1,41 @@
-.character-select { color: #f0e2c6; }.section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin: 0 0 20px; }.section-heading h2 { margin: 8px 0 0; font: 30px Georgia, "Noto Serif KR", serif; }.section-heading > p { margin: 0 0 3px; color: #a99e88; font-size: 13px; }.character-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }.character-card { display: grid; grid-template-columns: 78px minmax(0,1fr); grid-template-rows: 1fr auto; align-items: center; gap: 8px 15px; min-height: 190px; padding: 18px; border: 1px solid #584a34; background: linear-gradient(135deg, #242219, #191a15); }.character-card.is-locked { border-color: #39362e; filter: saturate(.65); }.character-silhouette { grid-row: span 2; display: grid; place-items: center; align-self: stretch; min-height: 116px; color: #d7b674; border: 1px solid #74603f; background: radial-gradient(ellipse at 50% 38%, #675335, #29241a 70%); font: 700 42px Georgia, serif; text-shadow: 0 3px 0 #241b11; clip-path: polygon(50% 0, 78% 13%, 86% 34%, 100% 46%, 92% 100%, 8% 100%, 0 46%, 14% 34%, 22% 13%); }.character-silhouette.archer { color: #9fbd82; background: radial-gradient(ellipse at 50% 38%, #3f5735, #1d2619 70%); }.character-silhouette.mage { color: #a8a2df; background: radial-gradient(ellipse at 50% 38%, #494174, #201c31 70%); }.character-silhouette.merchant { color: #dfbd77; background: radial-gradient(ellipse at 50% 38%, #6d4b2c, #261d14 70%); }.character-copy h3 { margin: 6px 0; font: 24px Georgia, "Noto Serif KR", serif; }.character-copy p { margin: 0; color: #b6aa91; font-size: 12px; }.character-copy .lock-reason { margin-top: 8px; color: #c59a64; line-height: 1.5; }.character-card .button { grid-column: 2; justify-self: start; }.character-card .button:disabled { color: #8a8375; border-color: #3f3c35; background: #292822; opacity: 1; }
-@media (max-width: 760px) { .character-grid { grid-template-columns: 1fr; }.section-heading { align-items: start; flex-direction: column; gap: 8px; } }
+.character-select { width: 100%; min-width: 0; color: #49351f; }
+.section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin: 0 0 20px; }
+.section-heading h2 { margin: 8px 0 0; color: #563b24; font: 30px "DungGeunMo", monospace; }
+.section-heading > p { margin: 0 0 3px; color: #806d54; font-size: 13px; }
+.character-carousel { --character-accent: #d6ae66; position: relative; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; width: min(100%, 1040px); min-width: 0; min-height: 525px; margin: 0 auto; padding: 26px clamp(56px, 8vw, 92px); border: 0; background: transparent; box-shadow: none; }
+.character-carousel.archer { --character-accent: #a4c28a; }
+.character-carousel.mage { --character-accent: #b5a5ec; }
+.character-carousel.merchant { --character-accent: #e3bd74; }
+.character-arrow { position: absolute; top: 50%; z-index: 2; display: grid; place-items: center; transform: translateY(-50%); width: 54px; height: 70px; padding: 0; border: 1px solid #c5a36d; color: #80552d; background: #fff4dc; cursor: pointer; transition: color .15s ease, border-color .15s ease, transform .15s ease, background .15s ease; }
+.character-arrow:first-child { left: 0; }
+.character-arrow:last-child { right: 0; }
+.character-arrow span { margin-top: -8px; font: 54px/1 "DungGeunMo", monospace; }
+.character-arrow:disabled { border-color: #d6cdbd; color: #aca28f; background: #eee7d9; box-shadow: inset 0 0 0 1px #f8f4eb; opacity: .72; cursor: not-allowed; }
+.character-arrow:hover:not(:disabled) { transform: translateY(-50%) scale(1.06); border-color: var(--character-accent); color: #5b321d; background: #ffebc2; }
+.character-arrow:focus-visible, .character-dot:focus-visible, .character-start:focus-visible { outline: 3px solid #f6dc9b; outline-offset: 3px; }
+.character-center { width: 100%; min-width: 0; text-align: center; }
+.portrait-stage { position: relative; display: grid; place-items: center; width: min(100%, 520px); height: auto; min-height: 0; margin: 0 auto 12px; overflow: visible; border: 0; outline: 0; background: transparent; box-shadow: none; }
+.portrait-halo { position: absolute; left: 50%; top: 53%; width: 250px; height: 235px; transform: translate(-50%, -50%); background: radial-gradient(ellipse, color-mix(in srgb, var(--character-accent), transparent 88%), transparent 68%); }
+.character-portrait { position: relative; z-index: 1; display: block; width: auto; height: auto; max-width: min(100%, 420px); max-height: min(42vh, 360px); object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 12px 12px #0008); user-select: none; animation: portrait-arrive .24s ease-out both; }
+.character-details { width: min(100%, 520px); margin: 0 auto; }
+.character-details .eyebrow { color: #986130; }
+.character-details h3 { margin: 5px 0 4px; color: #5b3a1e; font: 32px "DungGeunMo", monospace; }
+.character-details > p { margin: 0; color: #80694c; font-size: 13px; }
+.character-stats { display: flex; justify-content: center; gap: 10px; margin: 13px 0; }
+.character-stats span { min-width: 92px; padding: 7px 12px; border: 1px solid #ddc9a5; color: #806d54; background: #fff7e7; font-size: 11px; }
+.character-stats strong { margin-left: 5px; color: #563b24; font-size: 12px; }
+.character-start { min-width: 190px; margin-top: 16px; }
+.character-start:disabled { color: #8a8375; border-color: #3f3c35; background: #292822; opacity: 1; }
+.character-index { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 16px auto 0; color: #806d54; font-size: 11px; }
+.character-dot { width: 8px; height: 8px; padding: 0; border: 1px solid #9b8459; border-radius: 50%; background: #302b20; cursor: pointer; }
+.character-dot.active { width: 20px; border-radius: 5px; border-color: #edcc7e; background: #edcc7e; }
+.character-index > span { margin-left: 8px; font-variant-numeric: tabular-nums; }
+@keyframes portrait-arrive { from { opacity: .35; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-width: 620px) {
+  .section-heading { align-items: start; flex-direction: column; gap: 8px; }
+  .character-carousel { min-height: 480px; padding: 16px 48px; }
+  .character-arrow { width: 40px; height: 58px; }
+  .character-arrow span { font-size: 44px; }
+  .portrait-stage { width: 100%; }
+  .character-portrait { max-width: min(100%, 360px); max-height: min(38vh, 300px); }
+}

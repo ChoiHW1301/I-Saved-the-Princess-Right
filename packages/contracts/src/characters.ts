@@ -4,7 +4,7 @@ import { CharacterIdSchema } from './profile.js';
 export const CharacterDefinitionSchema = z.object({
   id: CharacterIdSchema,
   name: z.string().min(1).max(80),
-  unlockRule: z.enum(['default', 'first-run', 'first-clear', 'gold-threshold']),
+  unlockRule: z.enum(['default', 'first-run', 'first-clear', 'shop-purchase']),
   startingWeaponId: z.string().min(1).max(64),
   baseStats: z.object({ maxHp: z.number().finite().positive(), speed: z.number().finite().positive(), damageMultiplier: z.number().finite().positive() }).strict(),
   beginner: z.boolean(),
@@ -19,4 +19,4 @@ export const WeaponDefinitionSchema = z.object({
 }).strict();
 export type WeaponDefinition = z.infer<typeof WeaponDefinitionSchema>;
 
-export const MERCHANT_GOLD_THRESHOLD = 500;
+export const MERCHANT_RECRUIT_COST = 10_000;

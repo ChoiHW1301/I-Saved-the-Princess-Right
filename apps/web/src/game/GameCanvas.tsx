@@ -15,7 +15,7 @@ import { RunController, RunControllerError } from '../features/run/RunController
 
 type ActiveBossEncounter = CampaignMilestone & { bossId: BossId };
 
-export function GameCanvas({ characterId = 'hero', profile, runId, resumeSave, controller, onExit, onProfileUpdated, onSaved }: {
+export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave, controller, onExit, onProfileUpdated, onSaved }: {
   characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; controller: RunController;
   onExit(): void; onProfileUpdated(profile: PlayerProfile): void; onSaved?(): void;
 }): JSX.Element {
@@ -29,6 +29,7 @@ export function GameCanvas({ characterId = 'hero', profile, runId, resumeSave, c
   const [submitting, setSubmitting] = useState(false);
   const [pauseMenu, setPauseMenu] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [miniBossWarning, setMiniBossWarning] = useState(false);
   const [saving, setSaving] = useState(false);
   const chooseUpgrade = useCallback((upgradeId: string): void => {
     gameEventBus.emit('upgrade-choice', { upgradeId });
@@ -42,9 +43,11 @@ export function GameCanvas({ characterId = 'hero', profile, runId, resumeSave, c
     const unsubscribeComplete = gameEventBus.on('level-up-complete', () => setLevelUp(null));
     const unsubscribeEvent = gameEventBus.on('story-event', setStoryEvent);
     const unsubscribeEventComplete = gameEventBus.on('event-complete', () => setStoryEvent(null));
-    const unsubscribeBoss = gameEventBus.on('boss-encounter', setBossEncounter);
+    const unsubscribeBoss = gameEventBus.on('boss-encounter', (encounter) => { setBossEncounter(encounter); setMiniBossWarning(false); });
+    const unsubscribeWarning = gameEventBus.on('mini-boss-warning', () => setMiniBossWarning(true));
     const unsubscribeBossComplete = gameEventBus.on('boss-defeated', ({ milestoneId }) => {
       setBossEncounter((active) => active?.id === milestoneId ? null : active);
+      setMiniBossWarning(false);
     });
     const unsubscribeRunEnded = gameEventBus.on('run-ended', (summary) => {
       setRunSummary(summary); setLevelUp(null); setStoryEvent(null); setBossEncounter(null); setSubmitting(true); setResultError(null);
@@ -53,7 +56,7 @@ export function GameCanvas({ characterId = 'hero', profile, runId, resumeSave, c
         setResultError(error instanceof RunControllerError ? error.message : '결과 제출에 실패했습니다. 다시 시도해 주세요.');
       }).finally(() => setSubmitting(false));
     });
-    return () => { unsubscribeLevelUp(); unsubscribeComplete(); unsubscribeEvent(); unsubscribeEventComplete(); unsubscribeBoss(); unsubscribeBossComplete(); unsubscribeRunEnded(); };
+    return () => { unsubscribeLevelUp(); unsubscribeComplete(); unsubscribeEvent(); unsubscribeEventComplete(); unsubscribeBoss(); unsubscribeWarning(); unsubscribeBossComplete(); unsubscribeRunEnded(); };
   }, [controller, onProfileUpdated]);
 
   useEffect(() => {
@@ -107,7 +110,8 @@ export function GameCanvas({ characterId = 'hero', profile, runId, resumeSave, c
   return (
     <>
       <div ref={hostRef} aria-label="마차 호위 게임 화면" style={{ width: '100%', height: '100%' }} />
-      <button type="button" className="game-pause-button" onClick={() => { setPauseMenu(true); gameEventBus.emit('pause-request', null); }} aria-label="게임 일시 정지">Ⅱ</button>
+      {miniBossWarning && !bossEncounter && <div className="mini-boss-warning" role="status">Warning!! 수상한 기운이 접근합니다!</div>}
+      <button type="button" className="game-pause-button" onClick={() => { setPauseMenu(true); gameEventBus.emit('pause-request', null); }} aria-label="일시 정지" />
       {levelUp && <LevelUpOverlay level={levelUp.level} choices={levelUp.choices} onChoose={chooseUpgrade} />}
       {storyEvent && <EventChoiceOverlay event={storyEvent} onChoose={chooseEvent} />}
       {bossEncounter && <div role="status" style={{ position: 'absolute', zIndex: 15, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '10px 22px', border: '1px solid #b86556', borderRadius: 999, background: '#251414dd', color: '#f0c6a8', letterSpacing: '.12em', pointerEvents: 'none' }}>

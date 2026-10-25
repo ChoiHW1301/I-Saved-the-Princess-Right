@@ -43,12 +43,16 @@ describe('campaign clock and biome schedule', () => {
     }
     expect(fired).toEqual(campaignSchedule.map(({ id }) => id));
   });
-  it('crossfades from castle to lava and then to meadow 30 seconds before minibosses', () => {
-    expect(getBiomeAt(269)).toEqual({ from: 'demon-castle', to: 'demon-castle', progress: 1 });
-    expect(getBiomeAt(270)).toEqual({ from: 'demon-castle', to: 'lava-fields', progress: 0 });
-    expect(getBiomeAt(285)).toEqual({ from: 'demon-castle', to: 'lava-fields', progress: 0.5 });
+  it('keeps each biome until its miniboss falls, then crossfades over 30 seconds', () => {
+    expect(getBiomeAt(0)).toEqual({ from: 'lava-fields', to: 'lava-fields', progress: 1 });
+    expect(getBiomeAt(299)).toEqual({ from: 'lava-fields', to: 'lava-fields', progress: 1 });
     expect(getBiomeAt(300)).toEqual({ from: 'lava-fields', to: 'lava-fields', progress: 1 });
-    expect(getBiomeAt(570)).toEqual({ from: 'lava-fields', to: 'meadow-village', progress: 0 });
-    expect(getBiomeAt(600)).toEqual({ from: 'meadow-village', to: 'meadow-village', progress: 1 });
+    expect(getBiomeAt(300, ['castle-warlord'])).toEqual({ from: 'lava-fields', to: 'demon-castle', progress: 0 });
+    expect(getBiomeAt(315, ['castle-warlord'])).toEqual({ from: 'lava-fields', to: 'demon-castle', progress: 0.5 });
+    expect(getBiomeAt(330, ['castle-warlord'])).toEqual({ from: 'demon-castle', to: 'demon-castle', progress: 1 });
+    expect(getBiomeAt(600, ['castle-warlord', 'lava-behemoth'])).toEqual({ from: 'demon-castle', to: 'enchanted-forest', progress: 0 });
+    expect(getBiomeAt(630, ['castle-warlord', 'lava-behemoth'])).toEqual({ from: 'enchanted-forest', to: 'enchanted-forest', progress: 1 });
+    expect(getBiomeAt(900, ['castle-warlord', 'lava-behemoth', 'forest-warden'])).toEqual({ from: 'enchanted-forest', to: 'meadow-village', progress: 0 });
+    expect(getBiomeAt(930, ['castle-warlord', 'lava-behemoth', 'forest-warden'])).toEqual({ from: 'meadow-village', to: 'meadow-village', progress: 1 });
   });
 });

@@ -12,7 +12,7 @@ const emptyBoard: LeaderboardResponse = { entries: [], myRank: null, totalEntrie
 
 export function LeaderboardPage({ getToken, onSignIn }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('score');
-  const [characterId, setCharacterId] = useState<CharacterId>('hero');
+  const [characterId, setCharacterId] = useState<CharacterId>('warrior');
   const [karmaTier, setKarmaTier] = useState<KarmaTier>('good');
   const [cached, setCached] = useState<Record<string, LeaderboardResponse>>({});
   const [loading, setLoading] = useState(true);
@@ -45,7 +45,7 @@ export function LeaderboardPage({ getToken, onSignIn }: Props): JSX.Element {
   const sessionExpired = error !== null && error.includes('다시 로그인');
   const status = { loading, error, accessDenied, sessionExpired, onRetry: () => setRetry((value) => value + 1), onSignIn };
   return <div className="page-intro leaderboard-page">
-    <span className="eyebrow">HALL OF HEROES</span><h1>랭킹</h1><p>원정 기록을 모아 호위대의 여정을 확인하세요.</p>
+    <span className="eyebrow">HALL OF WARRIORS</span><h1>랭킹</h1><p>원정 기록을 모아 호위대의 여정을 확인하세요.</p>
     <div className="leaderboard-mode-tabs" role="tablist" aria-label="랭킹 종류">
       <button type="button" role="tab" aria-selected={mode === 'score'} className={mode === 'score' ? 'active' : ''} onClick={() => setMode('score')}>최고 점수</button>
       <button type="button" role="tab" aria-selected={mode === 'clear'} className={mode === 'clear' ? 'active' : ''} onClick={() => setMode('clear')}>클리어 랭킹</button>

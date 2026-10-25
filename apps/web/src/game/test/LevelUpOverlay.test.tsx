@@ -14,7 +14,7 @@ describe('level-up overlay', () => {
     expect(html).toContain('레벨 2');
     expect(html.match(/<button/g)).toHaveLength(2);
     expect(html).toContain('날카로운 검');
-    expect(html).toContain('검풍 연마');
+    expect(html).toContain('크게 휘둘러라');
   });
   it('maps number keys to visible choices and ignores unavailable keys', () => {
     expect(choiceForNumberKey('1', choices)?.id).toBe('sword-damage');

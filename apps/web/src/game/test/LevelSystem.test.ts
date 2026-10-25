@@ -13,7 +13,7 @@ describe('run XP and level-up choices', () => {
     expect(run.pendingChoices).toHaveLength(3);
   });
   it('offers only eligible upgrades and applies one valid choice exactly once', () => {
-    const run = createRunState('hero');
+    const run = createRunState('warrior');
     const levels = new LevelSystem(() => 0);
     levels.addXp(run, 10);
     expect(run.pendingChoices.every((choice) => !choice.id.startsWith('projectile-'))).toBe(true);

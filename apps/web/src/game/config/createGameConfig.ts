@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import { CaravanScene } from '../scenes/CaravanScene.js';
 import type { RunWorldConfig } from '../scenes/CaravanScene.js';
 
-export const WORLD_WIDTH = 1280;
+export const WORLD_WIDTH = 960;
 export const WORLD_HEIGHT = 720;
+export const ROAD_CENTER_Y = WORLD_HEIGHT / 2;
 
 export function createGameConfig(parent: HTMLElement, runConfig?: RunWorldConfig): Phaser.Types.Core.GameConfig {
   return {

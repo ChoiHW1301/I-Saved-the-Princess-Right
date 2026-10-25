@@ -10,7 +10,7 @@ export interface BoardStatusProps {
   onSignIn?: () => void;
 }
 
-const characterNames: Record<string, string> = { hero: '용사', archer: '궁수', mage: '마법사', merchant: '상인', 'dark-hero': '흑화 용사' };
+const characterNames: Record<string, string> = { warrior: '전사', archer: '궁수', mage: '마법사', merchant: '상인', 'dark-warrior': '흑화 전사' };
 const karmaNames: Record<string, string> = { good: '선', neutral: '중립', evil: '악' };
 
 export function BoardTable({ data, mode, loading = false, error, accessDenied = false, sessionExpired = false, onRetry, onSignIn }: BoardStatusProps & { data: LeaderboardResponse; mode: 'score' | 'clear' }): JSX.Element {

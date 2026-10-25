@@ -14,6 +14,7 @@ const melee = (damage: number): readonly BossAttackDefinition[] => [{ id: 'melee
 export const bossCatalog: Readonly<Record<BossId, BossDefinition>> = {
   'castle-warlord': { id: 'castle-warlord', kind: 'miniboss', maxHp: 180, damage: 18, attacks: melee(18), color: 0xa54848 },
   'lava-behemoth': { id: 'lava-behemoth', kind: 'miniboss', maxHp: 220, damage: 20, attacks: melee(20), color: 0xd46a3b },
+  'forest-warden': { id: 'forest-warden', kind: 'miniboss', maxHp: 250, damage: 22, attacks: melee(22), color: 0x719e4b },
   'princess-demon': { id: 'princess-demon', kind: 'princess-demon', maxHp: 360, damage: 24, attacks: melee(24), color: 0x8d4f9e },
   'king-guard': { id: 'king-guard', kind: 'king-guard', maxHp: 360, damage: 24, attacks: melee(24), color: 0xc5b783 },
 };

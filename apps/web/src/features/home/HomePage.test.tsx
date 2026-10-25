@@ -8,18 +8,33 @@ import { getProfile, purchaseUpgrade } from '../profile/profileApi.js';
 
 const profile: PlayerProfile = {
   id: 'profile', userId: '11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222', tenantId: '11111111-1111-4111-8111-111111111111', objectId: '22222222-2222-4222-8222-222222222222', version: 3, displayName: 'Choi',
-  goldBalance: 100, lifetimeGoldEarned: 500, unlockedCharacters: ['hero', 'archer'],
+  goldBalance: 100, lifetimeGoldEarned: 500, unlockedCharacters: ['warrior', 'archer'],
   permanentUpgradeLevels: { 'max-health': 5 }, passiveIds: [], updatedAt: '2026-10-22T00:00:00.000Z',
 };
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('account home feature UI and API', () => {
-  it('shows unlocked and locked characters with reasons and disables locked starts', () => {
+  it('shows a centered character portrait with left and right carousel controls', () => {
     const html = renderToStaticMarkup(createElement(CharacterSelect, { profile, onStart: () => undefined }));
-    expect(html).toContain('용사'); expect(html).toContain('궁수'); expect(html).toContain('첫 클리어 후 해금됩니다.');
-    expect(html).toContain('aria-label="마법사 잠김"');
-    expect(html).toContain('disabled=""');
+    expect(html).toContain('src="/game-assets/portrait-warrior.png"');
+    expect(html).toContain('alt="전사 일러스트"');
+    expect(html).toContain('aria-label="이전 캐릭터"');
+    expect(html).toContain('aria-label="다음 캐릭터"');
+    expect(html).toContain('전사');
+    expect(html).not.toContain('마법사');
+    expect(html).not.toContain('상인');
+    expect(html).not.toContain('해금됩니다');
+  });
+
+  it('shows only the warrior before the archer has been unlocked', () => {
+    const firstRunProfile = { ...profile, unlockedCharacters: ['warrior'] as PlayerProfile['unlockedCharacters'] };
+    const html = renderToStaticMarkup(createElement(CharacterSelect, { profile: firstRunProfile, onStart: () => undefined }));
+    expect(html).not.toContain('aria-label="이전 캐릭터"');
+    expect(html).not.toContain('aria-label="다음 캐릭터"');
+    expect(html).toContain('aria-label="전사 선택 후 출발"');
+    expect(html).not.toContain('궁수');
+    expect(html).not.toContain('해금됩니다');
   });
 
   it('shows upgrade caps and disables unaffordable upgrades and passives', () => {

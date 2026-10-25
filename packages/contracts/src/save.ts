@@ -34,15 +34,27 @@ const ProjectileSnapshotSchema = z.object({
   damage: CounterSchema,
   ttlMs: CounterSchema,
 }).strict();
+const RewardPickupSnapshotSchema = z.object({
+  id: IdSchema,
+  type: z.enum(['gold', 'experience', 'player-health', 'caravan-repair']),
+  x: CoordinateSchema,
+  y: CoordinateSchema,
+  amount: CounterSchema,
+  remainingMs: CounterSchema.max(30_000),
+}).strict();
 
 export const RunSnapshotV1Schema = z.object({
-  characterId: CharacterIdSchema.default('hero'),
+  characterId: CharacterIdSchema.default('warrior'),
+  worldWidth: CounterSchema.default(1280),
+  roadCenterY: CounterSchema.default(267),
   elapsedSeconds: CounterSchema,
   stageId: IdSchema,
   rngSeed: CounterSchema,
   karma: z.number().finite().int().min(-100).max(100),
   status: z.enum(['active', 'won', 'lost']),
   pendingEventId: IdSchema.nullable(),
+  approachingEvent: z.object({ eventId: IdSchema, x: CoordinateSchema }).strict().nullable().default(null),
+  rewardPickups: z.array(RewardPickupSnapshotSchema).max(100).default([]),
   eventChoiceIds: z.array(IdSchema).max(100),
   ordinarySpawnCooldownMs: CounterSchema,
   activeBoss: BossSnapshotSchema.nullable(),
@@ -53,8 +65,10 @@ export const RunSnapshotV1Schema = z.object({
   pendingLevelUps: CounterSchema.default(0),
   pendingChoices: z.array(z.object({ id: IdSchema, nextLevel: CounterSchema, value: z.number().finite() }).strict()).max(3).default([]),
   weaponLevels: z.record(IdSchema, CounterSchema),
-  upgradeStats: z.record(IdSchema, z.number().finite()).default({}),
-  upgradeIds: z.array(IdSchema).max(100),
+  upgradeStats: z.record(IdSchema, z.number().finite()).default({}).transform((stats) => Object.fromEntries(
+    Object.entries(stats).map(([id, value]) => [id.startsWith('hero-') ? `warrior-${id.slice(5)}` : id, value]),
+  )),
+  upgradeIds: z.array(IdSchema).max(100).transform((ids) => ids.map((id) => id.startsWith('hero-') ? `warrior-${id.slice(5)}` : id)),
   defeatedBossIds: z.array(IdSchema).max(100),
   enemies: z.array(EnemySnapshotSchema).max(500),
   projectiles: z.array(ProjectileSnapshotSchema).max(500),

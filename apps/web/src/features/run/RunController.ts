@@ -53,7 +53,8 @@ export class RunController {
   }
 
   async saveSnapshot(runId: string, snapshot: RunSnapshotV1): Promise<CurrentRunSaveV1> {
-    const expectedRevision = this.current?.runId === runId ? this.current.revision : null;
+    const currentRevision = this.current?.runId === runId ? this.current.revision : null;
+    const expectedRevision = currentRevision && currentRevision > 0 ? currentRevision : null;
     try {
       const saved = await putSave(await this.getToken(), { runId, snapshot }, expectedRevision);
       this.current = saved; this.syncStatus = 'clean'; await this.local.clear();

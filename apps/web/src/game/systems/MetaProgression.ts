@@ -1,4 +1,4 @@
-import { MERCHANT_GOLD_THRESHOLD, type MetaUpgradeId, type PassiveId, type PlayerProfile, type RunEndingSummary, type RunState } from '@caravan/contracts';
+import { type MetaUpgradeId, type PassiveId, type PlayerProfile, type RunEndingSummary, type RunState } from '@caravan/contracts';
 import { metaUpgradeCatalog, passiveCatalog, type MetaUpgradeDefinition } from '../content/metaProgression.js';
 
 export function getUpgradeCost(definition: MetaUpgradeDefinition, currentLevel: number): number {
@@ -19,7 +19,7 @@ export function applyPermanentUpgrade(profile: PlayerProfile, run: RunState): Ru
   run.caravan.hp += wagonHealth;
   run.upgradeStats['movement-speed'] = (run.upgradeStats['movement-speed'] ?? 0) + moveSpeed;
   run.upgradeStats['global-damage-multiplier'] = (run.upgradeStats['global-damage-multiplier'] ?? 0) + attackBonus + (passiveIds.has('keen-edge') ? 0.05 : 0);
-  run.upgradeStats['hero-reflect'] = (run.upgradeStats['hero-reflect'] ?? 0) + (passiveIds.has('iron-will') ? 2 : 0);
+  run.upgradeStats['warrior-reflect'] = (run.upgradeStats['warrior-reflect'] ?? 0) + (passiveIds.has('iron-will') ? 2 : 0);
   run.upgradeStats['movement-speed'] += passiveIds.has('swift-step') ? 8 : 0;
   return run;
 }
@@ -28,7 +28,6 @@ export function checkUnlocks(profile: PlayerProfile, run: UnlockRunSummary): Pla
   const unlocked = new Set(profile.unlockedCharacters);
   unlocked.add('archer');
   if (run.status === 'won') unlocked.add('mage');
-  if (profile.lifetimeGoldEarned + run.goldAward >= MERCHANT_GOLD_THRESHOLD) unlocked.add('merchant');
   return { ...profile, unlockedCharacters: [...unlocked] };
 }
 

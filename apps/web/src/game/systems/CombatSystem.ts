@@ -3,7 +3,7 @@ import type { EnemyTarget } from '../content/enemies.js';
 export interface Vector2 { x: number; y: number }
 export interface Damageable { id: string; hp: number; maxHp: number; dead?: boolean }
 export interface DamageResult { target: Damageable; damage: number; killed: boolean; sourceId: string }
-export type TargetPolicy = 'nearest' | 'caravan-priority';
+export type TargetPolicy = 'warrior-priority' | 'nearest' | 'caravan-priority';
 
 export function distanceSquared(a: Vector2, b: Vector2): number {
   const dx = a.x - b.x;
@@ -11,9 +11,10 @@ export function distanceSquared(a: Vector2, b: Vector2): number {
   return dx * dx + dy * dy;
 }
 
-export function chooseTarget(enemy: Vector2, hero: Vector2, wagon: Vector2, policy: TargetPolicy): EnemyTarget {
+export function chooseTarget(enemy: Vector2, warrior: Vector2, wagon: Vector2, policy: TargetPolicy): EnemyTarget {
   if (policy === 'caravan-priority') return 'caravan';
-  return distanceSquared(enemy, hero) <= distanceSquared(enemy, wagon) ? 'hero' : 'caravan';
+  if (policy === 'warrior-priority') return 'warrior';
+  return distanceSquared(enemy, warrior) <= distanceSquared(enemy, wagon) ? 'warrior' : 'caravan';
 }
 
 export function resolveHit<T extends Damageable>(target: T, amount: number, sourceId: string): DamageResult | null {

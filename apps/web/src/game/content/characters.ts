@@ -1,8 +1,8 @@
 import type { CharacterDefinition, CharacterId } from '@caravan/contracts';
 
-export const characterCatalog: Readonly<Record<Exclude<CharacterId, 'dark-hero'>, CharacterDefinition>> = {
-  hero: {
-    id: 'hero', name: '용사', unlockRule: 'default', startingWeaponId: 'sword', beginner: true,
+export const characterCatalog: Readonly<Record<Exclude<CharacterId, 'dark-warrior'>, CharacterDefinition>> = {
+  warrior: {
+    id: 'warrior', name: '전사', unlockRule: 'default', startingWeaponId: 'sword', beginner: true,
     baseStats: { maxHp: 100, speed: 220, damageMultiplier: 1 },
   },
   archer: {
@@ -14,7 +14,7 @@ export const characterCatalog: Readonly<Record<Exclude<CharacterId, 'dark-hero'>
     baseStats: { maxHp: 82, speed: 210, damageMultiplier: 1.05 },
   },
   merchant: {
-    id: 'merchant', name: '상인', unlockRule: 'gold-threshold', startingWeaponId: 'gold-shotgun', beginner: false,
+    id: 'merchant', name: '상인', unlockRule: 'shop-purchase', startingWeaponId: 'gold-shotgun', beginner: false,
     baseStats: { maxHp: 105, speed: 215, damageMultiplier: 0.9 },
   },
 };

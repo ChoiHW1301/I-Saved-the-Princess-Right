@@ -13,7 +13,7 @@ function entry(rank: number, isCaller = false): LeaderboardEntry {
   const id = isCaller ? userId : `cccccccc-cccc-cccc-cccc-${String(rank).padStart(12, '0')}:dddddddd-dddd-dddd-dddd-dddddddddddd`;
   return {
     id, userId: id, boardId: 'score', displayName: isCaller ? caller.displayName : `Player ${rank}`,
-    score: 1000 - rank, kills: 100 - rank, characterId: 'hero', karmaTier: 'neutral',
+    score: 1000 - rank, kills: 100 - rank, characterId: 'warrior', karmaTier: 'neutral',
     elapsedSeconds: 900 - rank, clear: false, updatedAt: '2026-10-21T00:00:00.000Z',
   };
 }
@@ -45,7 +45,7 @@ describe('leaderboard pages', () => {
     await expect(service.clearBoard(caller, 'unknown', 'good', 10)).rejects.toMatchObject({
       code: 'INVALID_LEADERBOARD_FILTER',
     });
-    await expect(service.clearBoard(caller, 'hero', 'good', 10)).resolves.toEqual({ entries: [], myRank: null, totalEntries: 0 });
+    await expect(service.clearBoard(caller, 'warrior', 'good', 10)).resolves.toEqual({ entries: [], myRank: null, totalEntries: 0 });
     await expect(service.scoreBoard(caller, 11)).rejects.toMatchObject({ code: 'INVALID_LEADERBOARD_FILTER' });
   });
 });

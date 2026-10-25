@@ -14,7 +14,7 @@ describe('survival rules', () => {
     expect(run.status).toBe('lost');
     expect(health.damageCaravan(run.caravan, 1, run)).toBe(false);
   });
-  it('respawns a defeated hero after three seconds at full HP with two seconds of invulnerability', () => {
+  it('respawns a defeated warrior after three seconds at full HP with two seconds of invulnerability', () => {
     const run = createRunState();
     const health = new HealthSystem();
     const respawn = new RespawnSystem();

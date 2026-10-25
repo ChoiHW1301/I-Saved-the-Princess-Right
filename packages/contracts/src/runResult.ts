@@ -7,9 +7,9 @@ export const RunSubmissionSchema = z.object({
   runId: IdSchema,
   characterId: CharacterIdSchema,
   status: z.enum(['won', 'lost']),
-  elapsedSeconds: CounterSchema.max(900),
+  elapsedSeconds: CounterSchema.max(1200),
   kills: CounterSchema.max(10_000),
-  defeatedBossIds: z.array(BossIdSchema).max(3).refine((ids) => new Set(ids).size === ids.length),
+  defeatedBossIds: z.array(BossIdSchema).max(4).refine((ids) => new Set(ids).size === ids.length),
   karma: z.number().finite().int().min(-100).max(100),
   endingId: EndingIdSchema,
 }).strict().superRefine((submission, context) => {
@@ -19,7 +19,7 @@ export const RunSubmissionSchema = z.object({
   if (submission.status === 'won') {
     const evil = submission.karma <= -50;
     const good = submission.karma >= 50;
-    const expectedEnding = evil ? 'hero-new-demon-king' : good ? 'princess-purified' : 'princess-died';
+    const expectedEnding = evil ? 'warrior-new-demon-king' : good ? 'princess-purified' : 'princess-died';
     const expectedBoss = evil ? 'king-guard' : 'princess-demon';
     if (submission.endingId !== expectedEnding) {
       context.addIssue({ code: 'custom', path: ['endingId'], message: 'Ending does not match final karma.' });
@@ -35,7 +35,8 @@ export interface RunReceipt {
   runId: string;
   score: number;
   goldAward: number;
-  unlockedCharacters: Array<'hero' | 'archer' | 'mage' | 'merchant' | 'dark-hero'>;
+  unlockedCharacters: Array<'warrior' | 'archer' | 'mage' | 'merchant' | 'dark-warrior'>;
+  newlyUnlockedCharacters: Array<'warrior' | 'archer' | 'mage' | 'merchant' | 'dark-warrior'>;
   profile: PlayerProfile;
   scoreBoardUpdated: boolean;
   clearBoardUpdated: boolean;
@@ -44,7 +45,7 @@ export interface RunReceipt {
 
 export const RunReceiptSchema = z.object({
   runId: IdSchema, score: CounterSchema, goldAward: CounterSchema,
-  unlockedCharacters: z.array(CharacterIdSchema).max(32), profile: PlayerProfileSchema,
+  unlockedCharacters: z.array(CharacterIdSchema).max(32), newlyUnlockedCharacters: z.array(CharacterIdSchema).max(32).default([]), profile: PlayerProfileSchema,
   scoreBoardUpdated: z.boolean(), clearBoardUpdated: z.boolean(), replayed: z.boolean(),
 }).strict();
 

@@ -27,7 +27,7 @@ export function LevelUpOverlay({ level, choices, onChoose }: LevelUpOverlayProps
 
   if (choices.length === 0) return null;
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="level-up-title" style={{ position: 'absolute', inset: 0, zIndex: 20, display: 'grid', placeItems: 'center', background: '#090b0bd9', color: '#f2e3c9', fontFamily: 'system-ui, sans-serif' }}>
+    <div role="dialog" aria-modal="true" aria-labelledby="level-up-title" style={{ position: 'absolute', inset: 0, zIndex: 20, display: 'grid', placeItems: 'center', background: '#090b0bd9', color: '#f2e3c9', fontFamily: 'DungGeunMo, monospace' }}>
       <div style={{ width: 'min(900px, 92%)', textAlign: 'center' }}>
         <p style={{ color: '#e4b96e', letterSpacing: '.2em', marginBottom: 8 }}>LEVEL UP</p>
         <h2 id="level-up-title" style={{ fontSize: 32, margin: '0 0 8px' }}>레벨 {level}</h2>

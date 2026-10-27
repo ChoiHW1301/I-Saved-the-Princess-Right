@@ -7,7 +7,7 @@
 [P01 Static Site and Isolated API Stack](./phases/2026-10-27-caravan-grill-me-edu-deployment/P01-static-site-stack/phase.md)
 
 ## Active Task
-[T02 Provision the Dedicated Game Stack](./phases/2026-10-27-caravan-grill-me-edu-deployment/P01-static-site-stack/T02-provision-grill-stack.md)
+[T03 Assign Runtime Data Roles and Deploy API](./phases/2026-10-27-caravan-grill-me-edu-deployment/P01-static-site-stack/T03-deploy-api.md)
 
 ## Status
 - The user selected `grill-me-edu` and confirmed Contributor access for `hw.choi2@dexconsulting.net` in `CR-Project-01`.
@@ -17,4 +17,4 @@
 - Deployment architecture: Free Static Web App calling the dedicated Function API directly through `VITE_API_BASE_URL`; dedicated Cosmos serverless and Storage LRS; existing DEX app registrations.
 
 ## Next Step (IMPORTANT)
-T01 is complete: the template now uses Free Static Web Apps with direct Function API calls and defers managed identity data-role grants. For T02, verify the signed-in subscription and group-level Contributor access, validate the template with fresh unique resource names, and review the full what-if before creating resources. Do not deploy if existing project resources would be changed.
+T02 is complete: the Free Static Web App, Function Flex app, serverless Cosmos DB, Storage, and monitoring were created in `grill-me-edu`; only newly named Caravan resources were added. For T03, use Function principal ID `1b48f7e1-1b39-498d-8958-61f1d946db7e` to grant the documented minimum runtime data roles, then deploy and verify the API package. Storage/Cosmos access-role assignment must be performed by an administrator or an authorized role administrator because the current Contributor access is insufficient.

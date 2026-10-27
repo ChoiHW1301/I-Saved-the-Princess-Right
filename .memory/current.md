@@ -1,15 +1,19 @@
-﻿# Current Context
+# Current Context
 
 ## Active Plan
-[Caravan Gameplay and UI Polish](./plans/2026-10-23-caravan-gameplay-polish.md)
+[Azure Persistence and DEX Sign-in Connection](./plans/2026-10-27-azure-persistence-connection.md)
+
+## Active Phase
+[P01 Development Azure Deployment](./phases/2026-10-27-azure-persistence-connection/P01-dev-deployment/phase.md)
+
+## Active Task
+[T02 Deploy and Verify Azure API](./phases/2026-10-27-azure-persistence-connection/P01-dev-deployment/T02-deploy-api.md)
 
 ## Status
-- Implementation complete across P01 and P02.
-- Contract/web tests, typecheck, and production build pass.
-- Manual browser play/visual QA remains pending because the computer-use preview tab could not attach.
-- Local commit `fb00f22` contains the completed workspace changes. GitHub push is pending because no remote repository URL is configured.
+- T01 is complete: `rg-caravan-game-dev` is provisioned; app infrastructure is in East Asia and Cosmos DB is in Korea Central. The user completed the DEX employee group assignment to `CaravanGame.Player`.
+- Azure CLI is authenticated to `CR-Project-01` in DEX tenant `69c1e470-4528-435a-a1ae-de98e0aac738`.
+- First deployment's failed East Asia Cosmos account `caravandb102790` remains in failed state; successful database account is `caravandb102791`.
+- Public endpoints: Static Web App `https://black-sea-092d93e00.3.azurestaticapps.net`; Function `https://caravan-api-dev-102790.azurewebsites.net`.
 
-## Next Step
-Open the running app and visually check the fixed 4:3 frame, biome road alignment, approaching encounters, reward pickup/death animations, and UI at browser sizes. After the commit, add the GitHub repository URL as `origin` and push `main`.
-
-
+## Next Step (IMPORTANT)
+Read T02, deploy the API package into `caravan-api-dev-102790`, and verify `/api/health` and unauthenticated protected routes.

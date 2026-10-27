@@ -3,6 +3,9 @@ targetScope = 'resourceGroup'
 @description('Azure region for the game resources. Verify that Static Web Apps Standard and Flex Consumption are available in this region.')
 param location string = resourceGroup().location
 
+@description('Azure region for the Cosmos DB account. Can differ from the app region when the selected region has limited Cosmos DB capacity.')
+param cosmosLocation string = location
+
 @minLength(2)
 @maxLength(8)
 @description('Short environment label used in resource tags.')
@@ -100,7 +103,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
   name: cosmosAccountName
-  location: location
+  location: cosmosLocation
   kind: 'GlobalDocumentDB'
   tags: tags
   properties: {
@@ -108,7 +111,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
     capabilities: cosmosServerless ? [{ name: 'EnableServerless' }] : []
     locations: [
       {
-        locationName: location
+        locationName: cosmosLocation
         failoverPriority: 0
         isZoneRedundant: false
       }
@@ -188,7 +191,6 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
       appSettings: [
         { name: 'NODE_ENV', value: 'production' }
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
-        { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
         { name: 'AzureWebJobsStorage__accountName', value: storage.name }
         { name: 'ENTRA_TENANT_ID', value: entraTenantId }
         { name: 'ENTRA_API_AUDIENCE', value: entraApiAudience }

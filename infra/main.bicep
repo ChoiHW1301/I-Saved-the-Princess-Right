@@ -1,6 +1,6 @@
 targetScope = 'resourceGroup'
 
-@description('Azure region for the game resources. Verify that Static Web Apps Standard and Flex Consumption are available in this region.')
+@description('Azure region for the game resources. Verify that Static Web Apps Free and Flex Consumption are available in this region.')
 param location string = resourceGroup().location
 
 @description('Azure region for the Cosmos DB account. Can differ from the app region when the selected region has limited Cosmos DB capacity.')
@@ -52,10 +52,6 @@ var tags = {
   environment: environmentName
 }
 var deploymentContainerName = 'function-deployments'
-var cosmosDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
-var storageBlobDataOwnerRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-var storageQueueDataContributorRoleId = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
-var storageTableDataContributorRoleId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
@@ -188,10 +184,15 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
     siteConfig: {
       minTlsVersion: '1.2'
       ftpsState: 'Disabled'
+      cors: {
+        allowedOrigins: [ 'https://${staticWebApp.properties.defaultHostname}' ]
+        supportCredentials: false
+      }
       appSettings: [
         { name: 'NODE_ENV', value: 'production' }
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'AzureWebJobsStorage__accountName', value: storage.name }
+        { name: 'AzureWebJobsStorage__credential', value: 'managedidentity' }
         { name: 'ENTRA_TENANT_ID', value: entraTenantId }
         { name: 'ENTRA_API_AUDIENCE', value: entraApiAudience }
         { name: 'COSMOS_ENDPOINT', value: cosmosAccount.properties.documentEndpoint }
@@ -220,60 +221,11 @@ resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
   name: staticSiteName
   location: location
   tags: tags
-  sku: { name: 'Standard', tier: 'Standard' }
+  sku: { name: 'Free', tier: 'Free' }
   properties: {
     stagingEnvironmentPolicy: 'Enabled'
     allowConfigFileUpdates: true
   }
-}
-
-resource linkedBackend 'Microsoft.Web/staticSites/linkedBackends@2023-12-01' = {
-  parent: staticWebApp
-  name: 'linkedBackend'
-  properties: {
-    backendResourceId: functionApp.id
-    region: location
-  }
-}
-
-resource storageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id, functionApp.id, storageBlobDataOwnerRoleId)
-  scope: storage
-  properties: {
-    principalId: functionApp.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataOwnerRoleId)
-  }
-}
-
-resource storageQueueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id, functionApp.id, storageQueueDataContributorRoleId)
-  scope: storage
-  properties: {
-    principalId: functionApp.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleId)
-  }
-}
-
-resource storageTableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id, functionApp.id, storageTableDataContributorRoleId)
-  scope: storage
-  properties: {
-    principalId: functionApp.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributorRoleId)
-  }
-}
-
-module cosmosRole './modules/roleAssignments.bicep' = {
-  name: 'cosmos-sql-data-access'
-  params: {
-    cosmosAccountName: cosmosAccount.name
-    principalId: functionApp.identity.principalId
-    roleDefinitionId: cosmosDataContributorRoleId
-  }
-  dependsOn: [profiles, saves, leaderboards]
 }
 
 output staticWebAppHostname string = staticWebApp.properties.defaultHostname

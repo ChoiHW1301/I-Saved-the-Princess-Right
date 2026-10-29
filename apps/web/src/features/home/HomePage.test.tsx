@@ -9,7 +9,7 @@ import { getProfile, purchaseUpgrade } from '../profile/profileApi.js';
 const profile: PlayerProfile = {
   id: 'profile', userId: '11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222', tenantId: '11111111-1111-4111-8111-111111111111', objectId: '22222222-2222-4222-8222-222222222222', version: 3, displayName: 'Choi',
   goldBalance: 100, lifetimeGoldEarned: 500, unlockedCharacters: ['warrior', 'archer'],
-  permanentUpgradeLevels: { 'max-health': 5 }, passiveIds: [], updatedAt: '2026-10-22T00:00:00.000Z',
+  permanentUpgradeLevels: { 'max-health': 5 }, passiveIds: [], characterTrainingLevels: {}, updatedAt: '2026-10-22T00:00:00.000Z',
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -37,9 +37,9 @@ describe('account home feature UI and API', () => {
     expect(html).not.toContain('해금됩니다');
   });
 
-  it('shows upgrade caps and disables unaffordable upgrades and passives', () => {
-    const html = renderToStaticMarkup(createElement(MetaShop, { profile, onPurchased: () => undefined, onBuyUpgrade: async () => undefined, onBuyPassive: async () => undefined }));
-    expect(html).toContain('최대 레벨'); expect(html).toContain('골드 부족 · 150 G'); expect(html).toContain('골드 부족 · 300 G');
+  it('shows shared upgrade caps and removes obsolete passive purchases', () => {
+    const html = renderToStaticMarkup(createElement(MetaShop, { profile: { ...profile, goldBalance: 0 }, onPurchased: () => undefined, onBuyUpgrade: async () => undefined, onBuyTraining: async () => undefined }));
+    expect(html).toContain('최대 레벨'); expect(html).toContain('골드 부족 · 100 G'); expect(html).not.toContain('강철 의지');
   });
 
   it('loads the verified profile and posts a version-checked purchase', async () => {

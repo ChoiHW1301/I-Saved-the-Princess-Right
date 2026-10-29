@@ -50,6 +50,7 @@ export class ProfileRepository implements ProfileRepositoryPort {
       lifetimeGoldEarned: 0,
       unlockedCharacters: ['warrior'],
       permanentUpgradeLevels: {},
+      characterTrainingLevels: {},
       passiveIds: [],
       updatedAt: new Date().toISOString(),
     });

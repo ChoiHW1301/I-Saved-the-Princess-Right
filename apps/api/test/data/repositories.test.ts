@@ -71,7 +71,7 @@ describe('Cosmos repositories', () => {
     mock.documents.set(`${userId}/profile`, {
       id: 'profile', userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 1,
       displayName: caller.displayName, goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'],
-      permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
+      permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: now,
     });
     const repository = new ProfileRepository(mock.container);
     const receipt = {
@@ -82,7 +82,7 @@ describe('Cosmos repositories', () => {
     const updated = {
       id: 'profile' as const, userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 2,
       displayName: caller.displayName, goldBalance: 10, lifetimeGoldEarned: 10, unlockedCharacters: ['warrior'] as ['warrior'],
-      permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
+      permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: now,
     };
     await expect(repository.applyRunOnce(caller, receipt, updated)).resolves.toBe(true);
     expect(mock.batch).toHaveBeenCalledWith(userId);

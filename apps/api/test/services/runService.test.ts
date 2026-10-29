@@ -19,7 +19,7 @@ function profile(): PlayerProfile {
   return {
     id: 'profile', userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 1,
     displayName: caller.displayName, goldBalance: 0, lifetimeGoldEarned: 0,
-    unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
+    unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: now,
   };
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useMsal } from '@azure/msal-react';
-import type { CharacterId, CurrentRunSaveV1, MetaUpgradeId, PassiveId, PlayerProfile, RunSubmission } from '@caravan/contracts';
+import type { CharacterId, CurrentRunSaveV1, MetaUpgradeId, PlayerProfile, RunSubmission, TrainingId } from '@caravan/contracts';
 import { useApiToken } from '../../auth/useApiToken.js';
 import { isLocalPlaytest, loginRequest } from '../../auth/msalConfig.js';
 import { GameCanvas } from '../../game/GameCanvas.js';
@@ -16,7 +16,7 @@ type Section = 'home' | 'characters' | 'shop' | 'leaderboard';
 
 export function HomePage(): JSX.Element {
   const { instance, accounts } = useMsal();
-  const { data, loading, error, refresh, replaceProfile, buyUpgrade, buyPassive, recruitMerchant } = useProfile();
+  const { data, loading, error, refresh, replaceProfile, buyUpgrade, buyTraining, recruitMerchant } = useProfile();
   const { getToken } = useApiToken();
   const [section, setSection] = useState<Section>('home');
   const [playing, setPlaying] = useState(false);
@@ -29,9 +29,14 @@ export function HomePage(): JSX.Element {
   useEffect(() => { if (controller && data) controller.setProfile(data.profile); }, [controller, data?.profile]);
   useEffect(() => { if (controller) void controller.getPendingResult().then(setPendingResult).catch(() => setPendingResult(null)); }, [controller]);
 
-  async function buy(id: MetaUpgradeId | PassiveId, passive = false): Promise<PlayerProfile | undefined> {
+  async function buy(id: MetaUpgradeId): Promise<PlayerProfile | undefined> {
     setBusyUpgrade(true);
-    try { return passive ? await buyPassive(id as PassiveId) : await buyUpgrade(id as MetaUpgradeId); }
+    try { return await buyUpgrade(id); }
+    finally { setBusyUpgrade(false); }
+  }
+  async function buyCharacterTraining(characterId: CharacterId, trainingId: TrainingId): Promise<PlayerProfile | undefined> {
+    setBusyUpgrade(true);
+    try { return await buyTraining(characterId, trainingId); }
     finally { setBusyUpgrade(false); }
   }
   async function recruitMerchantFromShop(): Promise<PlayerProfile | undefined> {
@@ -97,7 +102,7 @@ export function HomePage(): JSX.Element {
           <section className="welcome-banner"><div className="banner-copy"><span className="eyebrow">구출은 성공했다. 귀환은 이제부터.</span><h1 className="game-logo"><img src="/game-assets/logo-princess-rescued.png" alt="공주님을 구했다!?" /></h1><p>공주를 태운 마차가 왕국에 닿을 때까지.<br /><strong>왕국으로 무사 귀환하라.</strong></p><div className="banner-actions"><button type="button" className="button button-primary" disabled={Boolean(pendingResult)} onClick={() => { setSection('characters'); setNotice(null); }}>새 원정 시작 <span aria-hidden="true">→</span></button><button type="button" className="button button-ghost" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>이어하기 {data.hasCurrentSave ? '· 저장 있음' : '· 저장 없음'}</button></div></div><div className="banner-art" aria-hidden="true"><img src="/game-assets/homecoming-scene.png" alt="" /></div></section>
         </>}
         {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1></div><CharacterSelect profile={profile} onStart={(id) => void startNewRun(id)} /></>}
-        {section === 'shop' && <><div className="page-intro"><span className="eyebrow">CAMP PROVISIONS</span><h1>상점</h1><p>원정에서 모은 골드로 다음 여정을 준비합니다.</p></div><MetaShop profile={profile} onPurchased={(updated) => replaceProfile(updated)} onBuyUpgrade={(id) => buy(id)} onBuyPassive={(id) => buy(id, true)} onRecruitMerchant={recruitMerchantFromShop} busy={busyUpgrade || loading} error={error ? errorMessage : null} /></>}
+        {section === 'shop' && <><div className="page-intro"><span className="eyebrow">CAMP PROVISIONS</span><h1>상점</h1><p>원정에서 모은 골드로 다음 여정을 준비합니다.</p></div><MetaShop profile={profile} onPurchased={(updated) => replaceProfile(updated)} onBuyUpgrade={(id) => buy(id)} onBuyTraining={buyCharacterTraining} onRecruitMerchant={recruitMerchantFromShop} busy={busyUpgrade || loading} error={error ? errorMessage : null} /></>}
         {section === 'leaderboard' && <LeaderboardPage getToken={getToken} onSignIn={() => void signIn()} />}
       </div>
     </div>

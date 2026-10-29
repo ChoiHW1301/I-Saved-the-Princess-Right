@@ -615,7 +615,7 @@ export class CaravanScene extends Phaser.Scene {
 
   private emptyProfile(): PlayerProfile {
     return { id: 'profile', userId: 'local', tenantId: 'local', objectId: 'local', version: 0, displayName: 'Adventurer',
-      goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: new Date(0).toISOString() };
+      goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: new Date(0).toISOString() };
   }
 
   private refreshHud(): void {

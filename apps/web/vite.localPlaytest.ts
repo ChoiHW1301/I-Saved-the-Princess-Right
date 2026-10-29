@@ -1,8 +1,12 @@
 import type { Plugin } from 'vite';
 import {
   CurrentRunSaveV1Schema,
+  CharacterIdSchema,
   PlayerProfileSchema,
   RunSubmissionSchema,
+  TrainingIdSchema,
+  characterTrainingCatalog,
+  commonUpgradeCatalog,
   type CharacterId,
   type KarmaTier,
   type PlayerProfile,
@@ -13,13 +17,7 @@ const tenantId = '11111111-1111-4111-8111-111111111111';
 const objectId = '22222222-2222-4222-8222-222222222222';
 const userId = `${tenantId}:${objectId}`;
 const displayName = 'Local Playtester';
-const upgradeRules = {
-  'max-health': { cost: 100, growth: 1.65, cap: 5 },
-  'attack-damage': { cost: 150, growth: 1.7, cap: 5 },
-  'move-speed': { cost: 100, growth: 1.6, cap: 5 },
-  'wagon-max-health': { cost: 125, growth: 1.65, cap: 5 },
-} as const;
-const passiveCosts = { 'iron-will': 300, 'keen-edge': 350, 'swift-step': 275 } as const;
+const merchantRecruitCost = 10_000;
 
 type BoardEntry = {
   id: string; boardId: string; userId: string; displayName: string; score: number; kills: number;
@@ -30,7 +28,7 @@ export function localPlaytestApi(): Plugin {
   let profile = PlayerProfileSchema.parse({
     id: 'profile', userId, tenantId, objectId, version: 1, displayName,
     goldBalance: 350, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'],
-    permanentUpgradeLevels: {}, passiveIds: [], updatedAt: new Date().toISOString(),
+    permanentUpgradeLevels: {}, characterTrainingLevels: {}, passiveIds: [], updatedAt: new Date().toISOString(),
   });
   let save: ReturnType<typeof CurrentRunSaveV1Schema.parse> | null = null;
   const boards = new Map<string, BoardEntry>();
@@ -72,31 +70,39 @@ export function localPlaytestApi(): Plugin {
       if (path === '/profile' && method === 'GET') return json(response, 200, profile);
       if (path === '/profile/upgrades' && method === 'POST') {
         const body = await readBody(request);
-        const id = body.upgradeId as keyof typeof upgradeRules;
-        const rule = upgradeRules[id];
+        const id = body.upgradeId as keyof typeof commonUpgradeCatalog;
+        const rule = commonUpgradeCatalog[id];
         if (!rule) return json(response, 400, { code: 'INVALID_UPGRADE' });
         if (body.expectedProfileVersion !== profile.version) return json(response, 409, { code: 'PROFILE_CONFLICT' });
         const level = profile.permanentUpgradeLevels[id] ?? 0;
-        if (level >= rule.cap) return json(response, 400, { code: 'INVALID_UPGRADE' });
-        const cost = Math.ceil(rule.cost * rule.growth ** level);
+        if (level >= rule.maxLevel) return json(response, 400, { code: 'INVALID_UPGRADE' });
+        const cost = rule.rankCosts[level];
+        if (cost === undefined) return json(response, 400, { code: 'INVALID_UPGRADE' });
         if (profile.goldBalance < cost) return json(response, 409, { code: 'INSUFFICIENT_GOLD' });
         return json(response, 200, currentProfile({ ...profile, version: profile.version + 1, goldBalance: profile.goldBalance - cost, permanentUpgradeLevels: { ...profile.permanentUpgradeLevels, [id]: level + 1 }, updatedAt: new Date().toISOString() }));
       }
-      if (path === '/profile/passives' && method === 'POST') {
+      if (path === '/profile/trainings' && method === 'POST') {
         const body = await readBody(request);
-        const id = body.upgradeId as keyof typeof passiveCosts;
-        const cost = passiveCosts[id];
-        if (!cost || profile.passiveIds.includes(id)) return json(response, 400, { code: 'INVALID_UPGRADE' });
+        const parsedCharacter = CharacterIdSchema.safeParse(body.characterId);
+        const parsedTraining = TrainingIdSchema.safeParse(body.trainingId);
+        if (!parsedCharacter.success || !parsedTraining.success) return json(response, 400, { code: 'INVALID_UPGRADE' });
         if (body.expectedProfileVersion !== profile.version) return json(response, 409, { code: 'PROFILE_CONFLICT' });
+        if (!profile.unlockedCharacters.includes(parsedCharacter.data)) return json(response, 400, { code: 'INVALID_UPGRADE' });
+        const definition = characterTrainingCatalog[parsedTraining.data];
+        if (definition.characterId !== parsedCharacter.data) return json(response, 400, { code: 'INVALID_UPGRADE' });
+        const level = profile.characterTrainingLevels[parsedCharacter.data]?.[parsedTraining.data] ?? 0;
+        if (level >= definition.maxLevel) return json(response, 400, { code: 'INVALID_UPGRADE' });
+        const cost = definition.rankCosts[level];
+        if (cost === undefined) return json(response, 400, { code: 'INVALID_UPGRADE' });
         if (profile.goldBalance < cost) return json(response, 409, { code: 'INSUFFICIENT_GOLD' });
-        return json(response, 200, currentProfile({ ...profile, version: profile.version + 1, goldBalance: profile.goldBalance - cost, passiveIds: [...profile.passiveIds, id], updatedAt: new Date().toISOString() }));
+        return json(response, 200, currentProfile({ ...profile, version: profile.version + 1, goldBalance: profile.goldBalance - cost, characterTrainingLevels: { ...profile.characterTrainingLevels, [parsedCharacter.data]: { ...profile.characterTrainingLevels[parsedCharacter.data], [parsedTraining.data]: level + 1 } }, updatedAt: new Date().toISOString() }));
       }
       if (path === '/profile/characters/merchant' && method === 'POST') {
         const body = await readBody(request);
         if (body.expectedProfileVersion !== profile.version) return json(response, 409, { code: 'PROFILE_CONFLICT' });
         if (profile.unlockedCharacters.includes('merchant')) return json(response, 400, { code: 'INVALID_UPGRADE' });
-        if (profile.goldBalance < 10_000) return json(response, 409, { code: 'INSUFFICIENT_GOLD' });
-        return json(response, 200, currentProfile({ ...profile, version: profile.version + 1, goldBalance: profile.goldBalance - 10_000, unlockedCharacters: [...profile.unlockedCharacters, 'merchant'], updatedAt: new Date().toISOString() }));
+        if (profile.goldBalance < merchantRecruitCost) return json(response, 409, { code: 'INSUFFICIENT_GOLD' });
+        return json(response, 200, currentProfile({ ...profile, version: profile.version + 1, goldBalance: profile.goldBalance - merchantRecruitCost, unlockedCharacters: [...profile.unlockedCharacters, 'merchant'], updatedAt: new Date().toISOString() }));
       }
       if (path === '/save' && method === 'GET') return save ? json(response, 200, save) : json(response, 404, { code: 'SAVE_NOT_FOUND' });
       if (path === '/save' && method === 'DELETE') {

@@ -1,4 +1,4 @@
-import { PlayerProfileSchema, type MetaUpgradeId, type PlayerProfile } from '@caravan/contracts';
+import { PlayerProfileSchema, type CharacterId, type MetaUpgradeId, type PlayerProfile, type TrainingId } from '@caravan/contracts';
 import { apiUrl } from '../../auth/apiUrl.js';
 
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
@@ -38,9 +38,9 @@ export async function purchaseUpgrade(token: string, upgradeId: MetaUpgradeId, e
   }));
 }
 
-export async function purchasePassive(token: string, passiveId: string, expectedProfileVersion: number): Promise<PlayerProfile> {
-  return PlayerProfileSchema.parse(await request<unknown>('/profile/passives', token, {
-    method: 'POST', body: JSON.stringify({ upgradeId: passiveId, expectedProfileVersion }),
+export async function purchaseTraining(token: string, characterId: CharacterId, trainingId: TrainingId, expectedProfileVersion: number): Promise<PlayerProfile> {
+  return PlayerProfileSchema.parse(await request<unknown>('/profile/trainings', token, {
+    method: 'POST', body: JSON.stringify({ characterId, trainingId, expectedProfileVersion }),
   }));
 }
 

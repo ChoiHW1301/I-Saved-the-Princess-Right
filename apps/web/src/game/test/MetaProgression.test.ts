@@ -6,14 +6,14 @@ import { metaUpgradeCatalog } from '../content/metaProgression.js';
 
 const profile: PlayerProfile = {
   id: 'profile', userId: 'user', tenantId: 'tenant', objectId: 'object', version: 1, displayName: 'Player',
-  goldBalance: 1000, lifetimeGoldEarned: 499, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: '2026-10-22T00:00:00.000Z',
+  goldBalance: 1000, lifetimeGoldEarned: 499, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: '2026-10-22T00:00:00.000Z',
 };
 
 describe('gold meta progression', () => {
-  it('uses geometric integer prices and applies permanent stats at run start', () => {
+  it('uses fixed rank prices and applies permanent stats at run start', () => {
     const definition = metaUpgradeCatalog['max-health'];
     expect(getUpgradeCost(definition, 0)).toBe(100);
-    expect(getUpgradeCost(definition, 1)).toBe(165);
+    expect(getUpgradeCost(definition, 1)).toBe(125);
     const upgraded = purchaseMetaUpgrade(profile, 'max-health');
     expect(upgraded.goldBalance).toBe(900);
     const run = createRunState();
@@ -29,10 +29,8 @@ describe('gold meta progression', () => {
     expect(checkUnlocks(profile, { ...result, status: 'won', endingId: 'princess-purified', goldAward: 0 }).unlockedCharacters).toEqual(['warrior', 'archer', 'mage']);
   });
 
-  it('limits permanent upgrades and one-time passive purchases by balance', () => {
-    const passive = purchasePassive(profile, 'iron-will');
-    expect(passive).toMatchObject({ goldBalance: 700, passiveIds: ['iron-will'] });
-    expect(() => purchasePassive(passive, 'iron-will')).toThrow('INVALID_UPGRADE');
+  it('limits permanent upgrades and rejects retired passive purchases', () => {
+    expect(() => purchasePassive(profile, 'iron-will')).toThrow('INVALID_UPGRADE');
     expect(() => purchaseMetaUpgrade({ ...profile, goldBalance: 0 }, 'move-speed')).toThrow('INSUFFICIENT_GOLD');
     let atCap = { ...profile, permanentUpgradeLevels: { 'max-health': 5 } };
     expect(() => purchaseMetaUpgrade(atCap, 'max-health')).toThrow('INVALID_UPGRADE');

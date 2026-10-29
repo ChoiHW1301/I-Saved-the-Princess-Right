@@ -6,6 +6,7 @@ export * from './gameplay.js';
 export * from './campaign.js';
 export * from './characters.js';
 export * from './profile.js';
+export * from './metaProgression.js';
 export * from './save.js';
 export * from './leaderboard.js';
 export * from './runResult.js';

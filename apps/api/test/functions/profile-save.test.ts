@@ -9,7 +9,7 @@ const caller = {
 };
 vi.mock('../../src/auth/authorize.js', () => ({ authorizeRequest: vi.fn(async () => caller) }));
 
-import { getProfile, purchasePassive, purchaseUpgrade } from '../../src/functions/profile.js';
+import { getProfile, purchaseTraining, purchaseUpgrade } from '../../src/functions/profile.js';
 import { deleteSave, getSave, putSave } from '../../src/functions/save.js';
 
 const userId = `${caller.tenantId}:${caller.objectId}`;
@@ -17,7 +17,7 @@ const now = '2026-10-21T00:00:00.000Z';
 const profile: PlayerProfile = {
   id: 'profile', userId, tenantId: caller.tenantId, objectId: caller.objectId, version: 1,
   displayName: caller.displayName, goldBalance: 1000, lifetimeGoldEarned: 1000,
-  unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], updatedAt: now,
+  unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: now,
 };
 const snapshot = {
   characterId: 'warrior', elapsedSeconds: 10, stageId: 'castle', rngSeed: 42, karma: 0, status: 'active', pendingEventId: null,
@@ -55,19 +55,19 @@ describe('profile and save handlers', () => {
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ version: 2 }));
   });
 
-  it('purchases each passive once and persists it through the profile repository', async () => {
+  it('purchases character training once and persists it through the profile repository', async () => {
     let current: PlayerProfile = { ...profile, goldBalance: 400 };
     const repository = {
       getOrCreate: vi.fn(async () => current),
       save: vi.fn(async (updated: PlayerProfile) => { current = updated; }),
     } as any;
-    const first = await purchasePassive(request('POST', 'http://localhost/api/profile/passives', {
-      upgradeId: 'iron-will', expectedProfileVersion: 1,
+    const first = await purchaseTraining(request('POST', 'http://localhost/api/profile/trainings', {
+      characterId: 'warrior', trainingId: 'warrior-thorn-armor', expectedProfileVersion: 1,
     }), repository);
     expect(first.status).toBe(200);
-    expect((first.jsonBody as PlayerProfile)).toMatchObject({ goldBalance: 100, passiveIds: ['iron-will'], version: 2 });
-    const duplicate = await purchasePassive(request('POST', 'http://localhost/api/profile/passives', {
-      upgradeId: 'iron-will', expectedProfileVersion: 2,
+    expect((first.jsonBody as PlayerProfile)).toMatchObject({ goldBalance: 300, characterTrainingLevels: { warrior: { 'warrior-thorn-armor': 1 } }, version: 2 });
+    const duplicate = await purchaseTraining(request('POST', 'http://localhost/api/profile/trainings', {
+      characterId: 'warrior', trainingId: 'warrior-thorn-armor', expectedProfileVersion: 2,
     }), repository);
     expect(duplicate.status).toBe(400);
     expect(duplicate.jsonBody).toMatchObject({ code: 'INVALID_UPGRADE' });

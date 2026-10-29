@@ -1,8 +1,13 @@
 import { z } from 'zod';
 import { CounterSchema, IdSchema, IsoDateTimeSchema, UserIdSchema, withDocumentLimit } from './validation.js';
 
-export const MetaUpgradeIdSchema = z.enum(['max-health', 'attack-damage', 'move-speed', 'wagon-max-health']);
+export const MetaUpgradeIdSchema = z.enum([
+  'max-health', 'attack-damage', 'critical-chance', 'move-speed', 'attack-speed',
+  'health-regeneration', 'wagon-max-health', 'xp-gain', 'gold-gain', 'defense',
+]);
 export type MetaUpgradeId = z.infer<typeof MetaUpgradeIdSchema>;
+export const TrainingIdSchema = z.enum(['warrior-thorn-armor', 'archer-dash', 'mage-wind-spirit', 'merchant-money-bomb']);
+export type TrainingId = z.infer<typeof TrainingIdSchema>;
 export const PassiveIdSchema = z.enum(['iron-will', 'keen-edge', 'swift-step']);
 export type PassiveId = z.infer<typeof PassiveIdSchema>;
 
@@ -22,6 +27,7 @@ export const PlayerProfileSchema = withDocumentLimit(z.object({
   lifetimeGoldEarned: CounterSchema.default(0),
   unlockedCharacters: z.array(CharacterIdSchema).max(32),
   permanentUpgradeLevels: z.record(z.string().min(1).max(64), CounterSchema),
+  characterTrainingLevels: z.partialRecord(CharacterIdSchema, z.partialRecord(TrainingIdSchema, CounterSchema)).default({}),
   passiveIds: z.array(PassiveIdSchema).max(100).refine((ids) => new Set(ids).size === ids.length),
   updatedAt: IsoDateTimeSchema,
 }).strict());

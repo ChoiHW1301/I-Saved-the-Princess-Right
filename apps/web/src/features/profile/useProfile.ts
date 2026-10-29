@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { MetaUpgradeId, PlayerProfile } from '@caravan/contracts';
+import type { CharacterId, MetaUpgradeId, PlayerProfile, TrainingId } from '@caravan/contracts';
 import { useApiToken } from '../../auth/useApiToken.js';
-import { getProfile, hasCurrentSave, ProfileApiError, purchasePassive, purchaseUpgrade, recruitMerchant } from './profileApi.js';
+import { getProfile, hasCurrentSave, ProfileApiError, purchaseTraining, purchaseUpgrade, recruitMerchant } from './profileApi.js';
 import { IndexedDbLocalSaveStore } from '../run/localSaveStore.js';
 
 const localSaveStore = new IndexedDbLocalSaveStore();
@@ -10,7 +10,8 @@ export type HomeProfileState = { profile: PlayerProfile; hasCurrentSave: boolean
 export function useProfile(): {
   data: HomeProfileState | null; loading: boolean; error: ProfileApiError | Error | null;
   refresh(): Promise<void>; replaceProfile(profile: PlayerProfile, hasSave?: boolean): void;
-  buyUpgrade(id: MetaUpgradeId): Promise<PlayerProfile | undefined>; buyPassive(id: 'iron-will' | 'keen-edge' | 'swift-step'): Promise<PlayerProfile | undefined>;
+  buyUpgrade(id: MetaUpgradeId): Promise<PlayerProfile | undefined>;
+  buyTraining(characterId: CharacterId, trainingId: TrainingId): Promise<PlayerProfile | undefined>;
   recruitMerchant(): Promise<PlayerProfile | undefined>;
 } {
   const { getToken } = useApiToken();
@@ -48,7 +49,7 @@ export function useProfile(): {
     }
   }, [data, getToken, refresh]);
   const buyUpgrade = useCallback((id: MetaUpgradeId) => buy((token, version) => purchaseUpgrade(token, id, version)), [buy]);
-  const buyPassive = useCallback((id: 'iron-will' | 'keen-edge' | 'swift-step') => buy((token, version) => purchasePassive(token, id, version)), [buy]);
+  const buyTraining = useCallback((characterId: CharacterId, trainingId: TrainingId) => buy((token, version) => purchaseTraining(token, characterId, trainingId, version)), [buy]);
   const buyMerchant = useCallback(() => buy((token, version) => recruitMerchant(token, version)), [buy]);
-  return { data, loading, error, refresh, replaceProfile, buyUpgrade, buyPassive, recruitMerchant: buyMerchant };
+  return { data, loading, error, refresh, replaceProfile, buyUpgrade, buyTraining, recruitMerchant: buyMerchant };
 }

@@ -1,9 +1,13 @@
 import {
   MetaUpgradeIdSchema,
-  PassiveIdSchema,
+  TrainingIdSchema,
+  CharacterIdSchema,
+  commonUpgradeCatalog,
+  characterTrainingCatalog,
   MERCHANT_RECRUIT_COST,
   type MetaUpgradeId,
-  type PassiveId,
+  type CharacterId,
+  type TrainingId,
   type PlayerProfile,
 } from '@caravan/contracts';
 import type { Caller } from '../auth/authorize.js';
@@ -11,25 +15,14 @@ import { ApiError } from '../http/responses.js';
 import type { ProfileRepositoryPort } from '../data/profileRepository.js';
 import { StorageError } from '../data/repositorySupport.js';
 
-export interface UpgradeDefinition {
-  baseCost: number;
-  costGrowth: number;
-  maxLevel: number;
-}
-
-export const upgradeCatalog: Readonly<Record<MetaUpgradeId, UpgradeDefinition>> = Object.freeze({
-  'max-health': { baseCost: 100, costGrowth: 1.65, maxLevel: 5 },
-  'attack-damage': { baseCost: 150, costGrowth: 1.7, maxLevel: 5 },
-  'move-speed': { baseCost: 100, costGrowth: 1.6, maxLevel: 5 },
-  'wagon-max-health': { baseCost: 125, costGrowth: 1.65, maxLevel: 5 },
-});
-
-export const passiveCatalog: Readonly<Record<PassiveId, { cost: number }>> = Object.freeze({
-  'iron-will': { cost: 300 }, 'keen-edge': { cost: 350 }, 'swift-step': { cost: 275 },
-});
-
 export interface PurchaseUpgradeRequest {
   upgradeId: MetaUpgradeId;
+  expectedProfileVersion: number;
+}
+
+export interface PurchaseTrainingRequest {
+  characterId: CharacterId;
+  trainingId: TrainingId;
   expectedProfileVersion: number;
 }
 
@@ -46,10 +39,11 @@ export class ProfileService {
 
     const current = await this.profiles.getOrCreate(caller);
     if (current.version !== request.expectedProfileVersion) throw new StorageError('PROFILE_CONFLICT');
-    const definition = upgradeCatalog[parsedUpgrade.data];
+    const definition = commonUpgradeCatalog[parsedUpgrade.data];
     const currentLevel = current.permanentUpgradeLevels[parsedUpgrade.data] ?? 0;
     if (currentLevel >= definition.maxLevel) throw new ApiError(400, 'INVALID_UPGRADE');
-    const cost = Math.ceil(definition.baseCost * definition.costGrowth ** currentLevel);
+    const cost = definition.rankCosts[currentLevel];
+    if (cost === undefined) throw new ApiError(400, 'INVALID_UPGRADE');
     if (current.goldBalance < cost) throw new ApiError(409, 'INSUFFICIENT_GOLD');
 
     const upgraded: PlayerProfile = {
@@ -63,17 +57,30 @@ export class ProfileService {
     return upgraded;
   }
 
-  async purchasePassive(caller: Caller, passiveId: PassiveId, expectedProfileVersion: number): Promise<PlayerProfile> {
-    const parsedPassive = PassiveIdSchema.safeParse(passiveId);
-    if (!parsedPassive.success) throw new ApiError(400, 'INVALID_UPGRADE');
+  async purchaseTraining(caller: Caller, request: PurchaseTrainingRequest): Promise<PlayerProfile> {
+    const parsedCharacter = CharacterIdSchema.safeParse(request.characterId);
+    const parsedTraining = TrainingIdSchema.safeParse(request.trainingId);
+    if (!parsedCharacter.success || !parsedTraining.success) throw new ApiError(400, 'INVALID_UPGRADE');
     const current = await this.profiles.getOrCreate(caller);
-    if (current.version !== expectedProfileVersion) throw new StorageError('PROFILE_CONFLICT');
-    if (current.passiveIds.includes(parsedPassive.data)) throw new ApiError(400, 'INVALID_UPGRADE');
-    const cost = passiveCatalog[parsedPassive.data].cost;
+    if (current.version !== request.expectedProfileVersion) throw new StorageError('PROFILE_CONFLICT');
+    if (!current.unlockedCharacters.includes(parsedCharacter.data)) throw new ApiError(400, 'INVALID_UPGRADE');
+    const definition = characterTrainingCatalog[parsedTraining.data];
+    if (definition.characterId !== parsedCharacter.data) throw new ApiError(400, 'INVALID_UPGRADE');
+    const currentLevel = current.characterTrainingLevels[parsedCharacter.data]?.[parsedTraining.data] ?? 0;
+    if (currentLevel >= definition.maxLevel) throw new ApiError(400, 'INVALID_UPGRADE');
+    const cost = definition.rankCosts[currentLevel];
+    if (cost === undefined) throw new ApiError(400, 'INVALID_UPGRADE');
     if (current.goldBalance < cost) throw new ApiError(409, 'INSUFFICIENT_GOLD');
     const upgraded: PlayerProfile = {
       ...current, version: current.version + 1, goldBalance: current.goldBalance - cost,
-      passiveIds: [...current.passiveIds, parsedPassive.data], updatedAt: new Date().toISOString(),
+      characterTrainingLevels: {
+        ...current.characterTrainingLevels,
+        [parsedCharacter.data]: {
+          ...current.characterTrainingLevels[parsedCharacter.data],
+          [parsedTraining.data]: currentLevel + 1,
+        },
+      },
+      updatedAt: new Date().toISOString(),
     };
     await this.profiles.save(upgraded);
     return upgraded;

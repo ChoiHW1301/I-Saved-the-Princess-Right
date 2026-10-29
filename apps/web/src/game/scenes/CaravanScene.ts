@@ -7,7 +7,8 @@ import { enemyCatalog, type EnemyDefinition } from '../content/enemies.js';
 import { BackgroundScroll } from '../systems/BackgroundScroll.js';
 import { EnemyDirector } from '../systems/EnemyDirector.js';
 import { HealthSystem } from '../systems/HealthSystem.js';
-import { movementFromKeys } from '../systems/MovementInput.js';
+import { movementFromKeys, normalizedMovement } from '../systems/MovementInput.js';
+import { ARCHER_DASH_DISTANCE, ARCHER_DASH_DURATION_MS, MAGE_WIND_RADIUS, resolveWindKnockback, startArcherDash, startMageWindSpirit, updateDash } from '../systems/ActiveAbilitySystem.js';
 import { RespawnSystem } from '../systems/RespawnSystem.js';
 import { seededRandom } from '../systems/seededRandom.js';
 import { createRunState } from '../state/RunState.js';
@@ -68,6 +69,7 @@ export class CaravanScene extends Phaser.Scene {
   private gameOverShown = false;
   private runEndEmitted = false;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
+  private spaceKey!: Phaser.Input.Keyboard.Key;
   private random = seededRandom(1);
   private uiPaused = false;
   private levelUpAnnouncing = false;
@@ -101,7 +103,10 @@ export class CaravanScene extends Phaser.Scene {
       throw new Error(`Character is locked for this profile: ${selectedCharacter}`);
     }
     this.run = snapshot && data.resumeSave ? restoreSnapshot(data.resumeSave) : createRunState(selectedCharacter);
-    if (!snapshot) applyPermanentUpgrade(data.profile ?? this.emptyProfile(), this.run);
+    if (!snapshot) {
+      this.run.trainingLevels = { ...(data.profile?.characterTrainingLevels[selectedCharacter] ?? {}) };
+      applyPermanentUpgrade(data.profile ?? this.emptyProfile(), this.run);
+    }
     if (data.runId) this.run.runId = data.runId;
     this.gameOverShown = false;
     this.runEndEmitted = false;
@@ -183,6 +188,8 @@ export class CaravanScene extends Phaser.Scene {
     this.damageFlash = this.add.graphics().setScrollFactor(0).setDepth(200).setAlpha(0);
     this.drawDamageFlash();
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
+    this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.input.keyboard!.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
     const clearInput = (): void => this.warrior?.setInput({ x: 0, y: 0 });
     window.addEventListener('blur', clearInput);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('blur', clearInput));
@@ -222,6 +229,7 @@ export class CaravanScene extends Phaser.Scene {
       if (this.run.status === 'lost' && !this.gameOverShown) this.showGameOver();
       return;
     }
+    updateDash(this.run, delta);
     const milestones = this.campaignClock.update(delta);
     this.run.elapsedSeconds = this.campaignClock.elapsedSeconds;
     for (const milestone of campaignSchedule.filter((candidate) => candidate.kind === 'miniboss')) {
@@ -260,12 +268,20 @@ export class CaravanScene extends Phaser.Scene {
       this.run.player.hp = Math.min(this.run.player.maxHp, this.run.player.hp + healthRegeneration * delta / 1000);
       this.warrior.setAlpha(this.run.player.invulnerableMs > 0 && Math.floor(this.run.player.invulnerableMs / 120) % 2 === 0 ? 0.45 : 1);
     }
-    this.warrior.setInput(movementFromKeys({
+    const movement = movementFromKeys({
       up: this.keys.W.isDown || this.keys.UP.isDown,
       down: this.keys.S.isDown || this.keys.DOWN.isDown,
       left: this.keys.A.isDown || this.keys.LEFT.isDown,
       right: this.keys.D.isDown || this.keys.RIGHT.isDown,
-    }));
+    });
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && !this.run.player.isDead
+      && (this.run.pausedBy === 'none' || this.run.pausedBy === 'boss')) {
+      this.activateCharacterAbility(movement);
+    }
+    if (this.run.dashRemainingMs > 0 && !this.run.player.isDead) {
+      const dashSpeed = ARCHER_DASH_DISTANCE * 1000 / ARCHER_DASH_DURATION_MS;
+      this.warrior.setDashVelocity(this.run.dashDirection, dashSpeed);
+    } else this.warrior.setInput(movement);
     this.warrior.updateWalkMotion(_time);
     this.background.update(delta);
     for (let index = this.rewardPickups.length - 1; index >= 0; index -= 1) {
@@ -296,7 +312,8 @@ export class CaravanScene extends Phaser.Scene {
       else {
         const wasDamaged = this.health.damagePlayer(this.run.player, attack.damage, this.run.upgradeStats['damage-reduction'] ?? 0);
         if (wasDamaged) this.showDamageFlash();
-        const reflect = this.run.upgradeStats['warrior-reflect'] ?? 0;
+        const reflectRank = this.run.characterId === 'warrior' ? this.run.trainingLevels['warrior-thorn-armor'] ?? 0 : 0;
+        const reflect = Math.min(reflectRank * 0.05, 0.25) * attack.damage;
         if (wasDamaged && reflect > 0) {
           const reflected = resolveHit(attack.enemy, reflect, 'warrior-reflect');
           if (reflected?.killed) this.onEnemyDefeated(attack.enemy);
@@ -582,6 +599,24 @@ export class CaravanScene extends Phaser.Scene {
     if (stat === 'caravan-max-health') {
       this.run.caravan.maxHp += value;
       this.run.caravan.hp += value;
+    }
+  }
+
+  private activateCharacterAbility(movement: { x: -1 | 0 | 1; y: -1 | 0 | 1 }): void {
+    if (this.run.characterId === 'archer') {
+      const inputDirection = normalizedMovement(movement);
+      const direction = inputDirection.x === 0 && inputDirection.y === 0 ? this.warrior.getLastMovementDirection() : inputDirection;
+      startArcherDash(this.run, direction);
+      return;
+    }
+    if (this.run.characterId !== 'mage' || !startMageWindSpirit(this.run)) return;
+    const origin = { x: this.warrior.x, y: this.warrior.y };
+    const pulse = this.add.circle(origin.x, origin.y, 12, 0x9deaff, 0.18).setStrokeStyle(4, 0xc8f4ff, 0.9).setDepth(11);
+    this.tweens.add({ targets: pulse, radius: MAGE_WIND_RADIUS, alpha: 0, duration: 360, onComplete: () => pulse.destroy() });
+    for (const enemy of this.enemies) {
+      const isFinalBoss = this.activeBossIsFinal && enemy.bossMilestoneId === this.activeBossMilestoneId;
+      const destination = resolveWindKnockback(origin, enemy.worldPosition, MAGE_WIND_RADIUS, Boolean(enemy.bossMilestoneId && !isFinalBoss), isFinalBoss);
+      if (destination) enemy.setPosition(Phaser.Math.Clamp(destination.x, 0, WORLD_WIDTH), Phaser.Math.Clamp(destination.y, 0, WORLD_HEIGHT));
     }
   }
 

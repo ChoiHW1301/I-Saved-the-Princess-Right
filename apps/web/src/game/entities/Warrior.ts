@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { CharacterId } from '@caravan/contracts';
 import type { KarmaTier } from '@caravan/contracts';
-import { normalizedMovement, type MovementInput } from '../systems/MovementInput.js';
+import { normalizedMovement, type MovementInput, type MovementVector } from '../systems/MovementInput.js';
 
 export class Warrior extends Phaser.Physics.Arcade.Sprite {
   static readonly SPEED = 220;
@@ -9,6 +9,7 @@ export class Warrior extends Phaser.Physics.Arcade.Sprite {
   private readonly baseScaleX: number;
   private readonly baseScaleY: number;
   private walkBob = 0;
+  private lastMovementDirection: MovementVector = { x: 1, y: 0 };
   constructor(scene: Phaser.Scene, x: number, y: number, characterId: CharacterId = 'warrior') {
     const textureKey = characterId === 'dark-warrior' ? 'portrait-warrior' : `portrait-${characterId}`;
     super(scene, x, y, scene.textures.exists(textureKey) ? textureKey : 'portrait-warrior');
@@ -24,8 +25,17 @@ export class Warrior extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body | undefined;
     if (!body) return;
     const vector = normalizedMovement(input);
+    if (vector.x !== 0 || vector.y !== 0) this.lastMovementDirection = vector;
     body.setVelocity(vector.x * this.moveSpeed, vector.y * this.moveSpeed);
     if (Math.abs(vector.x) > 0.01) this.setFlipX(vector.x < 0);
+  }
+  getLastMovementDirection(): MovementVector { return { ...this.lastMovementDirection }; }
+  setDashVelocity(direction: MovementVector, speed: number): void {
+    const body = this.body as Phaser.Physics.Arcade.Body | undefined;
+    if (!body) return;
+    body.setVelocity(direction.x * speed, direction.y * speed);
+    if (Math.abs(direction.x) > 0.01) this.setFlipX(direction.x < 0);
+    this.setAngle(direction.y * 5);
   }
   setKarmaTier(tier: KarmaTier): void {
     this.setTint(tier === 'evil' ? 0xc18bfa : 0xffffff);

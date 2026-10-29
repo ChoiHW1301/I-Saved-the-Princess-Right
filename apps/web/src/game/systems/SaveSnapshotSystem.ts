@@ -51,6 +51,10 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
     pendingChoices: run.pendingChoices.map((choice) => ({ ...choice })),
     weaponLevels: { ...run.weaponLevels },
     upgradeStats: { ...run.upgradeStats },
+    trainingLevels: { ...run.trainingLevels },
+    activeAbilityCooldownMs: Math.ceil(run.activeAbilityCooldownMs),
+    dashRemainingMs: Math.ceil(run.dashRemainingMs),
+    dashDirection: { ...run.dashDirection },
     upgradeIds: [...run.selectedUpgradeIds],
     defeatedBossIds: [...run.defeatedBossIds],
     enemies: input.enemies.filter((enemy) => !enemy.dead).map(({ id, typeId, x, y, hp, attackCooldownMs }) => ({ id, typeId, x, y, hp: Math.ceil(hp), attackCooldownMs: Math.ceil(attackCooldownMs) })),
@@ -74,5 +78,7 @@ export function restoreSnapshot(save: CurrentRunSaveV1): RunState {
     player: { hp: snapshot.player.hp, maxHp: snapshot.player.maxHp, isDead: snapshot.player.hp <= 0, respawnMs: snapshot.player.respawnMs, invulnerableMs: snapshot.player.invulnerableMs },
     caravan: { hp: snapshot.wagon.hp, maxHp: snapshot.wagon.maxHp }, pendingChoices: snapshot.pendingChoices.map((choice) => ({ ...choice })),
     pendingLevelUps: snapshot.pendingLevelUps, upgradeStats: { ...snapshot.upgradeStats },
+    trainingLevels: { ...snapshot.trainingLevels }, activeAbilityCooldownMs: snapshot.activeAbilityCooldownMs,
+    dashRemainingMs: snapshot.dashRemainingMs, dashDirection: { ...snapshot.dashDirection },
   };
 }

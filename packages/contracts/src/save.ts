@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CharacterIdSchema } from './profile.js';
+import { CharacterIdSchema, TrainingIdSchema } from './profile.js';
 import { CoordinateSchema, CounterSchema, IdSchema, IsoDateTimeSchema, UserIdSchema, withDocumentLimit } from './validation.js';
 
 const PlayerSnapshotSchema = z.object({
@@ -68,6 +68,10 @@ export const RunSnapshotV1Schema = z.object({
   upgradeStats: z.record(IdSchema, z.number().finite()).default({}).transform((stats) => Object.fromEntries(
     Object.entries(stats).map(([id, value]) => [id.startsWith('hero-') ? `warrior-${id.slice(5)}` : id, value]),
   )),
+  trainingLevels: z.partialRecord(TrainingIdSchema, CounterSchema).default({}),
+  activeAbilityCooldownMs: CounterSchema.default(0),
+  dashRemainingMs: CounterSchema.default(0),
+  dashDirection: z.object({ x: CoordinateSchema, y: CoordinateSchema }).strict().default({ x: 1, y: 0 }),
   upgradeIds: z.array(IdSchema).max(100).transform((ids) => ids.map((id) => id.startsWith('hero-') ? `warrior-${id.slice(5)}` : id)),
   defeatedBossIds: z.array(IdSchema).max(100),
   enemies: z.array(EnemySnapshotSchema).max(500),

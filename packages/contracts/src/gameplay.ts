@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { CharacterId, RunStatus } from './index.js';
-import { CharacterIdSchema } from './profile.js';
+import type { CharacterId, RunStatus, TrainingId } from './index.js';
+import { CharacterIdSchema, TrainingIdSchema } from './profile.js';
 
 export const UpgradeDefinitionSchema = z.object({
   id: z.string().min(1).max(64), name: z.string().min(1).max(100), description: z.string().min(1).max(240),
@@ -41,6 +41,9 @@ export const RunStateSchema = z.object({
   pausedBy: z.enum(['none', 'level-up', 'event', 'boss', 'network']), player: PlayerRunStateSchema, caravan: CaravanRunStateSchema,
   pendingChoices: z.array(UpgradeChoiceSchema).max(3), pendingLevelUps: z.number().int().nonnegative(),
   upgradeStats: z.record(z.string().min(1).max(64), z.number().finite()),
+  trainingLevels: z.partialRecord(TrainingIdSchema, z.number().int().nonnegative()).default({}),
+  activeAbilityCooldownMs: z.number().finite().nonnegative().default(0), dashRemainingMs: z.number().finite().nonnegative().default(0),
+  dashDirection: z.object({ x: z.number().finite(), y: z.number().finite() }).strict().default({ x: 1, y: 0 }),
 }).strict();
 export interface RunState {
   runId: string; status: RunStatus; elapsedSeconds: number; characterId: CharacterId;
@@ -49,7 +52,8 @@ export interface RunState {
   pausedBy: 'none' | 'level-up' | 'event' | 'boss' | 'network';
   player: PlayerRunState;
   caravan: CaravanRunState; pendingChoices: UpgradeChoice[]; pendingLevelUps: number;
-  upgradeStats: Record<string, number>;
+  upgradeStats: Record<string, number>; trainingLevels: Partial<Record<TrainingId, number>>;
+  activeAbilityCooldownMs: number; dashRemainingMs: number; dashDirection: { x: number; y: number };
 }
 
 export function getXpToNextLevel(level: number): number {

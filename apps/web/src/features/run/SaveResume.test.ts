@@ -9,7 +9,7 @@ const userId = '11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222
 const profile: PlayerProfile = { id: 'profile', userId, tenantId: userId.split(':')[0]!, objectId: userId.split(':')[1]!, version: 1, displayName: 'Warrior', goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: '2026-10-22T00:00:00.000Z' };
 const snapshot: RunSnapshotV1 = {
   characterId: 'warrior', worldWidth: 1280, roadCenterY: 267, elapsedSeconds: 30, stageId: 'demon-castle', rngSeed: 99, karma: 0, status: 'active', pendingEventId: null, approachingEvent: null, rewardPickups: [], eventChoiceIds: [], ordinarySpawnCooldownMs: 500, activeBoss: null,
-  player: { x: 320, y: 340, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, invulnerableMs: 0 }, wagon: { hp: 250, maxHp: 250 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, upgradeIds: [], defeatedBossIds: [], enemies: [], projectiles: [],
+  player: { x: 320, y: 340, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, invulnerableMs: 0 }, wagon: { hp: 250, maxHp: 250 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, trainingLevels: {}, activeAbilityCooldownMs: 0, dashRemainingMs: 0, dashDirection: { x: 1, y: 0 }, upgradeIds: [], defeatedBossIds: [], enemies: [], projectiles: [],
 };
 function save(runId = 'run-1', revision = 0, state = snapshot): CurrentRunSaveV1 { return { id: 'current', userId, schemaVersion: 1, revision, runId, savedAt: '2026-10-22T00:00:00.000Z', snapshot: state }; }
 class MemoryStore implements LocalSaveStore {

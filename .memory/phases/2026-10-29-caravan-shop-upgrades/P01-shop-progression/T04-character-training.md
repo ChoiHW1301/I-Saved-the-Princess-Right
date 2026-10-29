@@ -1,6 +1,6 @@
 # Task: T04 Character Training
 
-## Status: pending
+## Status: done
 
 ## Goal
 Implement Warrior Thorn Armor, Archer Dash, and Mage Wind Spirit's Blessing so training purchases create the character-specific behavior described in the shop.
@@ -38,16 +38,23 @@ Implement Warrior Thorn Armor, Archer Dash, and Mage Wind Spirit's Blessing so t
 - Tick cooldown/dash duration from game delta, freeze them while scene is paused, and restore from the snapshot fields.
 
 ## Acceptance Criteria
-- [ ] Warrior rank 1–5 reflects exactly 5–25% of incoming raw damage.
-- [ ] Archer dash fires only when unlocked and off cooldown, moves in the correct direction, grants dash-length invulnerability, and blocks normal movement until complete.
-- [ ] Mage ability pushes regular/midboss enemies by the defined amounts, does not damage them, and leaves the final boss unmoved.
-- [ ] Abilities and cooldown state survive manual save/resume and older snapshots parse with defaults.
+- [x] Warrior rank 1–5 reflects exactly 5–25% of incoming raw damage.
+- [x] Archer dash fires only when unlocked and off cooldown, moves in the correct direction, grants dash-length invulnerability, and blocks normal movement until complete.
+- [x] Mage ability pushes regular/midboss enemies by the defined amounts, does not damage them, and leaves the final boss unmoved.
+- [x] Abilities and cooldown state survive manual save/resume and older snapshots parse with defaults.
 
 ## Validation
 - `npm run typecheck --workspace @caravan/contracts` — run-state/snapshot types pass.
 - `npm run typecheck --workspace @caravan/web` — scene and ability types pass.
 - `npm run build --workspace @caravan/web` — game bundle builds.
 - Manual: activate each ability in a run, verify movement/range/cooldown/health behavior, save during a cooldown and resume.
+
+## Execution Notes
+- New runs copy only the selected character's purchased training ranks into run state. Saves persist those ranks, ability cooldown, and Archer dash remaining time/direction; older V1 snapshots receive safe defaults.
+- Warrior reflects 5% per Thorn Armor rank, up to 25%, from raw incoming hit damage. Archer's unlocked Space ability dashes 160 px over 250 ms with invulnerability and a 4-second cooldown. Mage's unlocked Space ability knocks regular enemies to the 200 px boundary and midbosses halfway there, with no damage; final bosses ignore it. Abilities also work during active boss combat.
+- Updated the existing save-flow snapshot fixture to include the newly required typed fields. No tests were run.
+- `npm run typecheck --workspace @caravan/contracts`, `npm run build --workspace @caravan/contracts`, `npm run typecheck --workspace @caravan/web`, and `npm run build --workspace @caravan/web` passed.
+- No in-browser ability or save/resume review was run.
 
 ## Commit Message
 ```text
@@ -62,6 +69,6 @@ Task: T04-character-training
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
 - commit: pending

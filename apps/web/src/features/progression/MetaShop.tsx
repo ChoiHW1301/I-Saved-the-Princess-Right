@@ -14,9 +14,6 @@ const characterOrder: readonly CharacterId[] = ['warrior', 'archer', 'mage', 'me
 const characterNames: Record<Exclude<CharacterId, 'dark-warrior'>, string> = {
   warrior: '전사', archer: '궁수', mage: '마법사', merchant: '상인',
 };
-const trainingByCharacter: Partial<Record<CharacterId, TrainingId>> = {
-  warrior: 'warrior-thorn-armor', archer: 'archer-dash', mage: 'mage-wind-spirit', merchant: 'merchant-money-bomb',
-};
 const trainingNames: Record<TrainingId, string> = {
   'warrior-thorn-armor': '가시 갑옷', 'warrior-taunt': '도발', 'archer-dash': '대쉬',
   'mage-wind-spirit': '바람 정령의 가호', 'merchant-money-bomb': '머니 밤',
@@ -108,12 +105,8 @@ export function MetaShop({ profile, onPurchased, onBuyUpgrade, onBuyTraining, on
     }
   };
 
-  const selectedTrainingId = trainingByCharacter[selectedCharacter];
-  const training = selectedTrainingId ? characterTrainingCatalog[selectedTrainingId] : undefined;
-  const trainingLevel = selectedTrainingId ? profile.characterTrainingLevels[selectedCharacter]?.[selectedTrainingId] ?? 0 : 0;
-  const trainingCapped = training ? trainingLevel >= training.maxLevel : true;
-  const trainingCost = training && !trainingCapped ? training.rankCosts[trainingLevel] : undefined;
-  const trainingOwned = training?.kind === 'unlock' && trainingLevel > 0;
+  const selectedTrainings = Object.values(characterTrainingCatalog)
+    .filter((training) => training.characterId === selectedCharacter);
 
   return <section className="meta-shop" aria-labelledby="shop-title">
     <div className="section-heading"><div><span className="eyebrow">CAMP PROVISIONS</span><h2 id="shop-title">상점</h2></div><p>골드로 원정 준비를 하고, 함께 갈 동료를 영입하세요.</p></div>
@@ -143,15 +136,25 @@ export function MetaShop({ profile, onPurchased, onBuyUpgrade, onBuyTraining, on
         <CharacterPortrait characterId={characterId as Exclude<CharacterId, 'dark-warrior'>} /><span>{characterNames[characterId as Exclude<CharacterId, 'dark-warrior'>]}</span>
       </button>)}
     </div>}
-    {training && selectedTrainingId && <article className="training-card">
-      <CharacterPortrait characterId={selectedCharacter as Exclude<CharacterId, 'dark-warrior'>} large />
-      <div className="training-copy"><div className="training-card-heading"><div><h4>{trainingNames[selectedTrainingId]}</h4><p>{trainingEffects[selectedTrainingId]}</p></div><span className="level-pill">{training.kind === 'ranked' ? `${trainingLevel} / ${training.maxLevel}` : trainingOwned ? '습득 완료' : '미습득'}</span></div>
-        {training.kind === 'ranked' && <div className="level-track" role="img" aria-label={`훈련 레벨 ${trainingLevel}/${training.maxLevel}`}><span style={{ width: `${trainingLevel / training.maxLevel * 100}%` }} /></div>}
-        <button type="button" className="button button-secondary" disabled={busy || trainingCapped || (trainingCost !== undefined && profile.goldBalance < trainingCost)} onClick={() => void purchaseTraining(selectedTrainingId)}>
-          {trainingCapped ? trainingOwned ? '습득 완료' : '최대 레벨' : profile.goldBalance < (trainingCost ?? 0) ? `골드 부족 · ${trainingCost} G` : `${trainingCost} G · ${training.kind === 'unlock' ? '습득' : '훈련'}`}
-        </button>
-      </div>
-    </article>}
+    {selectedTrainings.map((training) => {
+      const trainingId = training.id;
+      const trainingLevel = profile.characterTrainingLevels[selectedCharacter]?.[trainingId] ?? 0;
+      const trainingCapped = trainingLevel >= training.maxLevel;
+      const trainingCost = trainingCapped ? undefined : training.rankCosts[trainingLevel];
+      const trainingOwned = training.kind === 'unlock' && trainingLevel > 0;
+      const trainingPoor = trainingCost !== undefined && profile.goldBalance < trainingCost;
+      return <article className="training-card" key={trainingId}>
+        <CharacterPortrait characterId={selectedCharacter as Exclude<CharacterId, 'dark-warrior'>} large />
+        <div className="training-copy"><div className="training-card-heading"><div><h4>{trainingNames[trainingId]}</h4><p>{trainingEffects[trainingId]}</p></div><span className="level-pill">{training.kind === 'ranked' ? `${trainingLevel} / ${training.maxLevel}` : trainingOwned ? '습득 완료' : '미습득'}</span></div>
+          {training.kind === 'ranked'
+            ? <div className="level-track" role="img" aria-label={`훈련 레벨 ${trainingLevel}/${training.maxLevel}`}><span style={{ width: `${trainingLevel / training.maxLevel * 100}%` }} /></div>
+            : <div className="training-bar-spacer" aria-hidden="true" />}
+          <button type="button" className="button button-secondary" disabled={busy || trainingCapped || trainingPoor} onClick={() => void purchaseTraining(trainingId)}>
+            {trainingCapped ? trainingOwned ? '습득 완료' : '최대 레벨' : trainingPoor ? `골드 부족 · ${trainingCost} G` : `${trainingCost} G · ${training.kind === 'unlock' ? '습득' : '훈련'}`}
+          </button>
+        </div>
+      </article>;
+    })}
 
     <button type="button" className="merchant-shopkeeper" aria-label="상인과 대화" onClick={() => void talkToMerchant()} disabled={busy}><span className="merchant-speech" aria-live="polite">{merchantLine}</span><img src="/game-assets/portrait-merchant.png" alt="" /></button>
   </section>;

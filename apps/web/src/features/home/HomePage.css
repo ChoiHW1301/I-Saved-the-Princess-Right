@@ -205,3 +205,18 @@
   .banner-art::before { background: linear-gradient(90deg, #fff4dd 0%, #fff4dd80 24%, #fff4dd00 70%), linear-gradient(0deg, #f5d28e44, transparent 80%); }
   .banner-art img { object-position: center bottom; }
 }
+
+/* Keep all common upgrades visible in the requested five-column layout at every width. */
+.meta-shop .upgrade-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(3px, 0.8vw, 12px); }
+.meta-shop .upgrade-grid > .upgrade-card { min-width: 0; gap: clamp(5px, 0.8vw, 12px); padding: clamp(4px, 1.1vw, 18px); }
+.meta-shop .upgrade-top { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: clamp(3px, 0.6vw, 9px); min-width: 0; }
+.meta-shop .upgrade-title-group { align-items: start; gap: clamp(3px, 0.7vw, 10px); min-width: 0; }
+.meta-shop .upgrade-title-group > div { min-width: 0; }
+.meta-shop .meta-icon { flex: 0 0 clamp(16px, 2.5vw, 38px); width: clamp(16px, 2.5vw, 38px); height: clamp(16px, 2.5vw, 38px); }
+.meta-shop .upgrade-card h4 { min-width: 0; font-size: clamp(9px, 1.25vw, 18px); line-height: 1.25; overflow-wrap: anywhere; }
+.meta-shop .upgrade-card p { margin-top: 4px; font-size: clamp(8px, 0.95vw, 13px); line-height: 1.35; overflow-wrap: anywhere; }
+.meta-shop .upgrade-top .level-pill { justify-self: start; max-width: 100%; padding: 2px 4px; font-size: clamp(8px, 0.8vw, 11px); white-space: normal; }
+.meta-shop .upgrade-card .button { min-width: 0; min-height: clamp(30px, 3.1vw, 44px); padding-inline: 3px; font-size: clamp(8px, 1vw, 14px); line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
+.training-bar-spacer { height: 5px; }
+.training-card, .training-copy, .training-card-heading, .training-card-heading > div { min-width: 0; }
+.training-portrait { object-fit: contain; }

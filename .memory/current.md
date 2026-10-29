@@ -7,12 +7,12 @@
 [P01 Taunt, Shop Layout, and Enemy Visuals](./phases/2026-10-29-caravan-taunt-and-shop-layout/P01-taunt-shop-and-enemy-visuals/phase.md)
 
 ## Active Task
-[T03 Enemy Facing by Movement](./phases/2026-10-29-caravan-taunt-and-shop-layout/P01-taunt-shop-and-enemy-visuals/T03-enemy-facing.md)
+None — all tasks in `Caravan Taunt and Shop Layout` are complete.
 
 ## Status
-- T01 Warrior Taunt Training and T02 Shop Layout and Multiple Trainings are implemented; typecheck/build validations pass.
-- T02 still needs a visual responsive check in a browser; no browser tab was available in this environment.
+- T01–T03 are implemented; contracts and web typecheck/build validations pass.
+- Manual browser checks for T02 responsive layout and T03 sprite orientation remain for the next local play session; no browser tab was available in this environment.
 - Azure deployment remains paused and is not part of this plan.
 
 ## Next Step (IMPORTANT)
-Read the full T03 blueprint and make enemy sprites face their horizontal movement direction while retaining their last facing during vertical or zero-horizontal movement.
+The planned Taunt, shop layout, and enemy-facing work is complete. Continue with a new plan or resume the paused Azure deployment only when requested.

@@ -13,7 +13,7 @@ Add a one-time Warrior Taunt training that redirects nearby wagon-priority enemi
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | Add Taunt gameplay and catalog entry, render multiple training cards and the fixed five-column common-upgrade grid, and orient enemy sprites by movement. | [P01](../phases/2026-10-29-caravan-taunt-and-shop-layout/P01-taunt-shop-and-enemy-visuals/phase.md) |
+| P01 | `done` | Add Taunt gameplay and catalog entry, render multiple training cards and the fixed five-column common-upgrade grid, and orient enemy sprites by movement. | [P01](../phases/2026-10-29-caravan-taunt-and-shop-layout/P01-taunt-shop-and-enemy-visuals/phase.md) |
 
 ## Scope Notes
 - Azure deployment and persistence are out of scope; this is local game/shop work.

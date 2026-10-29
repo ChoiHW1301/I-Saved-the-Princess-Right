@@ -42,6 +42,10 @@ export class Enemy extends Phaser.GameObjects.Container implements Damageable {
     scene.add.existing(this);
   }
   get worldPosition(): Vector2 { return { x: this.x, y: this.y }; }
+  setFacingDirection(horizontalDelta: number): void {
+    if (horizontalDelta === 0) return;
+    this.bodyImage.setFlipX(horizontalDelta < 0);
+  }
   damage(amount: number): void {
     if (this.dead || !Number.isFinite(amount) || amount <= 0) return;
     this.hp = Math.max(0, this.hp - amount);

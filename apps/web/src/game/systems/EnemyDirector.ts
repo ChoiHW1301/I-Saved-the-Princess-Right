@@ -33,8 +33,10 @@ export class EnemyDirector {
       const distance = Math.sqrt(distSq);
       if (distance > 0) {
         const travel = Math.min(distance - enemy.definition.attackRange, enemy.definition.speed * delta / 1000);
+        const previousX = enemy.x;
         enemy.setPosition(enemy.x + (destination.x - enemy.x) / distance * travel,
           enemy.y + (destination.y - enemy.y) / distance * travel);
+        enemy.setFacingDirection(enemy.x - previousX);
       }
     }
     return attacks;

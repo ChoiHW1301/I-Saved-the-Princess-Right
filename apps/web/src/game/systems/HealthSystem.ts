@@ -1,9 +1,10 @@
 import type { CaravanState, PlayerState, RunState } from '../state/RunState.js';
 
 export class HealthSystem {
-  damagePlayer(player: PlayerState, amount: number): boolean {
+  damagePlayer(player: PlayerState, amount: number, damageReduction = 0): boolean {
     if (player.isDead || player.invulnerableMs > 0 || !Number.isFinite(amount) || amount <= 0) return false;
-    player.hp = Math.max(0, player.hp - amount);
+    const reduction = Number.isFinite(damageReduction) ? Math.max(0, Math.min(1, damageReduction)) : 0;
+    player.hp = Math.max(0, player.hp - amount * (1 - reduction));
     if (player.hp === 0) {
       player.isDead = true;
       player.respawnMs = 3000;

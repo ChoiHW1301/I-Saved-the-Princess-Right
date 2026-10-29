@@ -7,11 +7,11 @@
 [P01 Shop Progression](./phases/2026-10-29-caravan-shop-upgrades/P01-shop-progression/phase.md)
 
 ## Active Task
-[T03 Common Upgrade Effects](./phases/2026-10-29-caravan-shop-upgrades/P01-shop-progression/T03-common-upgrade-effects.md)
+[T04 Character Training](./phases/2026-10-29-caravan-shop-upgrades/P01-shop-progression/T04-character-training.md)
 
 ## Status
-- T01 and T02 are implemented. Web typecheck and production build pass; no tests were run.
+- T01–T03 are implemented. Web typecheck and production build pass; no tests were run.
 - Azure deployment is paused at T03 by the user's request. Its plan remains documented; resuming API deployment requires a resource administrator to assign the Function identity's data roles.
 
 ## Next Step (IMPORTANT)
-Read T03 and apply the purchased common upgrade ranks when initializing a new run; do not apply them a second time on resume.
+Read T04 and implement Warrior reflection, Archer dash, and Mage knockback using the character-specific training unlocks.

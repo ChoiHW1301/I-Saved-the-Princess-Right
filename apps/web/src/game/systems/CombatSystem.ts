@@ -3,7 +3,15 @@ import type { EnemyTarget } from '../content/enemies.js';
 export interface Vector2 { x: number; y: number }
 export interface Damageable { id: string; hp: number; maxHp: number; dead?: boolean }
 export interface DamageResult { target: Damageable; damage: number; killed: boolean; sourceId: string }
+export interface CriticalDamageResult { damage: number; critical: boolean }
 export type TargetPolicy = 'warrior-priority' | 'nearest' | 'caravan-priority';
+
+export function rollCriticalDamage(baseDamage: number, criticalChance: number, random: () => number): CriticalDamageResult {
+  const chance = Number.isFinite(criticalChance) ? Math.max(0, Math.min(1, criticalChance)) : 0;
+  const roll = random();
+  const critical = Number.isFinite(roll) && roll < chance;
+  return { damage: critical ? baseDamage * 2 : baseDamage, critical };
+}
 
 export function distanceSquared(a: Vector2, b: Vector2): number {
   const dx = a.x - b.x;

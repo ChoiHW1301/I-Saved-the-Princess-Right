@@ -1,6 +1,6 @@
 # Task: T03 Common Upgrade Effects
 
-## Status: pending
+## Status: done
 
 ## Goal
 Apply the profile's common upgrade ranks to each new run so shop purchases affect combat, movement, survivability, wagon durability, XP, and gold.
@@ -43,14 +43,23 @@ Apply the profile's common upgrade ranks to each new run so shop purchases affec
 - Save `upgradeStats` in existing run snapshots as currently done; do not reapply profile bonuses during resume.
 
 ## Acceptance Criteria
-- [ ] Each of ten profile levels produces the exact confirmed rank effect and purchases use fixed prices.
-- [ ] Critical chance, 2× critical damage, defense, regeneration, speed, attack speed, and reward bonuses behave consistently for every character.
-- [ ] Wagon damage is unchanged by player defense; new-run stat initialization does not double-apply on resume.
+- [x] Each of ten profile levels produces the exact confirmed rank effect and purchases use fixed prices.
+- [x] Critical chance, 2× critical damage, defense, regeneration, speed, attack speed, and reward bonuses behave consistently for every character.
+- [x] Wagon damage is unchanged by player defense; new-run stat initialization does not double-apply on resume.
 
 ## Validation
 - `npm run typecheck --workspace @caravan/web` — gameplay types pass.
 - `npm run build --workspace @caravan/web` — game bundle builds.
 - Manual: begin one run per unlocked character with representative rank profiles; inspect max HP, speed, attack rate, hit/crit, player damage, wagon damage, regeneration, XP and gold awards.
+
+## Execution Notes
+- All ten catalogued permanent upgrade ranks are now applied from the shared contracts catalog when a new run is created. Player and wagon current/max HP increase together; the other bonuses are saved in `upgradeStats`.
+- Attack speed applies to every equipped weapon. Direct weapon hits roll a seeded critical chance for 2× damage; burn ticks remain non-critical. Player damage reduction is applied only to player hits, leaving caravan damage unchanged.
+- Enemy rewards and collected XP/gold pickups apply their matching bonuses and round once per award. XP remains a positive integer. Merchant base HP is now 95.
+- Resume continues to restore the saved run snapshot and skips profile upgrade application.
+- `npm run typecheck --workspace @caravan/web` passed.
+- `npm run build --workspace @caravan/web` passed. Vite reports the large JavaScript chunk warning; build succeeds.
+- No tests or in-browser combat review were run in this execution.
 
 ## Commit Message
 ```text
@@ -65,6 +74,6 @@ Task: T03-common-upgrade-effects
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
 - commit: pending

@@ -294,7 +294,7 @@ export class CaravanScene extends Phaser.Scene {
         if (this.health.damageCaravan(this.run.caravan, attack.damage, this.run)) this.showDamageFlash();
       }
       else {
-        const wasDamaged = this.health.damagePlayer(this.run.player, attack.damage);
+        const wasDamaged = this.health.damagePlayer(this.run.player, attack.damage, this.run.upgradeStats['damage-reduction'] ?? 0);
         if (wasDamaged) this.showDamageFlash();
         const reflect = this.run.upgradeStats['warrior-reflect'] ?? 0;
         if (wasDamaged && reflect > 0) {
@@ -434,14 +434,16 @@ export class CaravanScene extends Phaser.Scene {
 
   private onEnemyDefeated(enemy: Enemy): void {
     this.run.kills += 1;
-    this.run.runGold += enemy.definition.gold;
+    const gold = this.scaleRunAward(enemy.definition.gold, 'gold-gain');
+    const experience = Math.max(1, this.scaleRunAward(enemy.definition.experience, 'xp-gain'));
+    this.run.runGold += gold;
     this.events.emit('enemy-defeated', {
       enemyId: enemy.definition.id,
-      experience: enemy.definition.experience,
-      gold: enemy.definition.gold,
+      experience,
+      gold,
       position: enemy.worldPosition,
     });
-    const result = this.levelSystem.addXp(this.run, enemy.definition.experience);
+    const result = this.levelSystem.addXp(this.run, experience);
     if (enemy.definition.rewardMonster) this.dropRewardPickup(enemy.worldPosition);
     if (result.levelUps > 0 && this.run.pendingChoices.length > 0) {
       this.announceLevelUp(this.run.level, this.run.pendingChoices);
@@ -604,13 +606,19 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private collectReward(reward: RewardPickupState): void {
-    if (reward.type === 'gold') this.run.runGold += reward.amount;
+    if (reward.type === 'gold') this.run.runGold += this.scaleRunAward(reward.amount, 'gold-gain');
     if (reward.type === 'experience') {
-      const levelResult = this.levelSystem.addXp(this.run, reward.amount);
+      const experience = Math.max(1, this.scaleRunAward(reward.amount, 'xp-gain'));
+      const levelResult = this.levelSystem.addXp(this.run, experience);
       if (levelResult.levelUps > 0 && this.run.pendingChoices.length > 0) this.announceLevelUp(this.run.level, this.run.pendingChoices);
     }
     if (reward.type === 'player-health') this.run.player.hp = Math.min(this.run.player.maxHp, this.run.player.hp + reward.amount);
     if (reward.type === 'caravan-repair') this.run.caravan.hp = Math.min(this.run.caravan.maxHp, this.run.caravan.hp + reward.amount);
+  }
+
+  private scaleRunAward(amount: number, bonusStat: 'xp-gain' | 'gold-gain'): number {
+    const bonus = Math.max(0, this.run.upgradeStats[bonusStat] ?? 0);
+    return Math.max(0, Math.round(amount * (1 + bonus)));
   }
 
   private emptyProfile(): PlayerProfile {

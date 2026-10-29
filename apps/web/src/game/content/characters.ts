@@ -15,7 +15,7 @@ export const characterCatalog: Readonly<Record<Exclude<CharacterId, 'dark-warrio
   },
   merchant: {
     id: 'merchant', name: '상인', unlockRule: 'shop-purchase', startingWeaponId: 'gold-shotgun', beginner: false,
-    baseStats: { maxHp: 105, speed: 215, damageMultiplier: 0.9 },
+    baseStats: { maxHp: 95, speed: 215, damageMultiplier: 0.9 },
   },
 };
 

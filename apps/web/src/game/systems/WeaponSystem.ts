@@ -2,7 +2,7 @@ import type { CharacterId, RunState, WeaponDefinition } from '@caravan/contracts
 import { getCharacterDefinition } from '../content/characters.js';
 import { weaponCatalog } from '../content/weapons.js';
 import type { Enemy } from '../entities/Enemy.js';
-import { distanceSquared, resolveHit, type Vector2 } from './CombatSystem.js';
+import { distanceSquared, resolveHit, rollCriticalDamage, type Vector2 } from './CombatSystem.js';
 
 export interface ProjectileSpawn { weaponId: string; targets: Enemy[]; targetPositions: Vector2[]; damage: number; penetration: number; statusEffect?: 'burn' }
 interface BurnState { remainingMs: number; cooldownMs: number; damage: number }
@@ -28,7 +28,7 @@ export class WeaponSystem {
     for (const weaponId of run.equippedWeaponIds) {
       const weapon = weaponCatalog[weaponId];
       if (!weapon || weapon.owner !== run.characterId) continue;
-      const attackSpeedBonus = weaponId === 'sword' ? run.upgradeStats['attack-speed'] ?? 0 : 0;
+      const attackSpeedBonus = run.upgradeStats['attack-speed'] ?? 0;
       const intervalMs = weapon.intervalMs / (1 + attackSpeedBonus);
       const cooldown = Math.max(0, (this.cooldowns.get(weaponId) ?? 0) - delta);
       if (cooldown > 0) { this.cooldowns.set(weaponId, cooldown); continue; }
@@ -78,7 +78,8 @@ export class WeaponSystem {
       onFire?.({ weaponId, targets: directTargets, targetPositions, damage, penetration, ...(statusEffect ? { statusEffect } : {}) });
       for (const enemy of hitTargets) {
         const copyDamage = weaponId === 'fireball' && random() < weakCopyChance ? damage * 0.45 : 0;
-        const hit = resolveHit(enemy, damage + copyDamage, weaponId);
+        const critical = rollCriticalDamage(damage + copyDamage, run.upgradeStats['critical-chance'] ?? 0, random);
+        const hit = resolveHit(enemy, critical.damage, weaponId);
         if (hit?.killed) killed.add(enemy);
         if (statusEffect && !enemy.dead) this.applyBurn(enemy, bowBurn || Math.max(1, damage * 0.12));
       }

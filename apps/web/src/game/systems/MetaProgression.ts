@@ -4,16 +4,29 @@ export { getUpgradeCost } from '../content/metaProgression.js';
 
 export function applyPermanentUpgrade(profile: PlayerProfile, run: RunState): RunState {
   const levels = profile.permanentUpgradeLevels;
-  const maxHealth = (levels['max-health'] ?? 0) * metaUpgradeCatalog['max-health'].valuePerLevel;
-  const moveSpeed = (levels['move-speed'] ?? 0) * metaUpgradeCatalog['move-speed'].valuePerLevel;
-  const wagonHealth = (levels['wagon-max-health'] ?? 0) * metaUpgradeCatalog['wagon-max-health'].valuePerLevel;
-  const attackBonus = (levels['attack-damage'] ?? 0) * metaUpgradeCatalog['attack-damage'].valuePerLevel;
-  run.player.maxHp += maxHealth;
-  run.player.hp += maxHealth;
-  run.caravan.maxHp += wagonHealth;
-  run.caravan.hp += wagonHealth;
-  run.upgradeStats['movement-speed'] = (run.upgradeStats['movement-speed'] ?? 0) + moveSpeed;
-  run.upgradeStats['global-damage-multiplier'] = (run.upgradeStats['global-damage-multiplier'] ?? 0) + attackBonus;
+  for (const item of Object.values(metaUpgradeCatalog)) {
+    const rank = Math.min(item.maxLevel, levels[item.id] ?? 0);
+    const value = rank * item.valuePerLevel;
+    if (value <= 0) continue;
+    switch (item.id) {
+      case 'max-health':
+        run.player.maxHp += value;
+        run.player.hp += value;
+        break;
+      case 'wagon-max-health':
+        run.caravan.maxHp += value;
+        run.caravan.hp += value;
+        break;
+      case 'move-speed': run.upgradeStats['movement-speed'] = value; break;
+      case 'attack-damage': run.upgradeStats['global-damage-multiplier'] = value; break;
+      case 'critical-chance': run.upgradeStats['critical-chance'] = value; break;
+      case 'attack-speed': run.upgradeStats['attack-speed'] = value; break;
+      case 'health-regeneration': run.upgradeStats['health-regeneration'] = value; break;
+      case 'xp-gain': run.upgradeStats['xp-gain'] = value; break;
+      case 'gold-gain': run.upgradeStats['gold-gain'] = value; break;
+      case 'defense': run.upgradeStats['damage-reduction'] = value; break;
+    }
+  }
   return run;
 }
 

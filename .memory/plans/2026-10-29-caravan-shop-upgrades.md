@@ -18,7 +18,10 @@ Replace the current small set of permanent upgrades and shared passives with ten
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | Extend profile purchases, redesign the shop, apply shared stats, then implement per-character training and save/resume behavior. | [P01](../phases/2026-10-29-caravan-shop-upgrades/P01-shop-progression/phase.md) |
+| P01 | `done` | Extend profile purchases, redesign the shop, apply shared stats, then implement per-character training and save/resume behavior. | [P01](../phases/2026-10-29-caravan-shop-upgrades/P01-shop-progression/phase.md) |
+
+## Progress
+- All five P01 tasks are complete. Azure deployment remains paused in its separate plan.
 
 ## Scope notes
 - Existing profile purchase persistence is already implemented in the web client and API; this plan extends those endpoints and their profile schema rather than introducing a second storage mechanism.

@@ -37,6 +37,9 @@ import { enemyForSpawnRoll, scaledEnemyHp } from '../systems/EnemyProgression.js
 import { RewardPickup } from '../entities/RewardPickup.js';
 import type { RewardPickupState } from '../systems/RewardPickupSystem.js';
 import { chooseRewardType } from '../systems/RewardPickupSystem.js';
+import { MoneyBomb, type MoneyBombState } from '../entities/MoneyBomb.js';
+import { placeMerchantMoneyBomb } from '../systems/ActiveAbilitySystem.js';
+import { rollCriticalDamage } from '../systems/CombatSystem.js';
 import type { StageId } from '../content/biomes.js';
 
 export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1 }
@@ -47,6 +50,7 @@ export class CaravanScene extends Phaser.Scene {
   private background!: BackgroundScroll;
   private readonly enemies: Enemy[] = [];
   private readonly rewardPickups: RewardPickup[] = [];
+  private readonly moneyBombs: MoneyBomb[] = [];
   private run = createRunState();
   private readonly enemyDirector = new EnemyDirector();
   private readonly weaponSystem = new WeaponSystem();
@@ -94,6 +98,8 @@ export class CaravanScene extends Phaser.Scene {
   }
   create(data?: RunWorldConfig): void {
     data = { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1, ...this.initialRunConfig, ...data };
+    this.moneyBombs.forEach((bomb) => bomb.destroy());
+    this.moneyBombs.length = 0;
     if (!this.anims.exists('monster-death')) this.anims.create({
       key: 'monster-death', frames: this.anims.generateFrameNumbers('death-keep-ghoul', { start: 0, end: 3 }), frameRate: 9, repeat: 0,
     });
@@ -146,6 +152,13 @@ export class CaravanScene extends Phaser.Scene {
       const point = mapSnapshotWorldPoint(saved, snapshot!, { width: WORLD_WIDTH, height: WORLD_HEIGHT, roadCenterY: ROAD_CENTER_Y });
       const pickup = new RewardPickup(this, { ...saved, ...point });
       this.rewardPickups.push(pickup);
+    }
+    for (const saved of snapshot?.moneyBombs ?? []) {
+      const point = mapSnapshotWorldPoint(saved, snapshot!, { width: WORLD_WIDTH, height: WORLD_HEIGHT, roadCenterY: ROAD_CENTER_Y });
+      const rank = Math.min(5, this.run.trainingLevels['merchant-money-bomb'] ?? 0);
+      const damage = 40 * 1.1 ** Math.max(0, rank - 1) * (1 + Math.max(0, this.run.upgradeStats['global-damage-multiplier'] ?? 0));
+      const radius = 100 + 10 * Math.max(0, rank - 1);
+      this.moneyBombs.push(new MoneyBomb(this, { ...saved, ...point, damage, radius }));
     }
     if (snapshot) {
       this.run.elapsedSeconds = snapshot.elapsedSeconds;
@@ -284,6 +297,7 @@ export class CaravanScene extends Phaser.Scene {
     } else this.warrior.setInput(movement);
     this.warrior.updateWalkMotion(_time);
     this.background.update(delta);
+    this.advanceMoneyBombs(delta);
     for (let index = this.rewardPickups.length - 1; index >= 0; index -= 1) {
       const pickup = this.rewardPickups[index]!;
       if (!pickup.advance(delta)) { pickup.destroy(); this.rewardPickups.splice(index, 1); continue; }
@@ -609,6 +623,12 @@ export class CaravanScene extends Phaser.Scene {
       startArcherDash(this.run, direction);
       return;
     }
+    if (this.run.characterId === 'merchant') {
+      const id = `bomb-${this.run.runId}-${Math.floor(this.run.elapsedSeconds * 1000)}`;
+      const bomb = placeMerchantMoneyBomb(this.run, id, { x: this.warrior.x, y: this.warrior.y + 18 });
+      if (bomb) this.moneyBombs.push(new MoneyBomb(this, bomb));
+      return;
+    }
     if (this.run.characterId !== 'mage' || !startMageWindSpirit(this.run)) return;
     const origin = { x: this.warrior.x, y: this.warrior.y };
     const pulse = this.add.circle(origin.x, origin.y, 12, 0x9deaff, 0.18).setStrokeStyle(4, 0xc8f4ff, 0.9).setDepth(11);
@@ -618,6 +638,39 @@ export class CaravanScene extends Phaser.Scene {
       const destination = resolveWindKnockback(origin, enemy.worldPosition, MAGE_WIND_RADIUS, Boolean(enemy.bossMilestoneId && !isFinalBoss), isFinalBoss);
       if (destination) enemy.setPosition(Phaser.Math.Clamp(destination.x, 0, WORLD_WIDTH), Phaser.Math.Clamp(destination.y, 0, WORLD_HEIGHT));
     }
+  }
+
+  private advanceMoneyBombs(delta: number): void {
+    for (let index = this.moneyBombs.length - 1; index >= 0; index -= 1) {
+      const entity = this.moneyBombs[index]!;
+      if (entity.advance(delta)) continue;
+      this.detonateMoneyBomb(entity.bomb);
+      entity.destroy();
+      this.moneyBombs.splice(index, 1);
+    }
+  }
+
+  private detonateMoneyBomb(bomb: MoneyBombState): void {
+    const blast = this.add.circle(bomb.x, bomb.y, bomb.radius, 0xf59e35, 0.22)
+      .setStrokeStyle(5, 0xffe19a, 0.9).setScale(0.4).setDepth(13);
+    this.tweens.add({ targets: blast, scale: 1.08, alpha: 0, duration: 280, ease: 'Cubic.easeOut', onComplete: () => blast.destroy() });
+    const radiusSquared = bomb.radius * bomb.radius;
+    for (const enemy of this.enemies) {
+      if (enemy.dead || Phaser.Math.Distance.Squared(bomb.x, bomb.y, enemy.x, enemy.y) > radiusSquared) continue;
+      const critical = rollCriticalDamage(bomb.damage, this.run.upgradeStats['critical-chance'] ?? 0, this.random);
+      const result = resolveHit(enemy, critical.damage, 'merchant-money-bomb');
+      if (!result || result.damage <= 0) continue;
+      const coinAmount = Math.max(1, Math.round(result.damage / 20));
+      this.dropGoldCoin(enemy.worldPosition, `coin-${bomb.id}-${enemy.id}`, coinAmount);
+      if (result.killed) this.onEnemyDefeated(enemy);
+    }
+  }
+
+  private dropGoldCoin(position: Vector2, id: string, amount: number): void {
+    this.rewardPickups.push(new RewardPickup(this, {
+      id, type: 'gold', x: position.x, y: position.y, amount, remainingMs: 3_000,
+      lifetimeMs: 3_000, blinkDurationMs: 2_000,
+    }));
   }
 
   private removeEnemyAt(index: number): void {
@@ -720,6 +773,7 @@ export class CaravanScene extends Phaser.Scene {
       activeBossMaxHp: activeBoss?.maxHp, pendingEventId: this.eventSystem.pendingEventId,
       approachingEvent: this.approachingEvent ? { eventId: this.approachingEvent.eventId, x: this.approachingEvent.x } : null,
       rewardPickups: this.rewardPickups.map(({ pickup }) => ({ ...pickup })),
+      moneyBombs: this.moneyBombs.map(({ bomb }) => ({ ...bomb })),
     });
     gameEventBus.emit('snapshot-ready', { runId: this.run.runId, characterId: this.run.characterId, snapshot, reason, resumeAfterSave });
   }

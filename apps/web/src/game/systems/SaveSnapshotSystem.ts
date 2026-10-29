@@ -3,6 +3,7 @@ import { getCharacterDefinition } from '../content/characters.js';
 import { upgradeCatalog } from '../content/upgrades.js';
 import { getBiomeAt } from './BiomeTransitionSystem.js';
 import type { RewardPickupState } from './RewardPickupSystem.js';
+import type { MoneyBombState } from '../entities/MoneyBomb.js';
 
 export interface SnapshotEnemy { id: string; typeId: string; x: number; y: number; hp: number; attackCooldownMs: number; bossMilestoneId?: string; dead?: boolean }
 export interface SnapshotInput {
@@ -10,6 +11,7 @@ export interface SnapshotInput {
   enemies: readonly SnapshotEnemy[]; worldWidth: number; roadCenterY: number; activeBossMaxHp?: number; pendingEventId?: string | null;
   approachingEvent?: { eventId: string; x: number } | null;
   rewardPickups?: readonly RewardPickupState[];
+  moneyBombs?: readonly MoneyBombState[];
 }
 
 export interface WorldPoint { x: number; y: number }
@@ -39,7 +41,10 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
     status: run.status === 'active' ? 'active' : run.status,
     pendingEventId: input.pendingEventId ?? null,
     approachingEvent: input.approachingEvent ?? null,
-    rewardPickups: (input.rewardPickups ?? []).map((pickup) => ({ ...pickup })),
+    rewardPickups: (input.rewardPickups ?? []).map((pickup) => ({
+      ...pickup, lifetimeMs: pickup.lifetimeMs ?? 30_000, blinkDurationMs: pickup.blinkDurationMs ?? 5_000,
+    })),
+    moneyBombs: (input.moneyBombs ?? []).map(({ id, x, y, remainingMs }) => ({ id, x, y, remainingMs: Math.ceil(remainingMs) })),
     eventChoiceIds: [...run.eventChoiceIds],
     ordinarySpawnCooldownMs: Math.max(0, Math.floor(input.ordinarySpawnCooldownMs)),
     activeBoss: boss ? { id: boss.bossMilestoneId!, typeId: boss.typeId, hp: Math.ceil(boss.hp), maxHp: Math.ceil(input.activeBossMaxHp ?? boss.hp) } : null,

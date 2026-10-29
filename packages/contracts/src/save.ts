@@ -41,7 +41,10 @@ const RewardPickupSnapshotSchema = z.object({
   y: CoordinateSchema,
   amount: CounterSchema,
   remainingMs: CounterSchema.max(30_000),
+  lifetimeMs: CounterSchema.max(30_000).default(30_000),
+  blinkDurationMs: CounterSchema.max(30_000).default(5_000),
 }).strict();
+const MoneyBombSnapshotSchema = z.object({ id: IdSchema, x: CoordinateSchema, y: CoordinateSchema, remainingMs: CounterSchema.max(3_000) }).strict();
 
 export const RunSnapshotV1Schema = z.object({
   characterId: CharacterIdSchema.default('warrior'),
@@ -55,6 +58,7 @@ export const RunSnapshotV1Schema = z.object({
   pendingEventId: IdSchema.nullable(),
   approachingEvent: z.object({ eventId: IdSchema, x: CoordinateSchema }).strict().nullable().default(null),
   rewardPickups: z.array(RewardPickupSnapshotSchema).max(100).default([]),
+  moneyBombs: z.array(MoneyBombSnapshotSchema).max(20).default([]),
   eventChoiceIds: z.array(IdSchema).max(100),
   ordinarySpawnCooldownMs: CounterSchema,
   activeBoss: BossSnapshotSchema.nullable(),

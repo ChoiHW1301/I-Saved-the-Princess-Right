@@ -1,6 +1,6 @@
 # Task: T05 Money Bomb and Save/Resume
 
-## Status: pending
+## Status: done
 
 ## Goal
 Implement Merchant Money Bomb and its collectible coins, with fuse, cooldown, coin expiry visuals, and exact behavior across save/resume.
@@ -50,16 +50,25 @@ Implement Merchant Money Bomb and its collectible coins, with fuse, cooldown, co
 - Keep new fields defaulted so old V1 saves without them continue to load.
 
 ## Acceptance Criteria
-- [ ] Rank 1 and rank 5 bomb damage/radius match formulas; explosion damages only enemies within radius.
-- [ ] Each enemy with actual damage taken drops exactly one coin of the correct value; untouched enemies drop none.
-- [ ] Coins are player-contact pickups, add to run gold, expire after 3 sec, and blink in the last 2 sec.
-- [ ] Saving with an active fuse, cooldown, or dropped coin and resuming restores each exactly once with remaining timers.
+- [x] Rank 1 and rank 5 bomb damage/radius match formulas; explosion damages only enemies within radius.
+- [x] Each enemy with actual damage taken drops exactly one coin of the correct value; untouched enemies drop none.
+- [x] Coins are player-contact pickups, add to run gold, expire after 3 sec, and blink in the last 2 sec.
+- [x] Saving with an active fuse, cooldown, or dropped coin and resuming restores each exactly once with remaining timers.
 
 ## Validation
 - `npm run typecheck --workspace @caravan/contracts` — snapshot schema compiles.
 - `npm run typecheck --workspace @caravan/web` — bomb and restore code typechecks.
 - `npm run build --workspace @caravan/web` — game bundle builds.
 - Manual: test no-rank rejection, ranks 1 and 5, hit/miss targets, coin pickup/expiry, and save/resume during fuse/cooldown.
+
+## Execution Notes
+- Added a pixel bomb at the Merchant's feet with a 3-second fuse and 12-second shared ability cooldown. Space is ignored unless Money Bomb has been purchased and the ability is ready.
+- Explosion rank damage/radius follow the blueprint formulas, apply the common damage bonus and per-enemy critical roll, and damage only living enemies inside the radius. Each enemy that actually loses HP emits one gold pickup worth `max(1, round(actualDamage / 20))` before the common gold bonus is applied on collection.
+- Coin pickups last 3 seconds and blink during the final 2 seconds. The pickup elapsed phase is derived from its saved lifetime and remaining time. Ordinary rewards retain their 30-second lifetime and 5-second blink window.
+- V1 snapshots now persist bomb IDs/positions/fuse time and per-pickup lifetime/blink durations with defaults for older saves. The active ability cooldown was already in the snapshot from T04.
+- Updated the existing typed save fixture for the new snapshot field. No tests were run.
+- Contracts typecheck/build, web typecheck, and web production build passed. Vite still reports the large JavaScript chunk warning; build succeeds.
+- No in-browser combat, expiry, or save/resume review was run.
 
 ## Commit Message
 ```text
@@ -74,6 +83,6 @@ Task: T05-money-bomb-save-resume
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
 - commit: pending

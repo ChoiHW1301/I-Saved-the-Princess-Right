@@ -1,17 +1,17 @@
-# Current Context
+﻿# Current Context
 
 ## Active Plan
-[Caravan Shop Upgrades](./plans/2026-10-29-caravan-shop-upgrades.md)
+[Caravan Taunt and Shop Layout](./plans/2026-10-29-caravan-taunt-and-shop-layout.md)
 
 ## Active Phase
-[P01 Shop Progression](./phases/2026-10-29-caravan-shop-upgrades/P01-shop-progression/phase.md)
+[P01 Taunt, Shop Layout, and Enemy Visuals](./phases/2026-10-29-caravan-taunt-and-shop-layout/P01-taunt-shop-and-enemy-visuals/phase.md)
 
 ## Active Task
-None — [Caravan Shop Upgrades](./plans/2026-10-29-caravan-shop-upgrades.md) is complete.
+[T02 Shop Layout and Multiple Trainings](./phases/2026-10-29-caravan-taunt-and-shop-layout/P01-taunt-shop-and-enemy-visuals/T02-shop-layout.md)
 
 ## Status
-- T01–T05 are implemented. Contracts typecheck/build, web typecheck, and the web production build pass; no tests were run.
-- Azure deployment is paused at T03 by the user's request. Its plan remains documented; resuming API deployment requires a resource administrator to assign the Function identity's data roles.
+- T01 Warrior Taunt Training is implemented and validated.
+- Azure deployment remains paused and is not part of this plan.
 
 ## Next Step (IMPORTANT)
-The planned shop progression work is complete. Start a new plan or resume Azure deployment only when requested.
+Read the full T02 blueprint and render all trainings for the selected character, keep the common upgrades in a responsive five-column grid, and align unlock cards with ranked cards.

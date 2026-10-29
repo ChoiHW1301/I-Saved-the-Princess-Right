@@ -33,6 +33,7 @@ export interface CharacterTrainingDefinition {
 
 export const characterTrainingCatalog = {
   'warrior-thorn-armor': { id: 'warrior-thorn-armor', characterId: 'warrior', kind: 'ranked', maxLevel: 5, rankCosts: COMMON_UPGRADE_RANK_COSTS },
+  'warrior-taunt': { id: 'warrior-taunt', characterId: 'warrior', kind: 'unlock', maxLevel: 1, rankCosts: [500] },
   'archer-dash': { id: 'archer-dash', characterId: 'archer', kind: 'unlock', maxLevel: 1, rankCosts: [500] },
   'mage-wind-spirit': { id: 'mage-wind-spirit', characterId: 'mage', kind: 'unlock', maxLevel: 1, rankCosts: [500] },
   'merchant-money-bomb': { id: 'merchant-money-bomb', characterId: 'merchant', kind: 'ranked', maxLevel: 5, rankCosts: COMMON_UPGRADE_RANK_COSTS },

@@ -3,9 +3,11 @@ import { chooseTarget, distanceSquared, type Vector2 } from './CombatSystem.js';
 
 export interface EnemyAttack { enemy: Enemy; target: 'warrior' | 'caravan'; damage: number }
 
+export const WARRIOR_TAUNT_RADIUS = 300;
+
 export class EnemyDirector {
   private targetRefreshMs = 0;
-  update(enemies: readonly Enemy[], warrior: Vector2, caravan: Vector2, delta: number, warriorAvailable = true): EnemyAttack[] {
+  update(enemies: readonly Enemy[], warrior: Vector2, caravan: Vector2, delta: number, warriorAvailable = true, tauntUnlocked = false): EnemyAttack[] {
     this.targetRefreshMs -= delta;
     const refreshTargets = this.targetRefreshMs <= 0;
     if (refreshTargets) this.targetRefreshMs = 250;
@@ -15,7 +17,9 @@ export class EnemyDirector {
       enemy.attackCooldownMs = Math.max(0, enemy.attackCooldownMs - delta);
       if (refreshTargets) enemy.target = !warriorAvailable
         ? 'caravan'
-        : chooseTarget(enemy.worldPosition, warrior, caravan, enemy.definition.targetPolicy);
+        : tauntUnlocked && enemy.definition.wagonPriority && distanceSquared(enemy.worldPosition, warrior) <= WARRIOR_TAUNT_RADIUS ** 2
+          ? 'warrior'
+          : chooseTarget(enemy.worldPosition, warrior, caravan, enemy.definition.targetPolicy);
       const destination = enemy.target === 'warrior' ? warrior : caravan;
       const rangeSquared = enemy.definition.attackRange ** 2;
       const distSq = distanceSquared(enemy.worldPosition, destination);

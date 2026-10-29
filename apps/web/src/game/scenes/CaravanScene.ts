@@ -5,7 +5,7 @@ import { Enemy } from '../entities/Enemy.js';
 import { Warrior } from '../entities/Warrior.js';
 import { enemyCatalog, type EnemyDefinition } from '../content/enemies.js';
 import { BackgroundScroll } from '../systems/BackgroundScroll.js';
-import { EnemyDirector } from '../systems/EnemyDirector.js';
+import { EnemyDirector, WARRIOR_TAUNT_RADIUS } from '../systems/EnemyDirector.js';
 import { HealthSystem } from '../systems/HealthSystem.js';
 import { movementFromKeys, normalizedMovement } from '../systems/MovementInput.js';
 import { ARCHER_DASH_DISTANCE, ARCHER_DASH_DURATION_MS, MAGE_WIND_RADIUS, resolveWindKnockback, startArcherDash, startMageWindSpirit, updateDash } from '../systems/ActiveAbilitySystem.js';
@@ -69,6 +69,7 @@ export class CaravanScene extends Phaser.Scene {
   private hudValueTexts: Phaser.GameObjects.Text[] = [];
   private warriorBar!: Phaser.GameObjects.Graphics;
   private caravanBar!: Phaser.GameObjects.Graphics;
+  private tauntAura!: Phaser.GameObjects.Arc;
   private damageFlash!: Phaser.GameObjects.Graphics;
   private gameOverShown = false;
   private runEndEmitted = false;
@@ -143,6 +144,10 @@ export class CaravanScene extends Phaser.Scene {
     this.warrior = new Warrior(this, snapshot?.player.x ?? WORLD_WIDTH / 2 - 145, snapshot?.player.y ?? ROAD_CENTER_Y, this.run.characterId);
     this.warrior.setKarmaTier(getKarmaTier(this.run.karma));
     this.warrior.moveSpeed = getCharacterDefinition(this.run.characterId).baseStats.speed + (this.run.upgradeStats['movement-speed'] ?? 0);
+    this.tauntAura = this.add.circle(this.warrior.x, this.warrior.y, WARRIOR_TAUNT_RADIUS, 0xffd84f, 0.10)
+      .setStrokeStyle(2, 0xffd84f, 0.18)
+      .setDepth(7)
+      .setVisible(this.run.characterId === 'warrior' && (this.run.trainingLevels['warrior-taunt'] ?? 0) >= 1 && !this.run.player.isDead);
     this.spawnCooldownMs = snapshot?.ordinarySpawnCooldownMs ?? 2000;
     if (snapshot?.approachingEvent) {
       const eventSprite = this.add.image(snapshot.approachingEvent.x, ROAD_CENTER_Y, 'encounter-atlas', encounterFrame(snapshot.approachingEvent.eventId)).setDisplaySize(72, 72).setDepth(9);
@@ -296,6 +301,8 @@ export class CaravanScene extends Phaser.Scene {
       this.warrior.setDashVelocity(this.run.dashDirection, dashSpeed);
     } else this.warrior.setInput(movement);
     this.warrior.updateWalkMotion(_time);
+    const tauntUnlocked = this.run.characterId === 'warrior' && (this.run.trainingLevels['warrior-taunt'] ?? 0) >= 1;
+    this.tauntAura.setPosition(this.warrior.x, this.warrior.y).setVisible(tauntUnlocked && !this.run.player.isDead);
     this.background.update(delta);
     this.advanceMoneyBombs(delta);
     for (let index = this.rewardPickups.length - 1; index >= 0; index -= 1) {
@@ -319,7 +326,7 @@ export class CaravanScene extends Phaser.Scene {
       this.spawnEnemy();
       this.spawnCooldownMs = Math.max(1200, 3000 - this.run.elapsedSeconds * 12);
     }
-    for (const attack of this.enemyDirector.update(this.enemies, warriorPosition, caravanPosition, delta, !this.run.player.isDead)) {
+    for (const attack of this.enemyDirector.update(this.enemies, warriorPosition, caravanPosition, delta, !this.run.player.isDead, tauntUnlocked)) {
       if (attack.target === 'caravan') {
         if (this.health.damageCaravan(this.run.caravan, attack.damage, this.run)) this.showDamageFlash();
       }
@@ -335,6 +342,7 @@ export class CaravanScene extends Phaser.Scene {
       }
       if (this.run.player.isDead) {
         this.warrior.setVisible(false);
+        this.tauntAura.setVisible(false);
         (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
         (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
       }

@@ -6,7 +6,7 @@ export const MetaUpgradeIdSchema = z.enum([
   'health-regeneration', 'wagon-max-health', 'xp-gain', 'gold-gain', 'defense',
 ]);
 export type MetaUpgradeId = z.infer<typeof MetaUpgradeIdSchema>;
-export const TrainingIdSchema = z.enum(['warrior-thorn-armor', 'archer-dash', 'mage-wind-spirit', 'merchant-money-bomb']);
+export const TrainingIdSchema = z.enum(['warrior-thorn-armor', 'warrior-taunt', 'archer-dash', 'mage-wind-spirit', 'merchant-money-bomb']);
 export type TrainingId = z.infer<typeof TrainingIdSchema>;
 export const PassiveIdSchema = z.enum(['iron-will', 'keen-edge', 'swift-step']);
 export type PassiveId = z.infer<typeof PassiveIdSchema>;

@@ -18,11 +18,12 @@ const trainingByCharacter: Partial<Record<CharacterId, TrainingId>> = {
   warrior: 'warrior-thorn-armor', archer: 'archer-dash', mage: 'mage-wind-spirit', merchant: 'merchant-money-bomb',
 };
 const trainingNames: Record<TrainingId, string> = {
-  'warrior-thorn-armor': '가시 갑옷', 'archer-dash': '대쉬',
+  'warrior-thorn-armor': '가시 갑옷', 'warrior-taunt': '도발', 'archer-dash': '대쉬',
   'mage-wind-spirit': '바람 정령의 가호', 'merchant-money-bomb': '머니 밤',
 };
 const trainingEffects: Record<TrainingId, string> = {
   'warrior-thorn-armor': '받는 피해의 일부를 적에게 반사합니다.',
+  'warrior-taunt': '범위 안의 마차 돌진 몬스터가 전사를 우선 공격합니다.',
   'archer-dash': '스페이스바를 눌러 이동 방향으로 대쉬합니다.',
   'mage-wind-spirit': '스페이스바를 눌러 주변 적을 밀쳐냅니다.',
   'merchant-money-bomb': '폭탄을 설치해 적에게 피해를 주고 금화를 얻습니다.',

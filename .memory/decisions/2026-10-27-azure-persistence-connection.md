@@ -1,7 +1,7 @@
 # Decisions: Azure persistence and DEX sign-in connection
 
 - Date: 2026-10-27
-- Status: Confirmed
+- Status: Superseded by [Caravan Game Azure Deployment to grill-me-edu](../plans/2026-10-27-caravan-grill-me-edu-deployment.md)
 
 ## D01. Azure target
 - **Chosen**: Deploy a development environment to subscription `CR-Project-01` in a new resource group named `rg-caravan-game-dev`.

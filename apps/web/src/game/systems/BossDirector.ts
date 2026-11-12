@@ -6,12 +6,13 @@ export interface BossState { bossId: BossId; hp: number; phase: 'intro' | 'comba
 export class BossDirector {
   private state: BossState | null = null;
   get activeBoss(): BossState | null { return this.state ? { ...this.state } : null; }
-  startBoss(bossId: string, run: RunState): BossDefinition | null {
+  startBoss(bossId: string, run: RunState, hpScale = 1): BossDefinition | null {
     const definition = bossCatalog[bossId as BossId];
     if (!definition || run.status !== 'active' || run.pausedBy === 'boss' || this.state?.alive) return null;
-    this.state = { bossId: definition.id, hp: definition.maxHp, phase: 'intro', attackCooldownMs: 0, alive: true };
+    const scaledDefinition = { ...definition, maxHp: Math.ceil(definition.maxHp * Math.max(1, hpScale)) };
+    this.state = { bossId: definition.id, hp: scaledDefinition.maxHp, phase: 'intro', attackCooldownMs: 0, alive: true };
     run.pausedBy = 'boss';
-    return definition;
+    return scaledDefinition;
   }
   syncBoss(hp: number, attackCooldownMs: number): void {
     if (!this.state?.alive || !Number.isFinite(hp) || !Number.isFinite(attackCooldownMs)) return;

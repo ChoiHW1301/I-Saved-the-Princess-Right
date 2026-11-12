@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
-import { ROAD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../config/createGameConfig.js';
+import { ROAD_CENTER_Y, VIEW_HEIGHT, VIEW_WIDTH, WORLD_DISPLAY_SCALE, WORLD_HEIGHT, WORLD_WIDTH } from '../config/createGameConfig.js';
 import { Caravan } from '../entities/Caravan.js';
 import { Enemy } from '../entities/Enemy.js';
 import { Warrior } from '../entities/Warrior.js';
 import { enemyCatalog, type EnemyDefinition } from '../content/enemies.js';
 import { BackgroundScroll } from '../systems/BackgroundScroll.js';
-import { EnemyDirector, WARRIOR_TAUNT_RADIUS } from '../systems/EnemyDirector.js';
+import { EnemyDirector } from '../systems/EnemyDirector.js';
 import { HealthSystem } from '../systems/HealthSystem.js';
 import { movementFromKeys, normalizedMovement } from '../systems/MovementInput.js';
 import { ARCHER_DASH_DISTANCE, ARCHER_DASH_DURATION_MS, MAGE_WIND_RADIUS, resolveWindKnockback, startArcherDash, startMageWindSpirit, updateDash } from '../systems/ActiveAbilitySystem.js';
@@ -47,10 +47,12 @@ export interface RunWorldConfig { width: number; height: number; seed: number; c
 export class CaravanScene extends Phaser.Scene {
   private readonly initialRunConfig?: RunWorldConfig;
   private warrior!: Warrior;
+  private caravanCollision!: Phaser.GameObjects.Rectangle;
   private background!: BackgroundScroll;
   private readonly enemies: Enemy[] = [];
   private readonly rewardPickups: RewardPickup[] = [];
   private readonly moneyBombs: MoneyBomb[] = [];
+  private readonly bowProjectileVisuals = new Map<number, Phaser.GameObjects.Graphics>();
   private run = createRunState();
   private readonly enemyDirector = new EnemyDirector();
   private readonly weaponSystem = new WeaponSystem();
@@ -69,7 +71,9 @@ export class CaravanScene extends Phaser.Scene {
   private hudValueTexts: Phaser.GameObjects.Text[] = [];
   private warriorBar!: Phaser.GameObjects.Graphics;
   private caravanBar!: Phaser.GameObjects.Graphics;
-  private tauntAura!: Phaser.GameObjects.Arc;
+  private karmaGauge!: Phaser.GameObjects.Graphics;
+  private reviveCountdownText!: Phaser.GameObjects.Text;
+  private reviveLifeIcons: Phaser.GameObjects.Container[] = [];
   private damageFlash!: Phaser.GameObjects.Graphics;
   private gameOverShown = false;
   private runEndEmitted = false;
@@ -95,12 +99,18 @@ export class CaravanScene extends Phaser.Scene {
     this.load.image('fortune-wraith-sprite', '/game-assets/monsters/fortune-wraith.png');
     this.load.spritesheet('encounter-atlas', '/game-assets/encounters/atlas.png', { frameWidth: 627, frameHeight: 627 });
     this.load.spritesheet('ui-icons', '/game-assets/ui/icons-atlas.png', { frameWidth: 313, frameHeight: 313 });
+    this.load.image('karma-demon-wing', '/game-assets/ui/karma-demon-wing.png');
+    this.load.image('karma-angel-wing', '/game-assets/ui/karma-angel-wing.png');
+    this.load.image('revive-wing-small', '/game-assets/ui/revive-wing-small.png');
     this.load.spritesheet('death-keep-ghoul', '/game-assets/monsters/death-keep-ghoul.png', { frameWidth: 543, frameHeight: 724 });
   }
   create(data?: RunWorldConfig): void {
     data = { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: 1, ...this.initialRunConfig, ...data };
+    this.reviveLifeIcons = [];
     this.moneyBombs.forEach((bomb) => bomb.destroy());
     this.moneyBombs.length = 0;
+    this.bowProjectileVisuals.forEach((projectile) => projectile.destroy());
+    this.bowProjectileVisuals.clear();
     if (!this.anims.exists('monster-death')) this.anims.create({
       key: 'monster-death', frames: this.anims.generateFrameNumbers('death-keep-ghoul', { start: 0, end: 3 }), frameRate: 9, repeat: 0,
     });
@@ -137,17 +147,18 @@ export class CaravanScene extends Phaser.Scene {
     this.campaignClock.elapsedSeconds = snapshot?.elapsedSeconds ?? 0;
     this.eventSystem = new EventSystem();
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.setZoom(WORLD_DISPLAY_SCALE);
+    this.cameras.main.centerOn(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
     this.cameras.main.fadeIn(800, 0, 0, 0);
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.background = new BackgroundScroll(this, snapshot?.stageId as StageId | undefined);
     new Caravan(this, WORLD_WIDTH / 2, ROAD_CENTER_Y);
     this.warrior = new Warrior(this, snapshot?.player.x ?? WORLD_WIDTH / 2 - 145, snapshot?.player.y ?? ROAD_CENTER_Y, this.run.characterId);
+    this.caravanCollision = this.add.rectangle(WORLD_WIDTH / 2, ROAD_CENTER_Y, 224, 72, 0x000000, 0).setVisible(false);
+    this.physics.add.existing(this.caravanCollision, true);
+    this.physics.add.collider(this.warrior, this.caravanCollision);
     this.warrior.setKarmaTier(getKarmaTier(this.run.karma));
     this.warrior.moveSpeed = getCharacterDefinition(this.run.characterId).baseStats.speed + (this.run.upgradeStats['movement-speed'] ?? 0);
-    this.tauntAura = this.add.circle(this.warrior.x, this.warrior.y, WARRIOR_TAUNT_RADIUS, 0xffd84f, 0.10)
-      .setStrokeStyle(2, 0xffd84f, 0.18)
-      .setDepth(7)
-      .setVisible(this.run.characterId === 'warrior' && (this.run.trainingLevels['warrior-taunt'] ?? 0) >= 1 && !this.run.player.isDead);
     this.spawnCooldownMs = snapshot?.ordinarySpawnCooldownMs ?? 2000;
     if (snapshot?.approachingEvent) {
       const eventSprite = this.add.image(snapshot.approachingEvent.x, ROAD_CENTER_Y, 'encounter-atlas', encounterFrame(snapshot.approachingEvent.eventId)).setDisplaySize(72, 72).setDepth(9);
@@ -169,7 +180,7 @@ export class CaravanScene extends Phaser.Scene {
       this.run.elapsedSeconds = snapshot.elapsedSeconds;
       for (const saved of snapshot.enemies) {
         const sourceDefinition = this.enemyDefinition(saved.typeId);
-        const definition = { ...sourceDefinition, maxHp: scaledEnemyHp(sourceDefinition.maxHp, snapshot.elapsedSeconds, sourceDefinition.wagonPriority) };
+        const definition = { ...sourceDefinition, maxHp: scaledEnemyHp(sourceDefinition.maxHp, snapshot.elapsedSeconds, snapshot.player.level) };
         const milestone = snapshot.activeBoss?.typeId === saved.typeId ? snapshot.activeBoss.id : undefined;
         const position = mapSnapshotWorldPoint(saved, snapshot, { width: WORLD_WIDTH, height: WORLD_HEIGHT, roadCenterY: ROAD_CENTER_Y });
         const enemy = new Enemy(this, position.x, position.y, definition, milestone);
@@ -183,7 +194,11 @@ export class CaravanScene extends Phaser.Scene {
         this.activeBossIsFinal = snapshot.activeBoss.id === 'princess-demon';
         this.finalBossForRun = this.activeBossIsFinal ? boss?.id : undefined;
         this.campaignClock.pause(`boss:${snapshot.activeBoss.id}`);
-        if (boss) { this.bossDirector.startBoss(boss.id, this.run); this.bossDirector.syncBoss(snapshot.activeBoss.hp, 0); }
+        if (boss) {
+          const hpScale = snapshot.activeBoss.maxHp / boss.maxHp;
+          this.bossDirector.startBoss(boss.id, this.run, hpScale);
+          this.bossDirector.syncBoss(snapshot.activeBoss.hp, 0);
+        }
       }
       this.pendingFinalVictory = snapshot.elapsedSeconds >= 1200 && snapshot.defeatedBossIds.some((id) => id === 'princess-demon' || id === 'king-guard');
       if (this.pendingFinalVictory) this.finalBossForRun = snapshot.defeatedBossIds.find((id) => id === 'princess-demon' || id === 'king-guard');
@@ -194,15 +209,21 @@ export class CaravanScene extends Phaser.Scene {
     }
     const hudItems = [{ frame: 0, x: 28 }, { frame: 1, x: 158 }, { frame: 2, x: 300 }, { frame: 3, x: 416 }, { frame: 4, x: 548 }, { frame: 5, x: 682 }, { frame: 6, x: 806 }];
     this.hudValueTexts = hudItems.map(({ frame, x }) => {
-      this.add.image(x, 35, 'ui-icons', frame).setDisplaySize(24, 24).setScrollFactor(0).setDepth(100);
-      return this.add.text(x + 18, 25, '', { fontFamily: 'DungGeunMo, monospace', fontSize: '15px', color: '#fff2d6', stroke: '#21160e', strokeThickness: 3 })
+      this.add.image(this.hudX(x), this.hudY(35), 'ui-icons', frame).setDisplaySize(this.hudSize(24), this.hudSize(24)).setScrollFactor(0).setDepth(100);
+      return this.add.text(this.hudX(x + 18), this.hudY(25), '', { fontFamily: 'DungGeunMo, monospace', fontSize: `${this.hudSize(15)}px`, color: '#fff2d6', stroke: '#21160e', strokeThickness: this.hudSize(3) })
         .setScrollFactor(0).setDepth(100);
     });
     this.add.graphics().setScrollFactor(0).setDepth(99)
-      .fillStyle(0x241b13, 0.72).fillRoundedRect(14, 12, WORLD_WIDTH - 28, 48, 7)
-      .lineStyle(2, 0xd3a452, 0.9).strokeRoundedRect(14, 12, WORLD_WIDTH - 28, 48, 7);
+      .fillStyle(0x241b13, 0.72).fillRoundedRect(this.hudX(14), this.hudY(12), this.hudSize(866), this.hudSize(48), this.hudSize(7))
+      .lineStyle(this.hudSize(2), 0xd3a452, 0.9).strokeRoundedRect(this.hudX(14), this.hudY(12), this.hudSize(866), this.hudSize(48), this.hudSize(7));
     this.warriorBar = this.add.graphics().setScrollFactor(0).setDepth(100);
     this.caravanBar = this.add.graphics().setScrollFactor(0).setDepth(100);
+    this.karmaGauge = this.add.graphics().setScrollFactor(0).setDepth(101);
+    this.reviveCountdownText = this.add.text(this.hudX(VIEW_WIDTH / 2), this.hudY(99), '', {
+      fontFamily: 'DungGeunMo, monospace', fontSize: `${this.hudSize(13)}px`, color: '#ffe3a5',
+      stroke: '#24170f', strokeThickness: this.hudSize(3),
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(103);
+    this.drawKarmaWings();
     this.damageFlash = this.add.graphics().setScrollFactor(0).setDepth(200).setAlpha(0);
     this.drawDamageFlash();
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
@@ -211,6 +232,10 @@ export class CaravanScene extends Phaser.Scene {
     const clearInput = (): void => this.warrior?.setInput({ x: 0, y: 0 });
     window.addEventListener('blur', clearInput);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('blur', clearInput));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.bowProjectileVisuals.forEach((projectile) => projectile.destroy());
+      this.bowProjectileVisuals.clear();
+    });
     const unsubscribeChoice = gameEventBus.on('upgrade-choice', ({ upgradeId }) => this.chooseUpgrade(upgradeId));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeChoice);
     const unsubscribeEvent = gameEventBus.on('event-choice', ({ eventId, choiceId }) => this.chooseEvent(eventId, choiceId));
@@ -280,6 +305,7 @@ export class CaravanScene extends Phaser.Scene {
     if (revived) {
       this.warrior.setPosition(WORLD_WIDTH / 2 - 145, ROAD_CENTER_Y).setVisible(true).setAlpha(0.55);
       (this.warrior.body as Phaser.Physics.Arcade.Body).enable = true;
+      this.showReviveLightBeam();
     }
     if (!this.run.player.isDead) {
       const healthRegeneration = this.run.upgradeStats['health-regeneration'] ?? 0;
@@ -301,8 +327,6 @@ export class CaravanScene extends Phaser.Scene {
       this.warrior.setDashVelocity(this.run.dashDirection, dashSpeed);
     } else this.warrior.setInput(movement);
     this.warrior.updateWalkMotion(_time);
-    const tauntUnlocked = this.run.characterId === 'warrior' && (this.run.trainingLevels['warrior-taunt'] ?? 0) >= 1;
-    this.tauntAura.setPosition(this.warrior.x, this.warrior.y).setVisible(tauntUnlocked && !this.run.player.isDead);
     this.background.update(delta);
     this.advanceMoneyBombs(delta);
     for (let index = this.rewardPickups.length - 1; index >= 0; index -= 1) {
@@ -326,23 +350,33 @@ export class CaravanScene extends Phaser.Scene {
       this.spawnEnemy();
       this.spawnCooldownMs = Math.max(1200, 3000 - this.run.elapsedSeconds * 12);
     }
+    const tauntUnlocked = this.run.characterId === 'warrior' && (this.run.trainingLevels['warrior-taunt'] ?? 0) >= 1;
     for (const attack of this.enemyDirector.update(this.enemies, warriorPosition, caravanPosition, delta, !this.run.player.isDead, tauntUnlocked)) {
       if (attack.target === 'caravan') {
-        if (this.health.damageCaravan(this.run.caravan, attack.damage, this.run)) this.showDamageFlash();
+        const previousHp = this.run.caravan.hp;
+        if (this.health.damageCaravan(this.run.caravan, attack.damage, this.run)) {
+          this.showDamageFlash();
+          this.showDamageNumber(WORLD_WIDTH / 2, ROAD_CENTER_Y - 62, previousHp - this.run.caravan.hp, '#ff8278');
+        }
       }
       else {
+        const previousHp = this.run.player.hp;
         const wasDamaged = this.health.damagePlayer(this.run.player, attack.damage, this.run.upgradeStats['damage-reduction'] ?? 0);
-        if (wasDamaged) this.showDamageFlash();
+        if (wasDamaged) {
+          this.showDamageFlash();
+          this.showDamageNumber(this.warrior.x, this.warrior.y - 36, previousHp - this.run.player.hp, '#ff8278');
+        }
         const reflectRank = this.run.characterId === 'warrior' ? this.run.trainingLevels['warrior-thorn-armor'] ?? 0 : 0;
         const reflect = Math.min(reflectRank * 0.05, 0.25) * attack.damage;
         if (wasDamaged && reflect > 0) {
           const reflected = resolveHit(attack.enemy, reflect, 'warrior-reflect');
+          if (reflected && reflected.damage > 0) this.showDamageNumber(attack.enemy.x, attack.enemy.y - 22, reflected.damage, '#ffe19a');
           if (reflected?.killed) this.onEnemyDefeated(attack.enemy);
         }
       }
       if (this.run.player.isDead) {
+        if (this.run.player.respawnMs === 0) this.run.status = 'lost';
         this.warrior.setVisible(false);
-        this.tauntAura.setVisible(false);
         (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
         (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
       }
@@ -356,12 +390,31 @@ export class CaravanScene extends Phaser.Scene {
           this.showSwordSlash(projectile.targetPositions[0] ?? { x: this.warrior.x + 1, y: this.warrior.y }, color);
           return;
         }
+        if (projectile.weaponId === 'bow' && projectile.projectileId !== undefined && projectile.origin && projectile.directionAngle !== undefined) {
+          const arrow = this.add.graphics().lineStyle(3, color, 1).beginPath()
+            .moveTo(-14, 0).lineTo(7, 0).lineTo(0, -5).moveTo(7, 0).lineTo(0, 5).strokePath()
+            .setPosition(projectile.origin.x, projectile.origin.y)
+            .setRotation(projectile.directionAngle)
+            .setDepth(12);
+          this.bowProjectileVisuals.set(projectile.projectileId, arrow);
+          return;
+        }
         const radius = projectile.weaponId === 'fireball' ? 8 + (this.run.upgradeStats['fireball-size'] ?? 0) / 3 : 4;
         for (const position of projectile.targetPositions) {
           const bolt = this.add.circle(this.warrior.x, this.warrior.y, radius, color).setDepth(12);
           this.tweens.add({ targets: bolt, x: position.x, y: position.y, duration: 180, onComplete: () => bolt.destroy() });
         }
-      }, { x: this.input.activePointer.worldX, y: this.input.activePointer.worldY })) {
+      }, { x: this.input.activePointer.worldX, y: this.input.activePointer.worldY }, (projectile) => {
+        const arrow = this.bowProjectileVisuals.get(projectile.projectileId);
+        if (!arrow) return;
+        arrow.setPosition(projectile.position.x, projectile.position.y).setRotation(projectile.directionAngle);
+        if (projectile.finished) {
+          arrow.destroy();
+          this.bowProjectileVisuals.delete(projectile.projectileId);
+        }
+      }, (enemy, damage) => {
+        this.showDamageNumber(enemy.x, enemy.y - 22, damage);
+      })) {
         this.onEnemyDefeated(enemy);
       }
     }
@@ -371,6 +424,7 @@ export class CaravanScene extends Phaser.Scene {
       if (this.enemies[i]?.dead) this.removeEnemyAt(i);
     }
     this.refreshHud();
+    if (this.run.status === 'lost' && !this.gameOverShown) this.showGameOver();
     if (this.run.caravan.hp <= 0 && !this.gameOverShown) this.showGameOver();
   }
   getWorldSeedSample(): number { return this.random(); }
@@ -429,21 +483,33 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private drawDamageFlash(): void {
-    const width = WORLD_WIDTH;
-    const height = WORLD_HEIGHT;
+    const width = this.hudSize(VIEW_WIDTH);
+    const height = this.hudSize(VIEW_HEIGHT);
+    const left = this.hudX(0);
+    const top = this.hudY(0);
+    const edge = this.hudSize(68);
+    const innerEdge = this.hudSize(30);
     this.damageFlash.clear();
     this.damageFlash.fillStyle(0xc51f2a, 0.08);
-    this.damageFlash.fillRect(0, 0, width, 68).fillRect(0, height - 68, width, 68)
-      .fillRect(0, 0, 68, height).fillRect(width - 68, 0, 68, height);
+    this.damageFlash.fillRect(left, top, width, edge).fillRect(left, top + height - edge, width, edge)
+      .fillRect(left, top, edge, height).fillRect(left + width - edge, top, edge, height);
     this.damageFlash.fillStyle(0xe52d37, 0.14);
-    this.damageFlash.fillRect(0, 0, width, 30).fillRect(0, height - 30, width, 30)
-      .fillRect(0, 0, 30, height).fillRect(width - 30, 0, 30, height);
+    this.damageFlash.fillRect(left, top, width, innerEdge).fillRect(left, top + height - innerEdge, width, innerEdge)
+      .fillRect(left, top, innerEdge, height).fillRect(left + width - innerEdge, top, innerEdge, height);
   }
 
   private showDamageFlash(): void {
     this.tweens.killTweensOf(this.damageFlash);
     this.damageFlash.setAlpha(1);
     this.tweens.add({ targets: this.damageFlash, alpha: 0, duration: 360, ease: 'Quad.easeOut' });
+  }
+
+  private showDamageNumber(x: number, y: number, damage: number, color = '#fff2d6'): void {
+    if (!Number.isFinite(damage) || damage <= 0) return;
+    const label = this.add.text(x + Phaser.Math.Between(-7, 7), y, `${Math.max(1, Math.round(damage))}`, {
+      fontFamily: 'DungGeunMo, monospace', fontSize: '12px', color, stroke: '#24170f', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(90);
+    this.tweens.add({ targets: label, y: y - 30, alpha: 0, duration: 620, ease: 'Cubic.easeOut', onComplete: () => label.destroy() });
   }
 
   private triggerApproachingEvent(): void {
@@ -467,7 +533,7 @@ export class CaravanScene extends Phaser.Scene {
     const y = Phaser.Math.Clamp(WORLD_HEIGHT / 2 + Math.sin(angle) * radiusY, 12, WORLD_HEIGHT - 12);
     const roll = this.random();
     const definition = enemyForSpawnRoll(roll, enemyCatalog);
-    const scaled = definition.rewardMonster ? definition : { ...definition, maxHp: scaledEnemyHp(definition.maxHp, this.run.elapsedSeconds, definition.wagonPriority) };
+    const scaled = { ...definition, maxHp: scaledEnemyHp(definition.maxHp, this.run.elapsedSeconds, this.run.level) };
     this.enemies.push(new Enemy(this, x, y, scaled));
   }
 
@@ -493,7 +559,11 @@ export class CaravanScene extends Phaser.Scene {
   private startBoss(milestone: CampaignMilestone): void {
     const isFinal = milestone.kind === 'final-boss';
     const bossId = isFinal ? chooseFinalBoss(getKarmaTier(this.run.karma)) : milestone.id as BossId;
-    const bossDefinition = this.bossDirector.startBoss(bossId, this.run);
+    const baseBossDefinition = bossCatalog[bossId];
+    const hpScale = baseBossDefinition
+      ? scaledEnemyHp(baseBossDefinition.maxHp, this.run.elapsedSeconds, this.run.level) / baseBossDefinition.maxHp
+      : 1;
+    const bossDefinition = this.bossDirector.startBoss(bossId, this.run, hpScale);
     if (!bossDefinition) {
       if (import.meta.env.DEV) console.error(`Unable to start campaign boss: ${bossId}`);
       return;
@@ -524,9 +594,10 @@ export class CaravanScene extends Phaser.Scene {
     const bossY = WORLD_HEIGHT * (0.3 + this.random() * 0.4);
     this.enemies.push(new Enemy(this, edgeX, bossY, definition, milestone.id));
     if (bossId === 'king-guard') {
+      const soldierHp = scaledEnemyHp(18, this.run.elapsedSeconds, this.run.level);
       for (const [offsetX, offsetY] of [[-56, -44], [56, -44], [-56, 44], [56, 44]] as const) {
         this.enemies.push(new Enemy(this, Phaser.Math.Clamp(edgeX + offsetX, 20, WORLD_WIDTH - 20), Phaser.Math.Clamp(bossY + offsetY, 20, WORLD_HEIGHT - 20), {
-          ...base, id: 'king-soldier', maxHp: 18, speed: 54, damage: 8, attackRange: 40,
+          ...base, id: 'king-soldier', maxHp: soldierHp, speed: 54, damage: 8, attackRange: 40,
           targetPolicy: 'nearest', wagonPriority: false, experience: 0, gold: 0, color: 0xc5b783,
         }));
       }
@@ -637,7 +708,7 @@ export class CaravanScene extends Phaser.Scene {
       if (bomb) this.moneyBombs.push(new MoneyBomb(this, bomb));
       return;
     }
-    if (this.run.characterId !== 'mage' || !startMageWindSpirit(this.run)) return;
+    if (!startMageWindSpirit(this.run)) return;
     const origin = { x: this.warrior.x, y: this.warrior.y };
     const pulse = this.add.circle(origin.x, origin.y, 12, 0x9deaff, 0.18).setStrokeStyle(4, 0xc8f4ff, 0.9).setDepth(11);
     this.tweens.add({ targets: pulse, radius: MAGE_WIND_RADIUS, alpha: 0, duration: 360, onComplete: () => pulse.destroy() });
@@ -668,6 +739,7 @@ export class CaravanScene extends Phaser.Scene {
       const critical = rollCriticalDamage(bomb.damage, this.run.upgradeStats['critical-chance'] ?? 0, this.random);
       const result = resolveHit(enemy, critical.damage, 'merchant-money-bomb');
       if (!result || result.damage <= 0) continue;
+      this.showDamageNumber(enemy.x, enemy.y - 22, result.damage);
       const coinAmount = Math.max(1, Math.round(result.damage / 20));
       this.dropGoldCoin(enemy.worldPosition, `coin-${bomb.id}-${enemy.id}`, coinAmount);
       if (result.killed) this.onEnemyDefeated(enemy);
@@ -733,11 +805,69 @@ export class CaravanScene extends Phaser.Scene {
       `${this.run.runGold} G`,
     ];
     this.hudValueTexts.forEach((text, index) => text.setText(values[index] ?? ''));
-    this.warriorBar?.clear().fillStyle(0x20201d, 0.9).fillRoundedRect(24, 96, 184, 13, 5)
-      .fillStyle(0x83bd78).fillRoundedRect(26, 98, 180 * this.run.player.hp / this.run.player.maxHp, 9, 4);
-    this.caravanBar?.clear().fillStyle(0x20201d, 0.9).fillRoundedRect(WORLD_WIDTH - 218, 96, 194, 13, 5)
-      .fillStyle(0xe0a45d).fillRoundedRect(WORLD_WIDTH - 216, 98, 190 * this.run.caravan.hp / this.run.caravan.maxHp, 9, 4);
+    this.reviveCountdownText?.setText(this.run.player.isDead && this.run.player.respawnMs > 0
+      ? `부활까지 ${Math.ceil(this.run.player.respawnMs / 1000)}` : '');
+    this.updateReviveLifeIndicators();
+    this.warriorBar?.clear().fillStyle(0x20201d, 0.9).fillRoundedRect(this.hudX(24), this.hudY(96), this.hudSize(184), this.hudSize(13), this.hudSize(5))
+      .fillStyle(0x83bd78).fillRoundedRect(this.hudX(26), this.hudY(98), this.hudSize(180) * this.run.player.hp / this.run.player.maxHp, this.hudSize(9), this.hudSize(4));
+    this.caravanBar?.clear().fillStyle(0x20201d, 0.9).fillRoundedRect(this.hudX(VIEW_WIDTH - 218), this.hudY(96), this.hudSize(194), this.hudSize(13), this.hudSize(5))
+      .fillStyle(0xe0a45d).fillRoundedRect(this.hudX(VIEW_WIDTH - 216), this.hudY(98), this.hudSize(190) * this.run.caravan.hp / this.run.caravan.maxHp, this.hudSize(9), this.hudSize(4));
+    this.drawKarmaGauge();
   }
+
+  private updateReviveLifeIndicators(): void {
+    const remaining = Math.min(3, Math.max(0, this.run.player.respawnsRemaining));
+    while (this.reviveLifeIcons.length > remaining) this.reviveLifeIcons.pop()?.destroy();
+    while (this.reviveLifeIcons.length < remaining) {
+      const icon = this.add.container(0, 0).setScrollFactor(0).setDepth(102);
+      const wingOffset = this.hudSize(8);
+      const leftWing = this.add.image(-wingOffset, 0, 'revive-wing-small').setDisplaySize(this.hudSize(18), this.hudSize(10.5)).setAlpha(0.98);
+      const rightWing = this.add.image(wingOffset, 0, 'revive-wing-small').setDisplaySize(this.hudSize(18), this.hudSize(10.5)).setFlipX(true).setAlpha(0.98);
+      const heart = this.add.image(0, 0, 'ui-icons', 0).setDisplaySize(this.hudSize(17), this.hudSize(17));
+      icon.add([leftWing, rightWing, heart]);
+      this.reviveLifeIcons.push(icon);
+    }
+    this.reviveLifeIcons.forEach((icon, index) => icon.setPosition(this.hudX(36 + index * 40), this.hudY(121)));
+  }
+
+  private showReviveLightBeam(): void {
+    const beam = this.add.graphics({ x: this.warrior.x, y: this.warrior.y - 178 }).setDepth(24).setScale(1, 0.06).setAlpha(0.88);
+    beam.fillStyle(0xfff5cf, 0.15).fillTriangle(-24, 0, 24, 0, 11, 178);
+    beam.fillStyle(0xffedb0, 0.3).fillTriangle(-13, 0, 13, 0, 4, 178);
+    beam.fillStyle(0xffffff, 0.72).fillRect(-3, 0, 6, 178);
+    beam.lineStyle(2, 0xfff7d9, 0.75).lineBetween(-10, 0, -1, 178).lineBetween(10, 0, 1, 178);
+    const impact = this.add.ellipse(this.warrior.x, this.warrior.y + 5, 64, 18, 0xffe595, 0.58).setDepth(23).setScale(0.45, 0.65);
+    const fallingLight = this.add.circle(this.warrior.x, this.warrior.y - 178, 5, 0xffffff, 0.95).setDepth(25);
+    this.tweens.add({ targets: fallingLight, y: this.warrior.y - 8, alpha: 0.15, scale: 2, duration: 240, ease: 'Quad.easeIn', onComplete: () => fallingLight.destroy() });
+    this.tweens.add({ targets: beam, scaleY: 1, duration: 220, ease: 'Quad.easeIn', onComplete: () => {
+      this.tweens.add({ targets: beam, alpha: 0, duration: 330, onComplete: () => beam.destroy() });
+    } });
+    this.tweens.add({ targets: impact, scaleX: 1.8, alpha: 0, duration: 470, ease: 'Cubic.easeOut', onComplete: () => impact.destroy() });
+  }
+
+  private drawKarmaGauge(): void {
+    if (!this.karmaGauge) return;
+    const centerX = VIEW_WIDTH / 2;
+    const barWidth = 176;
+    const barX = centerX - barWidth / 2;
+    const barY = 79;
+    const purpleWidth = barWidth * (100 - Phaser.Math.Clamp(this.run.karma, -100, 100)) / 200;
+    const skyWidth = barWidth - purpleWidth;
+    this.karmaGauge.clear()
+      .fillStyle(0x211910, 0.95).fillRoundedRect(this.hudX(barX), this.hudY(barY), this.hudSize(barWidth), this.hudSize(8), this.hudSize(3))
+      .fillStyle(0xa95be0, 1).fillRect(this.hudX(barX + 1), this.hudY(barY + 1), this.hudSize(Math.max(0, purpleWidth - 1)), this.hudSize(6))
+      .fillStyle(0x69d7f3, 1).fillRect(this.hudX(barX + purpleWidth), this.hudY(barY + 1), this.hudSize(Math.max(0, skyWidth - 1)), this.hudSize(6))
+      .lineStyle(this.hudSize(1), 0xf1d7aa, 0.9).strokeRoundedRect(this.hudX(barX), this.hudY(barY), this.hudSize(barWidth), this.hudSize(8), this.hudSize(3));
+  }
+
+  private drawKarmaWings(): void {
+    this.add.image(this.hudX(369), this.hudY(80), 'karma-demon-wing').setDisplaySize(this.hudSize(52), this.hudSize(34)).setScrollFactor(0).setDepth(102);
+    this.add.image(this.hudX(591), this.hudY(80), 'karma-angel-wing').setDisplaySize(this.hudSize(52), this.hudSize(34)).setScrollFactor(0).setDepth(102);
+  }
+
+  private hudX(screenX: number): number { return VIEW_WIDTH / 2 + (screenX - VIEW_WIDTH / 2) / WORLD_DISPLAY_SCALE; }
+  private hudY(screenY: number): number { return VIEW_HEIGHT / 2 + (screenY - VIEW_HEIGHT / 2) / WORLD_DISPLAY_SCALE; }
+  private hudSize(screenSize: number): number { return screenSize / WORLD_DISPLAY_SCALE; }
 
   private showGameOver(): void {
     if (this.runEndEmitted) return;
@@ -787,7 +917,9 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private enemyDefinition(typeId: string): EnemyDefinition {
-    const ordinary = enemyCatalog.find((definition) => definition.id === typeId);
+    const migratedTypeId = typeId === 'sky-wisp' || typeId === 'wagon-rusher' ? 'imp'
+      : typeId === 'fortune-wraith' ? 'golden-imp' : typeId;
+    const ordinary = enemyCatalog.find((definition) => definition.id === migratedTypeId);
     if (ordinary) return ordinary;
     const boss = bossCatalog[typeId as BossId];
     if (boss) return { id: boss.id, maxHp: boss.maxHp, speed: 48, damage: boss.damage, attackRange: boss.attacks[0]?.range ?? 46, targetPolicy: 'nearest', wagonPriority: false, experience: 0, gold: 0, color: boss.color };

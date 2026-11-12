@@ -1,6 +1,8 @@
 # Task: T04 Verify DEX Authentication and Persistence
 
-## Status: pending
+## Status: superseded
+
+Live verification for the replacement resources is defined in [T05](../../2026-10-27-caravan-grill-me-edu-deployment/P01-static-site-stack/T05-live-verification.md). This old-group verification task is retained as history only.
 
 ## Goal
 Confirm a dedicated DEX user with the `CaravanGame.Player` role can play and that profile, current run, and leaderboard data round-trip through the deployed API.

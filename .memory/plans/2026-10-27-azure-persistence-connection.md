@@ -1,12 +1,16 @@
 # Plan: Azure Persistence and DEX Sign-in Connection
 
+## Status: superseded
+
+The original target `rg-caravan-game-dev` was replaced by the user's selected existing group `grill-me-edu`. Continue with [Caravan Game Azure Deployment to grill-me-edu](./2026-10-27-caravan-grill-me-edu-deployment.md). Its final task inventories and removes only the old Caravan resources after successful verification.
+
 ## Goal
 Deploy the existing Azure Functions + Cosmos DB + Static Web Apps development stack to `CR-Project-01`, configure the existing DEX Entra apps, and verify authenticated profile, save/resume, and leaderboard API flows.
 
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | Provision Azure dev resources, deploy API and web client, then perform DEX-authenticated persistence checks. | [P01](../phases/2026-10-27-azure-persistence-connection/P01-dev-deployment/phase.md) |
+| P01 | `superseded` | Original resource-group target; continue in the `grill-me-edu` replacement plan. | [P01](../phases/2026-10-27-azure-persistence-connection/P01-dev-deployment/phase.md) |
 
 ## Confirmed constraints
 - Subscription: `CR-Project-01` (`b7af62a9-9a10-4deb-95fa-1690f7bbd33d`)

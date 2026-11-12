@@ -6,7 +6,7 @@ describe('combat targeting and damage', () => {
     expect(chooseTarget({ x: 4, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 }, 'nearest')).toBe('warrior');
     expect(chooseTarget({ x: 9, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 }, 'nearest')).toBe('caravan');
   });
-  it('always prioritizes the caravan for wagon-rushers', () => {
+  it('always prioritizes the caravan for imps', () => {
     expect(chooseTarget({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 500, y: 0 }, 'caravan-priority')).toBe('caravan');
   });
   it('prioritizes the warrior for ordinary enemies even when the caravan is closer', () => {

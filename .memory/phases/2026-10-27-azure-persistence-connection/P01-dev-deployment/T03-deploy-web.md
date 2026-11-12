@@ -1,6 +1,8 @@
 # Task: T03 Configure and Deploy Web Client
 
-## Status: pending
+## Status: superseded
+
+This task targets the old Static Web App and linked API architecture. It is replaced by [T04 Configure DEX Redirect and Deploy React Web](../../2026-10-27-caravan-grill-me-edu-deployment/P01-static-site-stack/T04-deploy-web.md), which uses a new Free Static Web App and a direct Function API URL.
 
 ## Goal
 Configure the existing DEX SPA registration for the deployed Static Web App origin and deploy the React client with public Entra settings.

@@ -7,13 +7,13 @@ export const upgradeCatalog: readonly UpgradeDefinition[] = [
   { id: 'warrior-regeneration', name: '들끓는 심장', description: '초당 체력을 0.2 회복합니다.', maxLevel: 5, appliesTo: 'warrior', stat: 'health-regeneration', values: [0.2, 0.2, 0.2, 0.2, 0.2], weight: 7, characterIds: ['warrior'] },
   { id: 'warrior-attack-speed', name: '수련의 성과', description: '공격 속도 15% 증가', maxLevel: 5, appliesTo: 'warrior', stat: 'attack-speed', values: [0.15, 0.15, 0.15, 0.15, 0.15], weight: 7, characterIds: ['warrior'] },
   { id: 'warrior-max-health', name: '강철의 맷집', description: '최대 체력과 현재 체력 증가', maxLevel: 5, appliesTo: 'warrior', stat: 'warrior-max-health', values: [20, 25, 30, 35, 40], weight: 8 },
-  { id: 'warrior-reflect', name: '가시 갑옷', description: '피격 시 적에게 반사 피해', maxLevel: 5, appliesTo: 'warrior', stat: 'warrior-reflect', values: [2, 3, 4, 5, 7], weight: 6 },
+  { id: 'warrior-reflect', name: '가시 갑옷', description: '피격 시 적에게 반사 피해', maxLevel: 5, appliesTo: 'warrior', stat: 'warrior-reflect', values: [2, 3, 4, 5, 7], weight: 6, characterIds: ['warrior'] },
   { id: 'movement-speed', name: '질풍의 발걸음', description: '이동 속도 증가', maxLevel: 4, appliesTo: 'warrior', stat: 'movement-speed', values: [18, 22, 26, 30], weight: 7 },
   { id: 'caravan-max-health', name: '마차 보강', description: '마차 최대 내구도 증가', maxLevel: 5, appliesTo: 'caravan', stat: 'caravan-max-health', values: [35, 40, 45, 50, 60], weight: 7 },
 
   { id: 'arrow-damage', name: '가시 화살촉', description: '화살 피해 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'bow-damage', values: [3, 4, 5, 7, 9], weight: 8, characterIds: ['archer'] },
-  { id: 'arrow-penetration', name: '관통 사격', description: '화살이 더 많은 적을 꿰뚫습니다.', maxLevel: 4, appliesTo: 'weapon', stat: 'bow-penetration', values: [1, 1, 2, 2], weight: 7, characterIds: ['archer'] },
-  { id: 'arrow-range', name: '장궁', description: '화살 사거리 증가', maxLevel: 4, appliesTo: 'weapon', stat: 'bow-range', values: [30, 40, 50, 65], weight: 6, characterIds: ['archer'] },
+  { id: 'arrow-penetration', name: '관통 사격', description: '화살이 추가로 관통하는 적 수 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'bow-penetration', values: [1, 1, 1, 1, 1], weight: 7, characterIds: ['archer'] },
+  { id: 'arrow-range', name: '장궁', description: '화살 사거리 증가', maxLevel: 4, appliesTo: 'weapon', stat: 'bow-range', values: [50, 50, 50, 50], weight: 6, characterIds: ['archer'] },
   { id: 'burn', name: '화염 화살', description: '화살이 지속 피해를 입힙니다.', maxLevel: 3, appliesTo: 'weapon', stat: 'bow-burn', values: [2, 3, 5], weight: 5, characterIds: ['archer'] },
 
   { id: 'fireball-damage', name: '타오르는 핵', description: '파이어볼 피해 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'fireball-damage', values: [4, 5, 7, 9, 12], weight: 8, characterIds: ['mage'] },

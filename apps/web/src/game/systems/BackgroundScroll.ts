@@ -8,7 +8,7 @@ const ROAD_ART_CENTERS: Readonly<Record<StageId, number>> = {
   'enchanted-forest': 627,
   'meadow-village': 705,
 };
-const ROAD_VERTICAL_OFFSET = 34;
+const ROAD_VERTICAL_OFFSET = 146;
 
 export class BackgroundScroll {
   private readonly baseTile: Phaser.GameObjects.TileSprite;

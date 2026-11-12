@@ -22,12 +22,12 @@ export interface UpgradeChoice { id: string; nextLevel: number; value: number }
 
 export const PlayerRunStateSchema = z.object({
   hp: z.number().finite().nonnegative(), maxHp: z.number().finite().positive(), isDead: z.boolean(),
-  respawnMs: z.number().finite().nonnegative(), invulnerableMs: z.number().finite().nonnegative(),
+  respawnMs: z.number().finite().nonnegative(), respawnsRemaining: z.number().int().nonnegative(), invulnerableMs: z.number().finite().nonnegative(),
 }).strict();
 export const CaravanRunStateSchema = z.object({
   hp: z.number().finite().nonnegative(), maxHp: z.number().finite().positive(),
 }).strict();
-export interface PlayerRunState { hp: number; maxHp: number; isDead: boolean; respawnMs: number; invulnerableMs: number }
+export interface PlayerRunState { hp: number; maxHp: number; isDead: boolean; respawnMs: number; respawnsRemaining: number; invulnerableMs: number }
 export interface CaravanRunState { hp: number; maxHp: number }
 
 export const RunStateSchema = z.object({

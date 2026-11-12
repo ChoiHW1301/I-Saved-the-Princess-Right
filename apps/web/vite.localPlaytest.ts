@@ -1,4 +1,6 @@
 import type { Plugin } from 'vite';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   CurrentRunSaveV1Schema,
   CharacterIdSchema,
@@ -24,15 +26,24 @@ type BoardEntry = {
   characterId: CharacterId; karmaTier: KarmaTier; elapsedSeconds: number; clear: boolean; updatedAt: string;
 };
 
+type LocalPlaytestState = { profile?: unknown; save?: unknown; boards?: BoardEntry[] };
+
 export function localPlaytestApi(): Plugin {
-  let profile = PlayerProfileSchema.parse({
+  const statePath = resolve(process.cwd(), '.local-playtest-state.json');
+  let savedState: LocalPlaytestState | null = null;
+  try { if (existsSync(statePath)) savedState = JSON.parse(readFileSync(statePath, 'utf8').replace(/^\uFEFF/, '')) as LocalPlaytestState; } catch { savedState = null; }
+  let profile = PlayerProfileSchema.parse(savedState?.profile ?? {
     id: 'profile', userId, tenantId, objectId, version: 1, displayName,
-    goldBalance: 350, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'],
+    goldBalance: 850, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'],
     permanentUpgradeLevels: {}, characterTrainingLevels: {}, passiveIds: [], updatedAt: new Date().toISOString(),
   });
-  let save: ReturnType<typeof CurrentRunSaveV1Schema.parse> | null = null;
-  const boards = new Map<string, BoardEntry>();
+  let save: ReturnType<typeof CurrentRunSaveV1Schema.parse> | null = savedState?.save ? CurrentRunSaveV1Schema.parse(savedState.save) : null;
+  const boards = new Map<string, BoardEntry>((savedState?.boards ?? []).map((entry) => [`${entry.boardId}:${entry.userId}`, entry]));
   const receipts = new Map<string, { submission: RunSubmission; receipt: unknown }>();
+
+  function persistState(): void {
+    try { writeFileSync(statePath, JSON.stringify({ profile, save, boards: [...boards.values()] }, null, 2), 'utf8'); } catch { /* Local playtest remains usable if disk persistence is unavailable. */ }
+  }
 
   function json(response: any, status: number, value: unknown): void {
     response.statusCode = status;
@@ -42,6 +53,7 @@ export function localPlaytestApi(): Plugin {
 
   function currentProfile(next: PlayerProfile): PlayerProfile {
     profile = PlayerProfileSchema.parse(next);
+    persistState();
     return profile;
   }
 
@@ -107,6 +119,7 @@ export function localPlaytestApi(): Plugin {
       if (path === '/save' && method === 'GET') return save ? json(response, 200, save) : json(response, 404, { code: 'SAVE_NOT_FOUND' });
       if (path === '/save' && method === 'DELETE') {
         save = null;
+        persistState();
         response.statusCode = 204;
         return response.end();
       }
@@ -118,6 +131,7 @@ export function localPlaytestApi(): Plugin {
           id: 'current', userId, schemaVersion: 1, revision: (currentRevision ?? 0) + 1,
           runId: body.runId, savedAt: new Date().toISOString(), snapshot: body.snapshot,
         });
+        persistState();
         return json(response, 200, save);
       }
       if (path === '/runs' && method === 'POST') {
@@ -162,6 +176,7 @@ export function localPlaytestApi(): Plugin {
     const key = `${candidate.boardId}:${candidate.userId}`;
     const existing = boards.get(key);
     if (!existing || candidate.score > existing.score || (candidate.score === existing.score && candidate.kills > existing.kills)) boards.set(key, candidate);
+    persistState();
   }
 
   return {

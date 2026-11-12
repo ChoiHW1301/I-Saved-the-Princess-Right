@@ -5,9 +5,9 @@ export type RankCosts = readonly number[];
 
 export interface CommonUpgradeDefinition {
   id: MetaUpgradeId;
-  maxLevel: 5;
+  maxLevel: number;
   valuePerLevel: number;
-  rankCosts: typeof COMMON_UPGRADE_RANK_COSTS;
+  rankCosts: RankCosts;
 }
 
 export const commonUpgradeCatalog = {
@@ -21,6 +21,7 @@ export const commonUpgradeCatalog = {
   'xp-gain': { id: 'xp-gain', maxLevel: 5, valuePerLevel: 0.05, rankCosts: COMMON_UPGRADE_RANK_COSTS },
   'gold-gain': { id: 'gold-gain', maxLevel: 5, valuePerLevel: 0.05, rankCosts: COMMON_UPGRADE_RANK_COSTS },
   defense: { id: 'defense', maxLevel: 5, valuePerLevel: 0.02, rankCosts: COMMON_UPGRADE_RANK_COSTS },
+  'extra-lives': { id: 'extra-lives', maxLevel: 3, valuePerLevel: 1, rankCosts: [100, 125, 150] },
 } satisfies Record<MetaUpgradeId, CommonUpgradeDefinition>;
 
 export interface CharacterTrainingDefinition {

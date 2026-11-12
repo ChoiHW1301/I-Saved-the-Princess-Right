@@ -25,6 +25,7 @@ export function applyPermanentUpgrade(profile: PlayerProfile, run: RunState): Ru
       case 'xp-gain': run.upgradeStats['xp-gain'] = value; break;
       case 'gold-gain': run.upgradeStats['gold-gain'] = value; break;
       case 'defense': run.upgradeStats['damage-reduction'] = value; break;
+      case 'extra-lives': run.player.respawnsRemaining = Math.min(3, rank); break;
     }
   }
   return run;

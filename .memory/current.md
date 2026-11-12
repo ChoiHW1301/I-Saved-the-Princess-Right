@@ -1,18 +1,18 @@
 ﻿# Current Context
 
 ## Active Plan
-[Caravan Taunt and Shop Layout](./plans/2026-10-29-caravan-taunt-and-shop-layout.md)
+[Caravan Shop Revival Fix](./plans/2026-10-30-caravan-shop-revival-fix.md)
 
 ## Active Phase
-[P01 Taunt, Shop Layout, and Enemy Visuals](./phases/2026-10-29-caravan-taunt-and-shop-layout/P01-taunt-shop-and-enemy-visuals/phase.md)
+[P01 Shop Revival Fix](./phases/2026-10-30-caravan-shop-revival-fix/P01-shop-fix/phase.md)
 
 ## Active Task
-None — all tasks in `Caravan Taunt and Shop Layout` are complete.
+[T01 Shop Revival Fix](./phases/2026-10-30-caravan-shop-revival-fix/P01-shop-fix/T01-shop-revival-fix.md)
 
 ## Status
-- T01–T03 are implemented; contracts and web typecheck/build validations pass.
-- Manual browser checks for T02 responsive layout and T03 sprite orientation remain for the next local play session; no browser tab was available in this environment.
-- Azure deployment remains paused and is not part of this plan.
+- Source changes and required builds are complete.
+- The existing local Vite process could not be restarted by this tool; manual terminal restart remains.
+- Local playtest profile and leaderboard state have been saved to an ignored file for reload.
 
-## Next Step (IMPORTANT)
-The planned Taunt, shop layout, and enemy-facing work is complete. Continue with a new plan or resume the paused Azure deployment only when requested.
+## Next Step
+Press Ctrl+C in the terminal running Vite, then run `npm run dev --workspace @caravan/web`.

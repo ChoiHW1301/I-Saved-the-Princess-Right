@@ -12,6 +12,8 @@ export class Enemy extends Phaser.GameObjects.Container implements Damageable {
   target: EnemyTarget = 'warrior';
   private readonly bodyImage: Phaser.GameObjects.Image;
   private readonly bodyBaseTint: number;
+  private burnTween?: Phaser.Tweens.Tween;
+  private burning = false;
   private deathEffectPlayed = false;
   constructor(scene: Phaser.Scene, x: number, y: number, readonly definition: EnemyDefinition, readonly bossMilestoneId?: string) {
     super(scene, x, y);
@@ -46,6 +48,19 @@ export class Enemy extends Phaser.GameObjects.Container implements Damageable {
     if (horizontalDelta === 0) return;
     this.bodyImage.setFlipX(horizontalDelta < 0);
   }
+  setBurning(active: boolean): void {
+    if (this.burning === active || this.deathEffectPlayed) return;
+    this.burning = active;
+    this.burnTween?.stop();
+    this.burnTween = undefined;
+    if (active) {
+      this.bodyImage.setTint(0xff8a32);
+      this.burnTween = this.scene.tweens.add({ targets: this.bodyImage, alpha: 0.32, duration: 120, yoyo: true, repeat: -1, ease: 'Linear' });
+    } else {
+      this.bodyImage.setAlpha(1);
+      this.restoreBodyTint();
+    }
+  }
   damage(amount: number): void {
     if (this.dead || !Number.isFinite(amount) || amount <= 0) return;
     this.hp = Math.max(0, this.hp - amount);
@@ -59,13 +74,13 @@ export class Enemy extends Phaser.GameObjects.Container implements Damageable {
 
   playDeathEffect(): void {
     if (this.deathEffectPlayed) return;
+    this.setBurning(false);
     this.deathEffectPlayed = true;
     if (!this.bossMilestoneId) {
       this.setVisible(false);
       this.bodyImage.setVisible(false);
-      const tint = this.definition.id === 'sky-wisp' ? 0x70e5f5
-        : this.definition.id === 'wagon-rusher' ? 0xffa057
-          : this.definition.id === 'fortune-wraith' ? 0xffd34e : 0xb5c979;
+      const tint = this.definition.id === 'imp' ? 0x70e5f5
+        : this.definition.rewardMonster ? 0xffd34e : 0xb5c979;
       const deathSprite = this.scene.add.sprite(this.x, this.y + this.bodyImage.y, 'death-keep-ghoul')
         .setDisplaySize(Math.max(40, this.bodyImage.displayWidth), Math.max(48, this.bodyImage.displayWidth * 4 / 3))
         .setTint(tint)
@@ -121,13 +136,17 @@ export class Enemy extends Phaser.GameObjects.Container implements Damageable {
     this.bodyImage.setTint(color).setTintFill();
     this.scene.time.delayedCall(85, () => {
       if (!this.bodyImage.active || this.deathEffectPlayed) return;
-      if (this.bodyBaseTint === 0xffffff) this.bodyImage.clearTint();
-      else this.bodyImage.setTint(this.bodyBaseTint);
+      this.restoreBodyTint();
     });
     const ring = this.scene.add.circle(this.x, this.y + this.bodyImage.y, 11, color, 0.15)
       .setStrokeStyle(2, color, 0.92)
       .setDepth(this.depth + 1);
     this.scene.tweens.add({ targets: ring, scale: 1.6, alpha: 0, duration: 130, onComplete: () => ring.destroy() });
+  }
+
+  private restoreBodyTint(): void {
+    if (this.bodyBaseTint === 0xffffff) this.bodyImage.clearTint();
+    else this.bodyImage.setTint(this.bodyBaseTint);
   }
 
   private effectColor(): number {

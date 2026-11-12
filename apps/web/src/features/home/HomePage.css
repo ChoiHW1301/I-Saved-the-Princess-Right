@@ -212,7 +212,9 @@
 .meta-shop .upgrade-top { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: clamp(3px, 0.6vw, 9px); min-width: 0; }
 .meta-shop .upgrade-title-group { align-items: start; gap: clamp(3px, 0.7vw, 10px); min-width: 0; }
 .meta-shop .upgrade-title-group > div { min-width: 0; }
-.meta-shop .meta-icon { flex: 0 0 clamp(16px, 2.5vw, 38px); width: clamp(16px, 2.5vw, 38px); height: clamp(16px, 2.5vw, 38px); }
+.meta-shop .meta-icon { position: relative; flex: 0 0 clamp(16px, 2.5vw, 38px); width: clamp(16px, 2.5vw, 38px); height: clamp(16px, 2.5vw, 38px); }
+.meta-shop .meta-icon--regen::before { content: ''; position: absolute; z-index: 1; top: 5%; right: 17%; width: clamp(3px, .34vw, 5px); height: 25%; background: repeating-linear-gradient(to bottom, #fff12d 0 3px, #efaa24 3px 4px); filter: drop-shadow(1px 1px 0 #73451e); }
+.meta-shop .meta-icon--regen::after { content: ''; position: absolute; z-index: 1; top: -7%; right: 9%; width: 0; height: 0; border-left: clamp(4px, .48vw, 7px) solid transparent; border-right: clamp(4px, .48vw, 7px) solid transparent; border-bottom: clamp(6px, .62vw, 9px) solid #fff12d; filter: drop-shadow(1px 1px 0 #73451e); }
 .meta-shop .upgrade-card h4 { min-width: 0; font-size: clamp(9px, 1.25vw, 18px); line-height: 1.25; overflow-wrap: anywhere; }
 .meta-shop .upgrade-card p { margin-top: 4px; font-size: clamp(8px, 0.95vw, 13px); line-height: 1.35; overflow-wrap: anywhere; }
 .meta-shop .upgrade-top .level-pill { justify-self: start; max-width: 100%; padding: 2px 4px; font-size: clamp(8px, 0.8vw, 11px); white-space: normal; }

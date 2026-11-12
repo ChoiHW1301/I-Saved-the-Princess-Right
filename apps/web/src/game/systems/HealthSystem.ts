@@ -7,7 +7,10 @@ export class HealthSystem {
     player.hp = Math.max(0, player.hp - amount * (1 - reduction));
     if (player.hp === 0) {
       player.isDead = true;
-      player.respawnMs = 3000;
+      if (player.respawnsRemaining > 0) {
+        player.respawnsRemaining -= 1;
+        player.respawnMs = 5000;
+      } else player.respawnMs = 0;
     }
     return true;
   }

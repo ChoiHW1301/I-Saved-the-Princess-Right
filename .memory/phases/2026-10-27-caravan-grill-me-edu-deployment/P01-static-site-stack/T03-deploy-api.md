@@ -1,6 +1,6 @@
 # Task: T03 Grant Runtime Data Access and Deploy the API
 
-## Status: in_progress
+## Status: paused
 
 ## Goal
 Grant the new Function system identity only the data access it needs, deploy the Node API, and verify the public health/protected route boundary.
@@ -66,6 +66,19 @@ Task: T03-deploy-api
 ```
 
 ## Progress
-- [ ] Implementation complete
-- [ ] Validation passed
-- commit: pending
+- [x] `npm run build --workspace @caravan/contracts` passed.
+- [x] `npm run build --workspace @caravan/api` passed.
+- [ ] Function deployment and HTTP smoke checks are pending the managed identity's data-role grants.
+- 2026-10-27: Zip deployment returned `BlobUploadFailedException` / Storage 403. The user's attempt to grant the Function `Storage Blob Data Owner` at the dedicated Storage account scope returned `AuthorizationFailed` for `Microsoft.Authorization/roleAssignments/write`; the account has Contributor, not a role-assignment administrator. No role assignments were created.
+- Health endpoint timed out while the API package was not deployed; function listing has not completed successfully.
+- Required one-time administrator actions (scope limited to these new resources):
+  ```powershell
+  $principalId = '1b48f7e1-1b39-498d-8958-61f1d946db7e'
+  $storageScope = '/subscriptions/b7af62a9-9a10-4deb-95fa-1690f7bbd33d/resourceGroups/grill-me-edu/providers/Microsoft.Storage/storageAccounts/caravangstge21002'
+  az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --role 'Storage Blob Data Owner' --scope $storageScope
+  az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --role 'Storage Queue Data Contributor' --scope $storageScope
+  az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --role 'Storage Table Data Contributor' --scope $storageScope
+  az cosmosdb sql role assignment create --account-name caravangrille21002 --resource-group grill-me-edu --role-definition-id 00000000-0000-0000-0000-000000000002 --scope '/dbs/caravan-game' --principal-id $principalId
+  ```
+- After the administrator confirms the assignments, rerun API deployment, function indexing verification, and the release smoke checks. Do not grant data roles to the user's personal account.
+- commit: pending (T03 remains in progress until deployment and smoke checks pass)

@@ -20,22 +20,25 @@ const trainingNames: Record<TrainingId, string> = {
 };
 const trainingEffects: Record<TrainingId, string> = {
   'warrior-thorn-armor': '받는 피해의 일부를 적에게 반사합니다.',
-  'warrior-taunt': '범위 안의 마차 돌진 몬스터가 전사를 우선 공격합니다.',
+  'warrior-taunt': '패시브: 200 범위 안의 마차 우선 공격형 적이 전사를 우선 공격합니다.',
   'archer-dash': '스페이스바를 눌러 이동 방향으로 대쉬합니다.',
   'mage-wind-spirit': '스페이스바를 눌러 주변 적을 밀쳐냅니다.',
   'merchant-money-bomb': '폭탄을 설치해 적에게 피해를 주고 금화를 얻습니다.',
 };
 const upgradeTitles: Record<MetaUpgradeId, string> = {
+  'extra-lives': '\uB450 \uBC88\uC9F8 \uAE30\uD68C',
   'max-health': '튼튼한 체력', 'attack-damage': '무기 숙련', 'critical-chance': '급소 노리기',
   'move-speed': '민첩한 발걸음', 'attack-speed': '빠른 손놀림', 'health-regeneration': '들끓는 심장',
   'wagon-max-health': '마차 보강', 'xp-gain': '배움의 길', 'gold-gain': '행운의 주머니', defense: '단단한 갑옷',
 };
 const upgradeEffects: Record<MetaUpgradeId, string> = {
+  'extra-lives': '\uC6D0\uC815 \uC911 \uBD80\uD65C \uD69F\uC218 +1 (\uCD5C\uB300 3\uD68C)',
   'max-health': '최대 체력 +10', 'attack-damage': '모든 공격력 +5%', 'critical-chance': '치명타 확률 +2%',
   'move-speed': '이동 속도 +6', 'attack-speed': '공격 속도 +10%', 'health-regeneration': '초당 체력 회복 +0.2',
   'wagon-max-health': '마차 최대 체력 +20', 'xp-gain': '경험치 획득량 +5%', 'gold-gain': '골드 획득량 +5%', defense: '받는 피해 -2%',
 };
 const upgradeIcons: Record<MetaUpgradeId, number> = {
+  'extra-lives': 9,
   'max-health': 0, 'attack-damage': 5, 'critical-chance': 2, 'move-speed': 10,
   'attack-speed': 4, 'health-regeneration': 14, 'wagon-max-health': 1,
   'xp-gain': 3, 'gold-gain': 6, defense: 8,
@@ -121,7 +124,7 @@ export function MetaShop({ profile, onPurchased, onBuyUpgrade, onBuyTraining, on
         const poor = cost !== null && profile.goldBalance < cost;
         return <article className="upgrade-card" key={item.id}>
           <div className="upgrade-top">
-            <div className="upgrade-title-group"><span className="meta-icon" style={{ backgroundPosition: `${upgradeIcons[item.id] % 4 * 33.333}% ${Math.floor(upgradeIcons[item.id] / 4) * 33.333}%` } as CSSProperties} aria-hidden="true" /><div><h4>{upgradeTitles[item.id]}</h4><p>{upgradeEffects[item.id]}</p></div></div>
+            <div className="upgrade-title-group"><span className={`meta-icon${item.id === 'health-regeneration' ? ' meta-icon--regen' : ''}`} style={{ backgroundPosition: `${upgradeIcons[item.id] % 4 * 33.333}% ${Math.floor(upgradeIcons[item.id] / 4) * 33.333}%` } as CSSProperties} aria-hidden="true" /><div><h4>{upgradeTitles[item.id]}</h4><p>{upgradeEffects[item.id]}</p></div></div>
             <span className="level-pill">{level} / {item.maxLevel}</span>
           </div>
           <div className="level-track" role="img" aria-label={`강화 레벨 ${level}/${item.maxLevel}`}><span style={{ width: `${level / item.maxLevel * 100}%` }} /></div>

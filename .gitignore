@@ -10,4 +10,5 @@ coverage/
 !.env.example
 !.env.*.example
 apps/api/local.settings.json
+apps/web/.local-playtest-state.json
 .dev-server.log

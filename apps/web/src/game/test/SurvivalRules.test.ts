@@ -14,15 +14,16 @@ describe('survival rules', () => {
     expect(run.status).toBe('lost');
     expect(health.damageCaravan(run.caravan, 1, run)).toBe(false);
   });
-  it('respawns a defeated warrior after three seconds at full HP with two seconds of invulnerability', () => {
+  it('respawns a defeated warrior after five seconds at full HP with two seconds of invulnerability', () => {
     const run = createRunState();
     const health = new HealthSystem();
     const respawn = new RespawnSystem();
+    run.player.respawnsRemaining = 1;
     health.damagePlayer(run.player, 500);
-    expect(run.player).toMatchObject({ hp: 0, isDead: true, respawnMs: 3000 });
-    expect(respawn.update(run.player, 2999)).toBe(false);
+    expect(run.player).toMatchObject({ hp: 0, isDead: true, respawnMs: 5000, respawnsRemaining: 0 });
+    expect(respawn.update(run.player, 4999)).toBe(false);
     expect(respawn.update(run.player, 1)).toBe(true);
-    expect(run.player).toMatchObject({ hp: 100, isDead: false, invulnerableMs: 2000 });
+    expect(run.player).toMatchObject({ hp: 50, isDead: false, invulnerableMs: 2000 });
     expect(health.damagePlayer(run.player, 10)).toBe(false);
   });
   it('ignores damage while the player is dead or temporarily invulnerable', () => {

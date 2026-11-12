@@ -11,6 +11,7 @@ const PlayerSnapshotSchema = z.object({
   xp: CounterSchema,
   xpToNext: CounterSchema.default(10),
   respawnMs: CounterSchema,
+  respawnsRemaining: CounterSchema.default(0),
   invulnerableMs: CounterSchema,
 }).strict();
 

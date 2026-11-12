@@ -3,7 +3,7 @@ import { CounterSchema, IdSchema, IsoDateTimeSchema, UserIdSchema, withDocumentL
 
 export const MetaUpgradeIdSchema = z.enum([
   'max-health', 'attack-damage', 'critical-chance', 'move-speed', 'attack-speed',
-  'health-regeneration', 'wagon-max-health', 'xp-gain', 'gold-gain', 'defense',
+  'health-regeneration', 'wagon-max-health', 'xp-gain', 'gold-gain', 'defense', 'extra-lives',
 ]);
 export type MetaUpgradeId = z.infer<typeof MetaUpgradeIdSchema>;
 export const TrainingIdSchema = z.enum(['warrior-thorn-armor', 'warrior-taunt', 'archer-dash', 'mage-wind-spirit', 'merchant-money-bomb']);

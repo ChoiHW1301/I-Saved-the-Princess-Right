@@ -66,7 +66,9 @@ export function HomePage(): JSX.Element {
   function returnToHome(): void { setPlaying(false); setRunLaunch(null); }
   function onRunProfileUpdated(next: PlayerProfile): void { replaceProfile(next, false); }
   const profile = data?.profile;
-  const errorMessage = error instanceof ProfileApiError && error.code === 'INSUFFICIENT_GOLD'
+  const errorMessage = error instanceof ProfileApiError && error.code === 'INVALID_UPGRADE'
+    ? '서버가 이 강화 항목을 인식하지 못했습니다. API를 최신 버전으로 다시 시작한 뒤 시도해 주세요.'
+    : error instanceof ProfileApiError && error.code === 'INSUFFICIENT_GOLD'
     ? '골드가 부족합니다. 원정에서 골드를 모은 뒤 다시 시도해 주세요.'
     : error instanceof ProfileApiError && error.code === 'PROFILE_CONFLICT'
       ? '다른 요청에서 계정이 변경되었습니다. 최신 정보를 다시 불러왔습니다.'

@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { resolveHit } from '../systems/CombatSystem.js';
 import {
   advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition,
-  createBossGimmickState, getLavaMagicianSummonInterval, getLavaMagicianThreshold, LAVA_GIANT_CHARGE_SPEED,
+  correctLavaGiantChargeDirection, createBossGimmickState, getLavaMagicianSummonInterval, getLavaMagicianThreshold,
+  LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER,
   LAVA_MAGICIAN_INITIAL_SUMMON_MS, LAVA_MAGICIAN_MIN_SUMMON_MS, LAVA_MAGICIAN_SUMMON_REDUCTION_MS, segmentIntersectsCircle, segmentIntersectsRect,
   stunLavaGiant, type LavaGiantState, type LavaMagicianState,
 } from '../systems/BossGimmickSystem.js';
 
 describe('boss gimmick state', () => {
   it('starts giant tells after six seconds and locks aim when the two-second tell ends', () => {
-    expect(LAVA_GIANT_CHARGE_SPEED).toBe(864);
+    expect(LAVA_GIANT_CHARGE_SPEED).toBe(1000);
+    expect(LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER).toBe(0.5);
+    expect(LAVA_GIANT_STUN_DAMAGE_MULTIPLIER).toBe(1.5);
     expect(BOSS_COLLISION_RADIUS).toBe(92);
     const initial = createBossGimmickState('lava-giant') as LavaGiantState;
     const waiting = advanceBossGimmick(initial, 5_999);
@@ -17,6 +21,27 @@ describe('boss gimmick state', () => {
     expect(tell).toMatchObject({ phase: 'tell', phaseRemainingMs: 2_000 });
     const charging = beginLavaGiantCharge(advanceBossGimmick(tell, 2_000) as Extract<typeof tell, { kind: 'lava-giant' }>, { x: 3, y: 4 });
     expect(charging).toMatchObject({ phase: 'charge', chargeDirection: { x: 0.6, y: 0.8 }, hitPlayerThisCharge: false, hitWagonThisCharge: false });
+  });
+
+  it('keeps player aim when there is room and steers minimally inward near a wall', () => {
+    const openField = correctLavaGiantChargeDirection({ x: 400, y: 400 }, { x: 700, y: 500 }, 1280, 960);
+    expect(openField.x).toBeCloseTo(3 / Math.sqrt(10));
+    expect(openField.y).toBeCloseTo(1 / Math.sqrt(10));
+
+    const nearWall = correctLavaGiantChargeDirection({ x: 100, y: 100 }, { x: 50, y: 100 }, 1280, 960);
+    const degreesFromAim = Math.acos(Math.max(-1, Math.min(1, nearWall.x * -1 + nearWall.y * 0))) * 180 / Math.PI;
+    const horizontalDistance = nearWall.x < 0 ? (BOSS_COLLISION_RADIUS - 100) / nearWall.x : (1280 - BOSS_COLLISION_RADIUS - 100) / nearWall.x;
+    const verticalDistance = nearWall.y < 0 ? (BOSS_COLLISION_RADIUS - 100) / nearWall.y : (960 - BOSS_COLLISION_RADIUS - 100) / nearWall.y;
+    const wallDistance = Math.min(horizontalDistance, verticalDistance);
+    expect(degreesFromAim).toBeLessThan(90);
+    expect(wallDistance).toBeGreaterThanOrEqual(LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE);
+  });
+
+  it('takes half damage before the wall and increased damage during the stun window', () => {
+    const giant = { id: 'lava-giant', hp: 100, maxHp: 100, damageTakenMultiplier: LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER };
+    expect(resolveHit(giant, 40, 'test')?.damage).toBe(20);
+    giant.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
+    expect(resolveHit(giant, 40, 'test')?.damage).toBe(60);
   });
 
   it('maintains six seconds between tell starts and delays tells during a four-second stun', () => {

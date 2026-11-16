@@ -45,7 +45,7 @@ import { placeMerchantMoneyBomb } from '../systems/ActiveAbilitySystem.js';
 import { rollCriticalDamage } from '../systems/CombatSystem.js';
 import type { StageId } from '../content/biomes.js';
 import { getRestoredMilestoneId, migrateDefeatedMilestoneIds } from '../systems/CampaignProgressMigration.js';
-import { advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition, createBossGimmickState, getLavaMagicianSummonInterval, LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_DAMAGE, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER, segmentIntersectsCircle, segmentIntersectsRect, stunLavaGiant, type BossGimmickState, type LavaGiantState, type LavaMagicianState } from '../systems/BossGimmickSystem.js';
+import { advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition, correctLavaGiantChargeDirection, createBossGimmickState, getLavaMagicianSummonInterval, LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_DAMAGE, LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER, segmentIntersectsCircle, segmentIntersectsRect, stunLavaGiant, type BossGimmickState, type LavaGiantState, type LavaMagicianState } from '../systems/BossGimmickSystem.js';
 
 export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId }
 
@@ -848,7 +848,7 @@ export class CaravanScene extends Phaser.Scene {
     }
 
     if (next.phase === 'stunned') enemy.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
-    else enemy.damageTakenMultiplier = 1;
+    else enemy.damageTakenMultiplier = LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER;
     if (previous.kind === 'lava-giant' && previous.phase === 'stunned' && next.phase !== 'stunned') enemy.setBossStunned(false);
     if (next.phase === 'stunned') {
       enemy.setBossTell(false);
@@ -860,22 +860,21 @@ export class CaravanScene extends Phaser.Scene {
     }
     if (next.phase === 'tell') {
       const dx = warrior.x - enemy.x, dy = warrior.y - enemy.y;
-      const length = Math.hypot(dx, dy);
-      next = { ...next, chargeDirection: length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 } };
+      const direction = correctLavaGiantChargeDirection(enemy.worldPosition, warrior, WORLD_WIDTH, WORLD_HEIGHT);
+      next = { ...next, chargeDirection: direction };
       enemy.setBossStunned(false);
-      enemy.setBossDirection(dx, dy);
+      enemy.setBossDirection(direction.x, direction.y);
       enemy.setBossTell(true, 2_000 - next.phaseRemainingMs);
-      const direction = next.chargeDirection!;
       const side = { x: -direction.y, y: direction.x };
+      const previewDistance = Math.max(LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE, Math.min(Math.hypot(dx, dy), 420));
+      const previewTip = { x: enemy.x + direction.x * previewDistance, y: enemy.y + direction.y * previewDistance };
       this.bossTelegraph.clear().setVisible(true)
-        .lineStyle(10, 0xff873c, 0.35).lineBetween(enemy.x, enemy.y, warrior.x, warrior.y)
+        .lineStyle(10, 0xff873c, 0.35).lineBetween(enemy.x, enemy.y, previewTip.x, previewTip.y)
         .lineStyle(8, 0xffc65c, 0.48)
-        .lineBetween(warrior.x, warrior.y, warrior.x - direction.x * 26 + side.x * 14, warrior.y - direction.y * 26 + side.y * 14)
-        .lineBetween(warrior.x, warrior.y, warrior.x - direction.x * 26 - side.x * 14, warrior.y - direction.y * 26 - side.y * 14);
+        .lineBetween(previewTip.x, previewTip.y, previewTip.x - direction.x * 26 + side.x * 14, previewTip.y - direction.y * 26 + side.y * 14)
+        .lineBetween(previewTip.x, previewTip.y, previewTip.x - direction.x * 26 - side.x * 14, previewTip.y - direction.y * 26 - side.y * 14);
     } else if (previous.kind === 'lava-giant' && previous.phase === 'tell' && next.phase === 'charge') {
-      const dx = warrior.x - enemy.x, dy = warrior.y - enemy.y;
-      const length = Math.hypot(dx, dy);
-      next = beginLavaGiantCharge(next, length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 });
+      next = beginLavaGiantCharge(next, correctLavaGiantChargeDirection(enemy.worldPosition, warrior, WORLD_WIDTH, WORLD_HEIGHT));
     }
     if (next.phase !== 'tell') {
       enemy.setBossTell(false);

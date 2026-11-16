@@ -11,9 +11,10 @@ export type BossGimmickState = LavaGiantState | LavaMagicianState;
 
 export const LAVA_GIANT_TELL_MS = 2_000;
 export const LAVA_GIANT_TELL_INTERVAL_MS = 6_000;
-export const LAVA_GIANT_CHARGE_SPEED = 864;
+export const LAVA_GIANT_CHARGE_SPEED = 1000;
 export const LAVA_GIANT_WALL_STUN_MS = 4_000;
 export const LAVA_GIANT_DAMAGE = 40;
+export const LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER = 0.5;
 export const LAVA_GIANT_STUN_DAMAGE_MULTIPLIER = 1.5;
 export const LAVA_MAGICIAN_INITIAL_SUMMON_MS = 2_000;
 export const LAVA_MAGICIAN_MIN_SUMMON_MS = 1_500;
@@ -21,6 +22,7 @@ export const LAVA_MAGICIAN_SUMMON_REDUCTION_MS = 50;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_CHANCE = 0.25;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_RADIUS = 120;
 export const BOSS_COLLISION_RADIUS = 92;
+export const LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE = BOSS_COLLISION_RADIUS * 3;
 export type LavaGiantFacing = { texture: 'lava-giant-up' | 'lava-giant-down' | 'lava-giant-side'; flipX: boolean };
 
 export function getLavaGiantFacing(dx: number, dy: number): LavaGiantFacing {
@@ -62,6 +64,35 @@ export function beginLavaGiantCharge(state: LavaGiantState, direction: Vector2):
     chargeDirection: length > 0 ? { x: direction.x / length, y: direction.y / length } : { x: 1, y: 0 },
     hitPlayerThisCharge: false, hitWagonThisCharge: false,
   };
+}
+
+export function correctLavaGiantChargeDirection(start: Vector2, target: Vector2, width: number, height: number): Vector2 {
+  const dx = target.x - start.x;
+  const dy = target.y - start.y;
+  const length = Math.hypot(dx, dy);
+  const desired = length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 };
+  if (distanceToArenaBoundary(start, desired, width, height) >= LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE) return desired;
+
+  const desiredAngle = Math.atan2(desired.y, desired.x);
+  for (let stepDegrees = 0.5; stepDegrees <= 180; stepDegrees += 0.5) {
+    const step = stepDegrees * Math.PI / 180;
+    for (const sign of [1, -1]) {
+      const angle = desiredAngle + step * sign;
+      const candidate = { x: Math.cos(angle), y: Math.sin(angle) };
+      if (distanceToArenaBoundary(start, candidate, width, height) >= LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE) return candidate;
+    }
+  }
+  return desired;
+}
+
+function distanceToArenaBoundary(start: Vector2, direction: Vector2, width: number, height: number): number {
+  const inset = BOSS_COLLISION_RADIUS;
+  let distance = Number.POSITIVE_INFINITY;
+  if (direction.x > 1e-8) distance = Math.min(distance, (width - inset - start.x) / direction.x);
+  else if (direction.x < -1e-8) distance = Math.min(distance, (inset - start.x) / direction.x);
+  if (direction.y > 1e-8) distance = Math.min(distance, (height - inset - start.y) / direction.y);
+  else if (direction.y < -1e-8) distance = Math.min(distance, (inset - start.y) / direction.y);
+  return Math.max(0, distance);
 }
 
 export function stunLavaGiant(state: LavaGiantState): LavaGiantState {

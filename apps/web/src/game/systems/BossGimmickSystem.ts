@@ -21,6 +21,12 @@ export const LAVA_MAGICIAN_SUMMON_REDUCTION_MS = 100;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_CHANCE = 0.25;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_RADIUS = 120;
 export const BOSS_COLLISION_RADIUS = 46;
+export type LavaGiantFacing = { texture: 'lava-giant-up' | 'lava-giant-down' | 'lava-giant-side'; flipX: boolean };
+
+export function getLavaGiantFacing(dx: number, dy: number): LavaGiantFacing {
+  if (Math.abs(dx) > Math.abs(dy)) return { texture: 'lava-giant-side', flipX: dx < 0 };
+  return { texture: dy < 0 ? 'lava-giant-up' : 'lava-giant-down', flipX: false };
+}
 
 export function createBossGimmickState(bossId: BossId): BossGimmickState | null {
   if (bossId === 'lava-giant') return {

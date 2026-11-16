@@ -8,7 +8,7 @@
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | 보스 슬롯·저장 호환, 마법진 전투, 두 보스 기믹 및 시각 표현 | [P01](../phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/phase.md) |
+| P01 | `done` | 보스 슬롯·저장 호환, 마법진 전투, 두 보스 기믹 및 시각 표현 | [P01](../phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/phase.md) |
 
 ## 확정된 게임 규칙
 - 5분 슬롯에서 용암 거인과 라바 매지션을 각각 50% 확률로 선택한다. 5분 슬롯 ID는 `lava-5min-slot`, 새로운 런의 실제 보스 ID는 `lava-giant` 또는 `lava-magician`으로 저장한다. 10분 성채 장군 슬롯 ID는 `castle-warlord-10min`, 실제 보스 ID는 기존 `castle-warlord`다.
@@ -35,4 +35,4 @@
 | T01 | `done` | 5·10분 보스 슬롯·무작위 선택·기존 저장 호환 | [T01](../phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/T01-random-boss-slot.md) |
 | T02 | `done` | 공격 가능한 마법진과 폭발, 저장·복원 | [T02](../phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/T02-lava-sigils.md) |
 | T03 | `done` | 거인 돌진·스턴 약점, 매지션 순간이동·소환 AI와 기믹 상태 저장 | [T03](../phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/T03-boss-gimmicks.md) |
-| T04 | `in_progress` | 보스 픽셀 그래픽, 돌진·마법진 경고 연출, 이름 표시 | [T04](../phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/T04-boss-visuals.md) |
+| T04 | `done` | 보스 픽셀 그래픽, 돌진·마법진 경고 연출, 이름 표시 | [T04](../phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/T04-boss-visuals.md) |

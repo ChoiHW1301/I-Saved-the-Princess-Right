@@ -22,6 +22,16 @@ export const bossCatalog: Readonly<Record<BossId, BossDefinition>> = {
   'king-guard': { id: 'king-guard', kind: 'king-guard', maxHp: 360, speed: 48, damage: 24, attacks: melee(24), color: 0xc5b783 },
 };
 
+export const bossDisplayName: Readonly<Record<BossId, string>> = {
+  'castle-warlord': '성채 장군',
+  'lava-behemoth': '용암 거인',
+  'lava-giant': '용암 거인',
+  'lava-magician': '라바 매지션',
+  'forest-warden': '숲의 수호자',
+  'princess-demon': '빙의된 공주',
+  'king-guard': '왕과 근위병',
+};
+
 export interface SpecialBossRule { eventChoiceId: string; requiredKarmaTier?: KarmaTier; bossId: BossId; priority: number }
 // Reserved for authored event-specific boss variants; the first campaign has no overrides.
 export const specialBossRules: readonly SpecialBossRule[] = [];

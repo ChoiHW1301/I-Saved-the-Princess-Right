@@ -82,6 +82,8 @@ export class CaravanScene extends Phaser.Scene {
   private reviveCountdownText!: Phaser.GameObjects.Text;
   private reviveLifeIcons: Phaser.GameObjects.Container[] = [];
   private damageFlash!: Phaser.GameObjects.Graphics;
+  private bossTelegraph!: Phaser.GameObjects.Graphics;
+  private bossChargeTrailCooldownMs = 0;
   private gameOverShown = false;
   private runEndEmitted = false;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
@@ -104,6 +106,11 @@ export class CaravanScene extends Phaser.Scene {
     this.load.image('portrait-merchant', '/game-assets/portrait-merchant.png');
     this.load.image('demon-sprite', '/game-assets/demon.png');
     this.load.image('fortune-wraith-sprite', '/game-assets/monsters/fortune-wraith.png');
+    this.load.image('lava-giant-up', '/game-assets/monsters/lava-giant-up.png');
+    this.load.image('lava-giant-down', '/game-assets/monsters/lava-giant-down.png');
+    this.load.image('lava-giant-side', '/game-assets/monsters/lava-giant-side.png');
+    this.load.image('lava-magician', '/game-assets/monsters/lava-magician.png');
+    this.load.image('lava-sigil', '/game-assets/monsters/lava-sigil.png');
     this.load.spritesheet('encounter-atlas', '/game-assets/encounters/atlas.png', { frameWidth: 627, frameHeight: 627 });
     this.load.spritesheet('ui-icons', '/game-assets/ui/icons-atlas.png', { frameWidth: 313, frameHeight: 313 });
     this.load.image('karma-demon-wing', '/game-assets/ui/karma-demon-wing.png');
@@ -219,6 +226,7 @@ export class CaravanScene extends Phaser.Scene {
           const activeBoss = this.enemies.find((enemy) => enemy.bossMilestoneId === restoredBossMilestoneId);
           if (activeBoss && this.activeBossGimmick?.kind === 'lava-giant' && this.activeBossGimmick.phase === 'stunned') {
             activeBoss.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
+            activeBoss.setBossStunned(true);
           }
           const milestone = campaignSchedule.find((candidate) => candidate.id === restoredBossMilestoneId);
           if (milestone) gameEventBus.emit('boss-encounter', { ...milestone, bossId: boss.id });
@@ -250,6 +258,8 @@ export class CaravanScene extends Phaser.Scene {
     this.drawKarmaWings();
     this.damageFlash = this.add.graphics().setScrollFactor(0).setDepth(200).setAlpha(0);
     this.drawDamageFlash();
+    this.bossTelegraph = this.add.graphics().setDepth(12).setVisible(false);
+    this.bossChargeTrailCooldownMs = 0;
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as typeof this.keys;
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.input.keyboard!.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -792,7 +802,10 @@ export class CaravanScene extends Phaser.Scene {
 
   private advanceActiveBossGimmick(delta: number, warrior: Vector2, caravan: Vector2): void {
     const enemy = this.enemies.find((candidate) => candidate.bossMilestoneId === this.activeBossMilestoneId);
-    if (!enemy || !this.activeBossGimmick || enemy.dead) return;
+    if (!enemy || !this.activeBossGimmick || enemy.dead) {
+      this.bossTelegraph?.clear().setVisible(false);
+      return;
+    }
     const previous = this.activeBossGimmick;
     let next = advanceBossGimmick(previous, delta);
     if (next.kind === 'lava-magician') {
@@ -802,19 +815,43 @@ export class CaravanScene extends Phaser.Scene {
         next = { ...next, summonCooldownMs: getLavaMagicianSummonInterval(enemy.maxHp, enemy.hp) };
       }
       this.activeBossGimmick = next;
+      this.bossTelegraph.clear().setVisible(false);
       return;
     }
 
     if (next.phase === 'stunned') enemy.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
     else enemy.damageTakenMultiplier = 1;
+    if (previous.kind === 'lava-giant' && previous.phase === 'stunned' && next.phase !== 'stunned') enemy.setBossStunned(false);
+    if (next.phase === 'stunned') {
+      enemy.setBossTell(false);
+      if (previous.kind === 'lava-giant' && previous.phase !== 'stunned') {
+        const direction = previous.chargeDirection ?? { x: 1, y: 0 };
+        enemy.setBossStunned(true, Math.atan2(direction.y, direction.x));
+      }
+      this.bossTelegraph.clear().setVisible(false);
+    }
     if (next.phase === 'tell') {
       const dx = warrior.x - enemy.x, dy = warrior.y - enemy.y;
       const length = Math.hypot(dx, dy);
       next = { ...next, chargeDirection: length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 } };
+      enemy.setBossStunned(false);
+      enemy.setBossDirection(dx, dy);
+      enemy.setBossTell(true, 2_000 - next.phaseRemainingMs);
+      const direction = next.chargeDirection!;
+      const side = { x: -direction.y, y: direction.x };
+      this.bossTelegraph.clear().setVisible(true)
+        .lineStyle(10, 0xff873c, 0.35).lineBetween(enemy.x, enemy.y, warrior.x, warrior.y)
+        .lineStyle(8, 0xffc65c, 0.48)
+        .lineBetween(warrior.x, warrior.y, warrior.x - direction.x * 26 + side.x * 14, warrior.y - direction.y * 26 + side.y * 14)
+        .lineBetween(warrior.x, warrior.y, warrior.x - direction.x * 26 - side.x * 14, warrior.y - direction.y * 26 - side.y * 14);
     } else if (previous.kind === 'lava-giant' && previous.phase === 'tell' && next.phase === 'charge') {
       const dx = warrior.x - enemy.x, dy = warrior.y - enemy.y;
       const length = Math.hypot(dx, dy);
       next = beginLavaGiantCharge(next, length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 });
+    }
+    if (next.phase !== 'tell') {
+      enemy.setBossTell(false);
+      this.bossTelegraph.clear().setVisible(false);
     }
     if (previous.kind === 'lava-giant' && previous.phase === 'charge' && next.phase === 'charge' && next.chargeDirection) {
       const start = { x: enemy.x, y: enemy.y };
@@ -842,11 +879,20 @@ export class CaravanScene extends Phaser.Scene {
         }
       }
       enemy.setPosition(end.x, end.y);
+      enemy.setBossDirection(direction.x, direction.y);
+      this.bossChargeTrailCooldownMs -= delta;
+      if (this.bossChargeTrailCooldownMs <= 0) {
+        const ember = this.add.circle(start.x - direction.x * 28, start.y - direction.y * 28, 10, 0xff6a32, 0.76)
+          .setStrokeStyle(3, 0xffd57d, 0.8).setDepth(7);
+        this.tweens.add({ targets: ember, scale: 0.25, alpha: 0, duration: 180, onComplete: () => ember.destroy() });
+        this.bossChargeTrailCooldownMs = 55;
+      }
       const hitBoundary = end.x !== rawEnd.x || end.y !== rawEnd.y;
       if (hitBoundary) {
         next = stunLavaGiant(next);
+        enemy.setBossStunned(true, Math.atan2(direction.y, direction.x));
         enemy.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
-        this.cameras.main.shake(180, 0.003);
+        this.cameras.main.shake(180, 0.006);
       }
     }
     this.activeBossGimmick = next;

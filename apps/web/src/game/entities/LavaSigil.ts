@@ -19,6 +19,8 @@ export class LavaSigil extends Phaser.GameObjects.Container implements WeaponAtt
   remainingMs: number;
   private elapsedMs: number;
   private readonly hpIndicators: Phaser.GameObjects.Graphics;
+  private readonly fuseRing: Phaser.GameObjects.Graphics;
+  private readonly explosionWarning: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene, readonly sigilId: string, x: number, y: number, hp = LAVA_SIGIL_MAX_HP, remainingMs = LAVA_SIGIL_FUSE_MS) {
     super(scene, x, y);
@@ -28,16 +30,13 @@ export class LavaSigil extends Phaser.GameObjects.Container implements WeaponAtt
     this.remainingMs = Phaser.Math.Clamp(remainingMs, 1, LAVA_SIGIL_FUSE_MS);
     this.elapsedMs = LAVA_SIGIL_FUSE_MS - this.remainingMs;
 
-    const art = scene.add.graphics();
-    art.fillStyle(0x4a1424, 0.74).fillCircle(0, 0, this.hitRadius);
-    art.lineStyle(3, 0xff643e, 0.95).strokeCircle(0, 0, this.hitRadius);
-    art.lineStyle(2, 0xffc05b, 0.9).strokeCircle(0, 0, 14);
-    art.lineStyle(2, 0xffd386, 0.82);
-    art.beginPath().moveTo(0, -17).lineTo(15, 9).lineTo(-15, 9).closePath().strokePath();
-    art.fillStyle(0xff7846, 0.9).fillCircle(0, 0, 4);
+    this.explosionWarning = scene.add.graphics().fillStyle(0xff542f, 0.22).fillCircle(0, 0, 100)
+      .lineStyle(4, 0xffb15b, 0.8).strokeCircle(0, 0, 100).setScale(0).setVisible(false);
+    const art = scene.add.image(0, 0, 'lava-sigil').setDisplaySize(82, 82);
+    this.fuseRing = scene.add.graphics();
     this.hpIndicators = scene.add.graphics();
     this.drawHpIndicators();
-    this.add(art);
+    this.add([this.explosionWarning, art, this.fuseRing]);
     this.add(this.hpIndicators);
     this.setDepth(7);
     scene.add.existing(this);
@@ -55,8 +54,12 @@ export class LavaSigil extends Phaser.GameObjects.Container implements WeaponAtt
     const result = advanceLavaSigil(this, deltaMs);
     if (result !== 'active') return result;
     this.elapsedMs += deltaMs;
-    const urgency = this.remainingMs < 900 ? 0.22 + 0.78 * Math.abs(Math.sin(this.elapsedMs / 55)) : 0.9 + Math.sin(this.elapsedMs / 180) * 0.1;
+    const urgency = this.remainingMs <= 1000 ? 0.12 + 0.88 * Math.abs(Math.sin(this.elapsedMs / Math.max(28, this.remainingMs * 0.12))) : 0.9 + Math.sin(this.elapsedMs / 180) * 0.1;
     this.setAlpha(urgency);
+    this.drawFuseRing();
+    if (this.remainingMs <= 300) {
+      this.explosionWarning.setVisible(true).setScale(Phaser.Math.Clamp(1 - this.remainingMs / 300, 0, 1));
+    } else this.explosionWarning.setVisible(false);
     return 'active';
   }
 
@@ -69,5 +72,11 @@ export class LavaSigil extends Phaser.GameObjects.Container implements WeaponAtt
     for (let index = 0; index < 3; index += 1) {
       this.hpIndicators.fillStyle(index < this.hp ? 0xffdc87 : 0x65343b, 1).fillCircle(-8 + index * 8, 28, 2.5);
     }
+  }
+
+  private drawFuseRing(): void {
+    const progress = Phaser.Math.Clamp(this.remainingMs / LAVA_SIGIL_FUSE_MS, 0, 1);
+    this.fuseRing.clear().lineStyle(3, this.remainingMs <= 1000 ? 0xff5f36 : 0xffd47d, 0.92)
+      .beginPath().arc(0, 0, 39, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress, false).strokePath();
   }
 }

@@ -12,6 +12,7 @@ import { LevelUpOverlay } from './ui/LevelUpOverlay.js';
 import { EventChoiceOverlay } from './ui/EventChoiceOverlay.js';
 import { ResultPage } from '../features/results/ResultPage.js';
 import { RunController, RunControllerError } from '../features/run/RunController.js';
+import { bossDisplayName } from './content/bosses.js';
 
 type ActiveBossEncounter = CampaignMilestone & { bossId: BossId };
 
@@ -115,7 +116,7 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
       {levelUp && <LevelUpOverlay level={levelUp.level} choices={levelUp.choices} onChoose={chooseUpgrade} />}
       {storyEvent && <EventChoiceOverlay event={storyEvent} onChoose={chooseEvent} />}
       {bossEncounter && <div role="status" style={{ position: 'absolute', zIndex: 15, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '10px 22px', border: '1px solid #b86556', borderRadius: 999, background: '#251414dd', color: '#f0c6a8', letterSpacing: '.12em', pointerEvents: 'none' }}>
-        {bossEncounter.kind === 'final-boss' ? 'FINAL BOSS' : 'MINI-BOSS'} · {bossEncounter.bossId.replaceAll('-', ' ').toUpperCase()}
+        {bossEncounter.kind === 'final-boss' ? '최종 보스' : '중간 보스'} · {bossDisplayName[bossEncounter.bossId]}
       </div>}
       {pauseMenu && !runSummary && <section className="run-dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title"><div><span className="eyebrow">CARAVAN CAMP</span><h2 id="pause-title">원정 일시 정지</h2><p>진행 상황을 저장하고 야영지로 돌아갈 수 있습니다.</p><button type="button" className="button button-primary" disabled={saving} onClick={() => gameEventBus.emit('snapshot-request', { reason: 'manual' })}>{saving ? '저장 중…' : '저장하고 야영지로'}</button><button type="button" className="button button-secondary" onClick={() => { setPauseMenu(false); gameEventBus.emit('resume-run', null); }}>계속 플레이</button></div></section>}
       {networkError && !runSummary && <section className="run-dialog" role="alertdialog" aria-modal="true" aria-labelledby="network-title"><div><span className="eyebrow">SAVE SYNC</span><h2 id="network-title">게임을 멈췄습니다</h2><p>{networkError}</p><button type="button" className="button button-primary" disabled={saving} onClick={() => void resumeNetworkRun()}>{saving ? '동기화 중…' : '연결 확인 후 동기화'}</button>{controller.syncStatus === 'conflict' && <button type="button" className="button button-secondary" disabled={saving} onClick={() => void returnToServerSave()}>서버 저장을 사용하고 야영지로</button>}<button type="button" className="button button-secondary" disabled={saving} onClick={() => { if (controller.syncStatus !== 'clean') onSaved?.(); onExit(); }}>야영지로 돌아가기</button></div></section>}

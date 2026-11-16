@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { EnemyDefinition, EnemyTarget } from '../content/enemies.js';
 import { resolveHit, type DamageResult, type WeaponAttackTarget, type Vector2 } from '../systems/CombatSystem.js';
+import { getLavaGiantFacing } from '../systems/BossGimmickSystem.js';
 
 let nextEnemyId = 1;
 export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackTarget {
@@ -12,7 +13,10 @@ export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackT
   attackCooldownMs = 0;
   target: EnemyTarget = 'warrior';
   private readonly bodyImage: Phaser.GameObjects.Image;
+  private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly bodyBaseTint: number;
+  private weaknessMark?: Phaser.GameObjects.Graphics;
+  private bossTellBlinkMs = 300;
   private burnTween?: Phaser.Tweens.Tween;
   private burning = false;
   private deathEffectPlayed = false;
@@ -20,11 +24,13 @@ export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackT
     super(scene, x, y);
     this.hp = definition.maxHp;
     this.maxHp = definition.maxHp;
-    const shadow = scene.add.ellipse(2, definition.flying ? 24 : 14, bossMilestoneId ? 66 : definition.flying ? 24 : definition.wagonPriority ? 30 : 48, bossMilestoneId ? 23 : definition.flying ? 12 : 16, 0x100d12, 0.55);
+    this.shadow = scene.add.ellipse(2, definition.flying ? 24 : 14, bossMilestoneId ? 66 : definition.flying ? 24 : definition.wagonPriority ? 30 : 48, bossMilestoneId ? 23 : definition.flying ? 12 : 16, 0x100d12, 0.55);
     const size = bossMilestoneId ? 92 : definition.flying ? 38 : definition.wagonPriority ? 40 : 62;
     this.bodyBaseTint = definition.flying && !bossMilestoneId ? 0x8fe4f4
       : definition.wagonPriority && !bossMilestoneId ? 0xffc16b : 0xffffff;
-    const bodyTexture = definition.rewardMonster ? 'fortune-wraith-sprite' : 'demon-sprite';
+    const bodyTexture = definition.id === 'lava-giant' ? 'lava-giant-down'
+      : definition.id === 'lava-magician' ? 'lava-magician'
+        : definition.rewardMonster ? 'fortune-wraith-sprite' : 'demon-sprite';
     this.bodyImage = scene.add.image(0, definition.flying ? -10 : 0, bodyTexture).setDisplaySize(size, size);
     if (definition.flying && !bossMilestoneId) {
       this.bodyImage.setTint(this.bodyBaseTint);
@@ -34,7 +40,7 @@ export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackT
       ]);
       scene.tweens.add({ targets: this.bodyImage, y: -15, duration: 240, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     } else if (definition.wagonPriority && !bossMilestoneId) this.bodyImage.setTint(this.bodyBaseTint);
-    this.add([shadow, this.bodyImage]);
+    this.add([this.shadow, this.bodyImage]);
     if (bossMilestoneId) {
       this.add([
         scene.add.triangle(-12, -26, 0, 14, 12, 14, 0xd4a84f).setRotation(-0.2),
@@ -50,6 +56,34 @@ export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackT
   setFacingDirection(horizontalDelta: number): void {
     if (horizontalDelta === 0) return;
     this.bodyImage.setFlipX(horizontalDelta < 0);
+  }
+  setBossDirection(dx: number, dy: number): void {
+    if (this.definition.id !== 'lava-giant') return;
+    const facing = getLavaGiantFacing(dx, dy);
+    this.bodyImage.setTexture(facing.texture).setFlipX(facing.flipX);
+  }
+  setBossTell(active: boolean, elapsedMs = 0): void {
+    if (this.definition.id !== 'lava-giant' || this.deathEffectPlayed) return;
+    if (!active) { this.bodyImage.setAlpha(1); return; }
+    this.bossTellBlinkMs = Phaser.Math.Linear(300, 80, Phaser.Math.Clamp(elapsedMs / 2_000, 0, 1));
+    this.bodyImage.setAlpha(Math.floor(Math.max(0, elapsedMs) / Math.max(1, this.bossTellBlinkMs)) % 2 === 0 ? 0.38 : 1);
+  }
+  setBossStunned(stunned: boolean, chargeAngle = 0): void {
+    if (this.definition.id !== 'lava-giant' || this.deathEffectPlayed) return;
+    if (stunned) {
+      this.bodyImage.setAngle(90 + Phaser.Math.RadToDeg(chargeAngle)).setAlpha(1);
+      this.shadow.setScale(1.24, 1.55).setFillStyle(0x32170e, 0.78);
+      if (!this.weaknessMark) {
+        this.weaknessMark = this.scene.add.graphics().fillStyle(0xffc94f, 0.24).fillEllipse(0, 24, 74, 32)
+          .lineStyle(3, 0xffe49a, 0.9).strokeEllipse(0, 24, 74, 32);
+        this.addAt(this.weaknessMark, 1);
+      }
+      this.weaknessMark.setVisible(true);
+    } else {
+      this.bodyImage.setAngle(0).setAlpha(1);
+      this.shadow.setScale(1).setFillStyle(0x100d12, 0.55);
+      this.weaknessMark?.setVisible(false);
+    }
   }
   setBurning(active: boolean): void {
     if (this.burning === active || this.deathEffectPlayed) return;

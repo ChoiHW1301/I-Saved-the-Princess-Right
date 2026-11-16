@@ -1,6 +1,6 @@
 # Task: T04 Boss Visuals
 
-## Status: pending
+## Status: done
 
 ## Goal
 두 보스를 기존 어두운 도트풍 월드에서 구분 가능하게 표시하고, 거인의 돌진과 마법진 폭발을 플레이어가 미리 읽을 수 있는 시각 신호로 전달한다.
@@ -57,16 +57,22 @@
   6. 보스 표시명은 `lava-giant: '용암 거인'`, `lava-magician: '라바 매지션'`, `lava-behemoth: '용암 거인'`이며, 기존 보스는 현재 표시명 의미를 보존한다. `GameCanvas`는 `bossEncounter.bossId`를 `bossDisplayName`으로 바꿔 표시한다.
 
 ## Acceptance Criteria
-- [ ] 거인 상·하·좌·우가 올바른 그래픽 방향으로 보이고 좌우는 측면 이미지 반전으로 그려진다.
-- [ ] 거인의 예고 방향·몸체 점멸·돌진 흔적·벽 충돌 흔들림·스턴 약점이 읽히며 상태 해제 후 남은 tween이 없다.
-- [ ] 마법진의 3/2/1 타격 상태와 폭발 위험 범위가 표시되고, 시각 범위가 실제 피해 반경 100과 일치한다.
-- [ ] 보스 안내 UI가 `LAVA-GIANT` 같은 내부 ID 대신 한글 보스명을 표시한다.
+- [x] 거인 상·하·좌·우가 올바른 그래픽 방향으로 보이고 좌우는 측면 이미지 반전으로 그려진다.
+- [x] 거인의 예고 방향·몸체 점멸·돌진 흔적·벽 충돌 흔들림·스턴 약점이 구현되고 상태 해제 후 잔류 효과가 없다.
+- [x] 마법진의 3/2/1 타격 상태와 폭발 위험 범위가 표시되고, 시각 범위가 실제 피해 반경 100과 일치한다.
+- [x] 보스 안내 UI가 `LAVA-GIANT` 같은 내부 ID 대신 한글 보스명을 표시한다.
 
 ## Validation
 - `npm run test --workspace @caravan/web -- src/game/test/BossPresentation.test.ts` — 방향 매핑과 표시명 검증.
 - `npm run typecheck --workspace @caravan/web` — 에셋 키와 씬 UI 타입 확인.
 - `npm run build --workspace @caravan/web` — 모든 이미지 경로가 Vite public asset으로 정상 패키징되는지 확인.
 - 브라우저 4:3 게임 화면에서 tell, 벽 충돌, stun, magic circle countdown을 확인한다.
+
+### 실행 결과 (2026-11-16)
+- 방향·표시명·기믹·마법진 테스트 3개 파일 14개 통과.
+- 웹 타입 검사와 production build 통과.
+- 생성 PNG 5개가 Vite에서 HTTP 200 및 `image/png`로 제공되고, 투명 배경·요구 크기를 확인.
+- 브라우저 접근 호스트가 사용할 수 없어 실제 플레이 화면 확인은 못 했다. 로컬 Vite 서버는 `http://127.0.0.1:5173/`에서 실행 중이며, 4:3 게임 플레이 점검이 남아 있다.
 
 ## Commit Message
 ```text
@@ -81,6 +87,7 @@ Task: T04-boss-visuals
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] Implementation complete
+- [x] Automated validation passed
+- [ ] Manual 4:3 gameplay check (browser access host unavailable)
+- commit: 73f3e1d

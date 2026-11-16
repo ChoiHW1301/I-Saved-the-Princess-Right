@@ -5,6 +5,7 @@ import {
   avoidNearestWallChargeDirection, clampBossPositionToWorld, createBossGimmickState, getLavaMagicianSummonInterval, getLavaMagicianThreshold,
   LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER,
   LAVA_MAGICIAN_INITIAL_SUMMON_MS, LAVA_MAGICIAN_MIN_SUMMON_MS, LAVA_MAGICIAN_SUMMON_REDUCTION_MS, segmentIntersectsCircle, segmentIntersectsRect,
+  shouldSummonPlayerTargetedLavaSigil,
   stunLavaGiant, type LavaGiantState, type LavaMagicianState,
 } from '../systems/BossGimmickSystem.js';
 
@@ -71,6 +72,15 @@ describe('boss gimmick state', () => {
     expect(getLavaMagicianSummonInterval(220, 110)).toBe(1_750);
     expect(getLavaMagicianSummonInterval(220, 130)).toBe(1_800);
     expect(getLavaMagicianSummonInterval(220, 0)).toBe(1_500);
+  });
+
+  it('chooses a different edge position when teleporting and targets the player at half health', () => {
+    const current = { x: 94, y: 480 };
+    expect(chooseLavaMagicianTeleport(() => 0, 1280, 960, [current])).toEqual({ x: 1186, y: 480 });
+    expect(chooseLavaMagicianTeleport(() => 0.5, 1280, 960, [current, { x: 1186, y: 480 }])).toEqual({ x: 640, y: 866 });
+    expect(shouldSummonPlayerTargetedLavaSigil(200, 100)).toBe(true);
+    expect(shouldSummonPlayerTargetedLavaSigil(200, 101)).toBe(false);
+    expect(shouldSummonPlayerTargetedLavaSigil(0, 0)).toBe(false);
   });
 
   it('places mage sigils in the wagon radius one quarter of the time and otherwise across the map', () => {

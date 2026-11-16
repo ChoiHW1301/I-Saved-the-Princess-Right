@@ -121,6 +121,10 @@ export function getLavaMagicianSummonInterval(maxHp: number, hp: number): number
   return Math.max(LAVA_MAGICIAN_MIN_SUMMON_MS, LAVA_MAGICIAN_INITIAL_SUMMON_MS - threshold * LAVA_MAGICIAN_SUMMON_REDUCTION_MS);
 }
 
+export function shouldSummonPlayerTargetedLavaSigil(maxHp: number, hp: number): boolean {
+  return Number.isFinite(maxHp) && maxHp > 0 && Number.isFinite(hp) && hp <= maxHp * 0.5;
+}
+
 export function applyLavaMagicianDamage(state: LavaMagicianState, maxHp: number, hp: number): { state: LavaMagicianState; teleported: boolean } {
   const threshold = getLavaMagicianThreshold(maxHp, hp);
   if (threshold <= state.crossedHpThresholds) return { state, teleported: false };
@@ -147,13 +151,19 @@ export function segmentIntersectsCircle(start: Vector2, end: Vector2, center: Ve
   return Math.hypot(start.x + t * dx - center.x, start.y + t * dy - center.y) <= radius;
 }
 
-export function chooseLavaMagicianTeleport(random: () => number, width: number, height: number): Vector2 {
+export function chooseLavaMagicianTeleport(random: () => number, width: number, height: number, avoidPositions: readonly Vector2[] = []): Vector2 {
   const inset = BOSS_COLLISION_RADIUS + 2;
-  const edge = Math.floor(random() * 4);
-  if (edge === 0) return { x: inset, y: height / 2 };
-  if (edge === 1) return { x: width - inset, y: height / 2 };
-  if (edge === 2) return { x: width / 2, y: inset };
-  return { x: width / 2, y: height - inset };
+  const candidates = [
+    { x: inset, y: height / 2 },
+    { x: width - inset, y: height / 2 },
+    { x: width / 2, y: inset },
+    { x: width / 2, y: height - inset },
+  ];
+  const available = candidates.filter((candidate) => !avoidPositions.some((position) => Math.hypot(candidate.x - position.x, candidate.y - position.y) < 1));
+  const choices = available.length > 0 ? available : candidates;
+  const roll = random();
+  const index = Number.isFinite(roll) ? Math.min(choices.length - 1, Math.max(0, Math.floor(roll * choices.length))) : 0;
+  return choices[index]!;
 }
 
 export function chooseLavaSigilPosition(random: () => number, width: number, height: number, wagon: Vector2): Vector2 {

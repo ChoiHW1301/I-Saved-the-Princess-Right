@@ -45,7 +45,7 @@ import { placeMerchantMoneyBomb } from '../systems/ActiveAbilitySystem.js';
 import { rollCriticalDamage } from '../systems/CombatSystem.js';
 import type { StageId } from '../content/biomes.js';
 import { getRestoredMilestoneId, migrateDefeatedMilestoneIds } from '../systems/CampaignProgressMigration.js';
-import { advanceBossGimmick, applyLavaMagicianDamage, avoidNearestWallChargeDirection, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition, clampBossPositionToWorld, createBossGimmickState, getLavaMagicianSummonInterval, LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_DAMAGE, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER, segmentIntersectsCircle, segmentIntersectsRect, stunLavaGiant, type BossGimmickState, type LavaGiantState, type LavaMagicianState } from '../systems/BossGimmickSystem.js';
+import { advanceBossGimmick, applyLavaMagicianDamage, avoidNearestWallChargeDirection, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition, clampBossPositionToWorld, createBossGimmickState, getLavaMagicianSummonInterval, LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_DAMAGE, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER, segmentIntersectsCircle, segmentIntersectsRect, shouldSummonPlayerTargetedLavaSigil, stunLavaGiant, type BossGimmickState, type LavaGiantState, type LavaMagicianState } from '../systems/BossGimmickSystem.js';
 
 export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId }
 
@@ -61,6 +61,7 @@ export class CaravanScene extends Phaser.Scene {
   private readonly bowProjectileVisuals = new Map<number, Phaser.GameObjects.Graphics>();
   private readonly teleportingMagicians = new WeakSet<Enemy>();
   private readonly queuedMagicianTeleports = new WeakMap<Enemy, Vector2>();
+  private readonly magicianTeleportTargets = new WeakMap<Enemy, Vector2>();
   private run = createRunState();
   private readonly enemyDirector = new EnemyDirector();
   private readonly weaponSystem = new WeaponSystem();
@@ -843,7 +844,12 @@ export class CaravanScene extends Phaser.Scene {
     const result = applyLavaMagicianDamage(this.activeBossGimmick, enemy.maxHp, enemy.hp);
     this.activeBossGimmick = result.state;
     if (result.teleported) {
-      const point = chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT);
+      const avoidPositions = [enemy.worldPosition];
+      const activeTarget = this.magicianTeleportTargets.get(enemy);
+      const queuedTarget = this.queuedMagicianTeleports.get(enemy);
+      if (activeTarget) avoidPositions.push(activeTarget);
+      if (queuedTarget) avoidPositions.push(queuedTarget);
+      const point = chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT, avoidPositions);
       this.teleportMagician(enemy, point);
     }
   }
@@ -854,6 +860,7 @@ export class CaravanScene extends Phaser.Scene {
       return;
     }
     this.teleportingMagicians.add(enemy);
+    this.magicianTeleportTargets.set(enemy, destination);
     const origin = enemy.worldPosition;
     const originalScale = enemy.scale;
     this.playMagicianTeleportBurst(origin);
@@ -867,6 +874,7 @@ export class CaravanScene extends Phaser.Scene {
         if (!enemy.active || enemy.dead) {
           this.teleportingMagicians.delete(enemy);
           this.queuedMagicianTeleports.delete(enemy);
+          this.magicianTeleportTargets.delete(enemy);
           return;
         }
         enemy.setPosition(destination.x, destination.y).setAlpha(0).setScale(originalScale * 0.55);
@@ -880,6 +888,7 @@ export class CaravanScene extends Phaser.Scene {
           onComplete: () => {
             this.teleportingMagicians.delete(enemy);
             const queued = this.queuedMagicianTeleports.get(enemy);
+            this.magicianTeleportTargets.delete(enemy);
             if (queued && enemy.active && !enemy.dead) {
               this.queuedMagicianTeleports.delete(enemy);
               this.teleportMagician(enemy, queued);
@@ -928,6 +937,9 @@ export class CaravanScene extends Phaser.Scene {
       if (next.summonCooldownMs === 0) {
         const point = chooseLavaSigilPosition(this.random, WORLD_WIDTH, WORLD_HEIGHT, caravan);
         this.addLavaSigil(point.x, point.y);
+        if (!this.run.player.isDead && shouldSummonPlayerTargetedLavaSigil(enemy.maxHp, enemy.hp)) {
+          this.addLavaSigil(warrior.x, warrior.y);
+        }
         next = { ...next, summonCooldownMs: getLavaMagicianSummonInterval(enemy.maxHp, enemy.hp) };
       }
       this.activeBossGimmick = next;

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRunState } from '../state/createRunState.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
 import { resolveHit } from '../systems/CombatSystem.js';
-import { advanceLavaSigil, applyLavaSigilHit, isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS, LAVA_SIGIL_FUSE_MS } from '../systems/LavaSigilSystem.js';
+import { advanceLavaSigil, applyLavaSigilHit, isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS, LAVA_SIGIL_FUSE_MS, LAVA_SIGIL_MAX_HP } from '../systems/LavaSigilSystem.js';
 
 function makeSigilTarget(id: string, x: number) {
   return {
@@ -12,6 +12,14 @@ function makeSigilTarget(id: string, x: number) {
 }
 
 describe('lava sigil combat and fuse', () => {
+  it('destroys a one-HP sigil with its first real hit', () => {
+    const sigil = { id: 'one-hit-sigil', hp: LAVA_SIGIL_MAX_HP, maxHp: LAVA_SIGIL_MAX_HP, dead: false };
+    expect(LAVA_SIGIL_MAX_HP).toBe(1);
+    expect(applyLavaSigilHit(sigil, 'sword')).toMatchObject({ damage: 1, killed: true });
+    expect(sigil).toMatchObject({ hp: 0, dead: true });
+    expect(applyLavaSigilHit(sigil, 'bow')).toBeNull();
+  });
+
   it('takes one hit point per real hit and ignores hits after destruction', () => {
     const sigil = { id: 'sigil', hp: 3, maxHp: 3, dead: false };
     expect(applyLavaSigilHit(sigil, 'bow')?.damage).toBe(1);

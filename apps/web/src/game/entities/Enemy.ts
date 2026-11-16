@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { EnemyDefinition, EnemyTarget } from '../content/enemies.js';
 import { resolveHit, type DamageResult, type WeaponAttackTarget, type Vector2 } from '../systems/CombatSystem.js';
-import { getLavaGiantFacing } from '../systems/BossGimmickSystem.js';
+import { BOSS_COLLISION_RADIUS, getLavaGiantFacing } from '../systems/BossGimmickSystem.js';
 
 let nextEnemyId = 1;
 export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackTarget {
@@ -47,11 +47,15 @@ export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackT
         scene.add.triangle(12, -26, 0, 14, 12, 14, 0xd4a84f).setRotation(0.2),
       ]);
     }
+    if (bossMilestoneId && (definition.id === 'lava-giant' || definition.id === 'lava-magician')) this.setScale(2);
     this.setDepth(8);
     scene.add.existing(this);
   }
   get worldPosition(): Vector2 { return { x: this.x, y: this.y }; }
-  get hitRadius(): number { return this.bossMilestoneId ? 48 : this.definition.flying ? 18 : 26; }
+  get hitRadius(): number {
+    if (this.bossMilestoneId && (this.definition.id === 'lava-giant' || this.definition.id === 'lava-magician')) return BOSS_COLLISION_RADIUS;
+    return this.bossMilestoneId ? 48 : this.definition.flying ? 18 : 26;
+  }
   applyWeaponHit(amount: number, sourceId: string): DamageResult | null { return resolveHit(this, amount, sourceId); }
   setFacingDirection(horizontalDelta: number): void {
     if (horizontalDelta === 0) return;

@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
-  advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, chooseLavaMagicianTeleport, chooseLavaSigilPosition,
-  createBossGimmickState, getLavaMagicianSummonInterval, getLavaMagicianThreshold, segmentIntersectsCircle, segmentIntersectsRect,
+  advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition,
+  createBossGimmickState, getLavaMagicianSummonInterval, getLavaMagicianThreshold, LAVA_GIANT_CHARGE_SPEED,
+  LAVA_MAGICIAN_INITIAL_SUMMON_MS, LAVA_MAGICIAN_MIN_SUMMON_MS, LAVA_MAGICIAN_SUMMON_REDUCTION_MS, segmentIntersectsCircle, segmentIntersectsRect,
   stunLavaGiant, type LavaGiantState, type LavaMagicianState,
 } from '../systems/BossGimmickSystem.js';
 
 describe('boss gimmick state', () => {
   it('starts giant tells after six seconds and locks aim when the two-second tell ends', () => {
+    expect(LAVA_GIANT_CHARGE_SPEED).toBe(1080);
+    expect(BOSS_COLLISION_RADIUS).toBe(92);
     const initial = createBossGimmickState('lava-giant') as LavaGiantState;
     const waiting = advanceBossGimmick(initial, 5_999);
     expect(waiting).toMatchObject({ phase: 'approach', nextTellMs: 1 });
@@ -32,10 +35,16 @@ describe('boss gimmick state', () => {
     expect(getLavaMagicianThreshold(220, 176)).toBe(2);
     const initial = createBossGimmickState('lava-magician') as LavaMagicianState;
     const crossing = applyLavaMagicianDamage(initial, 220, 130);
-    expect(crossing).toMatchObject({ teleported: true, state: { crossedHpThresholds: 4, summonCooldownMs: 4_000 } });
+    expect(crossing).toMatchObject({ teleported: true, state: { crossedHpThresholds: 4, summonCooldownMs: 2_000 } });
     expect(applyLavaMagicianDamage(crossing.state, 220, 120).teleported).toBe(false);
-    expect(getLavaMagicianSummonInterval(220, 130)).toBe(3_600);
-    expect(getLavaMagicianSummonInterval(220, 0)).toBe(3_000);
+    expect(LAVA_MAGICIAN_INITIAL_SUMMON_MS).toBe(2_000);
+    expect(LAVA_MAGICIAN_SUMMON_REDUCTION_MS).toBe(50);
+    expect(LAVA_MAGICIAN_MIN_SUMMON_MS).toBe(1_500);
+    expect(getLavaMagicianSummonInterval(220, 220)).toBe(2_000);
+    expect(getLavaMagicianSummonInterval(220, 198)).toBe(1_950);
+    expect(getLavaMagicianSummonInterval(220, 110)).toBe(1_750);
+    expect(getLavaMagicianSummonInterval(220, 130)).toBe(1_800);
+    expect(getLavaMagicianSummonInterval(220, 0)).toBe(1_500);
   });
 
   it('places mage sigils in the wagon radius one quarter of the time and otherwise across the map', () => {
@@ -49,8 +58,8 @@ describe('boss gimmick state', () => {
 
   it('keeps mage teleports outside the wagon collision rectangle and checks swept charge collisions', () => {
     const point = chooseLavaMagicianTeleport(() => 0.5, 1280, 960, { x: 640, y: 480 });
-    expect(point).toEqual({ x: 640, y: 48 });
-    const wagon = { left: 482, right: 798, top: 398, bottom: 562 };
+    expect(point).toEqual({ x: 640, y: 94 });
+    const wagon = { left: 436, right: 844, top: 352, bottom: 608 };
     expect(segmentIntersectsRect({ x: 300, y: 480 }, { x: 900, y: 480 }, wagon)).toBe(true);
     expect(segmentIntersectsCircle({ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 200, y: 125 }, 26)).toBe(true);
     expect(segmentIntersectsCircle({ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 200, y: 130 }, 26)).toBe(false);

@@ -665,10 +665,13 @@ export class CaravanScene extends Phaser.Scene {
       gold: isFinal ? 60 : 20,
       color: bossDefinition.color,
     };
-    const edgeX = bossId === 'lava-magician' ? 48 + this.random() * (WORLD_WIDTH - 96)
-      : bossId === 'lava-giant' ? this.random() < 0.5 ? BOSS_COLLISION_RADIUS + 2 : WORLD_WIDTH - BOSS_COLLISION_RADIUS - 2
-        : this.random() < 0.5 ? 18 : WORLD_WIDTH - 18;
-    const bossY = bossId === 'lava-magician' ? 48 : WORLD_HEIGHT * (0.3 + this.random() * 0.4);
+    const magicianPosition = bossId === 'lava-magician'
+      ? chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT, { x: WORLD_WIDTH / 2, y: ROAD_CENTER_Y })
+      : undefined;
+    const edgeX = magicianPosition?.x ?? (bossId === 'lava-giant'
+      ? this.random() < 0.5 ? BOSS_COLLISION_RADIUS + 2 : WORLD_WIDTH - BOSS_COLLISION_RADIUS - 2
+      : this.random() < 0.5 ? 18 : WORLD_WIDTH - 18);
+    const bossY = magicianPosition?.y ?? WORLD_HEIGHT * (0.3 + this.random() * 0.4);
     this.enemies.push(new Enemy(this, edgeX, bossY, definition, milestone.id));
     if (bossId === 'king-guard') {
       const soldierHp = scaledEnemyHp(18, this.run.elapsedSeconds, this.run.level);

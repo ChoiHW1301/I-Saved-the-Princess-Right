@@ -69,7 +69,7 @@ export class LavaSigil extends Phaser.GameObjects.Container implements WeaponAtt
 
   private drawHpIndicators(): void {
     this.hpIndicators.clear();
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < this.maxHp; index += 1) {
       this.hpIndicators.fillStyle(index < this.hp ? 0xffdc87 : 0x65343b, 1).fillCircle(-8 + index * 8, 28, 2.5);
     }
   }

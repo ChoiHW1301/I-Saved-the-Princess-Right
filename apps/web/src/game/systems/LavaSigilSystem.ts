@@ -1,6 +1,6 @@
 import { distanceSquared, resolveHit, type DamageResult, type Damageable, type Vector2 } from './CombatSystem.js';
 
-export const LAVA_SIGIL_MAX_HP = 3;
+export const LAVA_SIGIL_MAX_HP = 1;
 export const LAVA_SIGIL_FUSE_MS = 3000;
 export const LAVA_SIGIL_EXPLOSION_RADIUS = 100;
 export const LAVA_SIGIL_EXPLOSION_DAMAGE = 25;

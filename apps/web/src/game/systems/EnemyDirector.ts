@@ -1,5 +1,6 @@
 import type { Enemy } from '../entities/Enemy.js';
 import { chooseTarget, distanceSquared, type Vector2 } from './CombatSystem.js';
+import { BOSS_COLLISION_RADIUS } from './BossGimmickSystem.js';
 
 export interface EnemyAttack { enemy: Enemy; target: 'warrior' | 'caravan'; damage: number }
 
@@ -10,6 +11,7 @@ export const WAGON_COLLISION_HALF_HEIGHT = 36;
 interface Rect { left: number; right: number; top: number; bottom: number }
 
 function enemyRadius(enemy: Enemy): number {
+  if (enemy.definition.id === 'lava-giant' || enemy.definition.id === 'lava-magician') return BOSS_COLLISION_RADIUS;
   return enemy.bossMilestoneId ? 46 : enemy.definition.flying ? 20 : enemy.definition.wagonPriority ? 28 : 32;
 }
 
@@ -68,7 +70,7 @@ export class EnemyDirector {
     if (refreshTargets) this.targetRefreshMs = 250;
     const attacks: EnemyAttack[] = [];
     for (const enemy of enemies) {
-      if (enemy.dead) continue;
+      if (enemy.dead || (enemy.definition.id === 'lava-magician' && enemy.bossMilestoneId !== undefined)) continue;
       enemy.attackCooldownMs = Math.max(0, enemy.attackCooldownMs - delta);
       if (refreshTargets) enemy.target = !warriorAvailable
         ? 'caravan'

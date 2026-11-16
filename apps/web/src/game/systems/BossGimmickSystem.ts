@@ -11,16 +11,16 @@ export type BossGimmickState = LavaGiantState | LavaMagicianState;
 
 export const LAVA_GIANT_TELL_MS = 2_000;
 export const LAVA_GIANT_TELL_INTERVAL_MS = 6_000;
-export const LAVA_GIANT_CHARGE_SPEED = 360;
+export const LAVA_GIANT_CHARGE_SPEED = 1080;
 export const LAVA_GIANT_WALL_STUN_MS = 4_000;
 export const LAVA_GIANT_DAMAGE = 40;
 export const LAVA_GIANT_STUN_DAMAGE_MULTIPLIER = 1.5;
-export const LAVA_MAGICIAN_INITIAL_SUMMON_MS = 4_000;
-export const LAVA_MAGICIAN_MIN_SUMMON_MS = 3_000;
-export const LAVA_MAGICIAN_SUMMON_REDUCTION_MS = 100;
+export const LAVA_MAGICIAN_INITIAL_SUMMON_MS = 2_000;
+export const LAVA_MAGICIAN_MIN_SUMMON_MS = 1_500;
+export const LAVA_MAGICIAN_SUMMON_REDUCTION_MS = 50;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_CHANCE = 0.25;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_RADIUS = 120;
-export const BOSS_COLLISION_RADIUS = 46;
+export const BOSS_COLLISION_RADIUS = 92;
 export type LavaGiantFacing = { texture: 'lava-giant-up' | 'lava-giant-down' | 'lava-giant-side'; flipX: boolean };
 
 export function getLavaGiantFacing(dx: number, dy: number): LavaGiantFacing {

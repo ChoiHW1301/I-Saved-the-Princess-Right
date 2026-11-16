@@ -1,19 +1,19 @@
 ﻿# Current Context
 
 ## Active Plan
-[마차와 겹치는 마법진 레이어](./plans/2026-11-16-caravan-sigil-wagon-layer.md)
+[라바 매지션 순간이동과 보스 이름 표시](./plans/2026-11-16-caravan-magician-teleport-presentation.md)
 
 ## Active Phase
-[P01 마법진 레이어 배치](./phases/2026-11-16-caravan-sigil-wagon-layer/P01-sigil-layer/phase.md)
+[P01 순간이동과 배너 표시](./phases/2026-11-16-caravan-magician-teleport-presentation/P01-teleport-and-banner/phase.md)
 
 ## Active Task
 없음 (완료)
 
 ## Status
-- 마법진 100px 범위가 마차 그림 영역과 겹치면 깊이 5, 그 외에는 깊이 7.
-- 신규 소환과 저장 불러오기 모두 적용.
-- 마법진 집중 테스트 10개, 웹 typecheck, production build 통과.
+- 라바 매지션이 사라진 뒤 이동하고 용암빛 파편과 페이드인으로 재등장한다.
+- 연속 텔레포트는 목적지를 대기시켜 시각 효과를 순차 재생한다.
+- 보스 이름 배너를 하단 중앙으로 이동.
+- 웹 typecheck 및 production build 통과.
 
 ## Next Step
-필요하면 개발자 보스 테스트 모드에서 마차에 겹쳐 소환된 마법진의 레이어를 시각 확인한다.
-
+필요하면 개발자 보스 테스트 모드에서 연출 위치와 타이밍을 직접 확인한다.

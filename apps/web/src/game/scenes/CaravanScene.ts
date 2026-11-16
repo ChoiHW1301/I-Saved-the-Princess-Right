@@ -59,6 +59,8 @@ export class CaravanScene extends Phaser.Scene {
   private readonly moneyBombs: MoneyBomb[] = [];
   private readonly lavaSigils: LavaSigil[] = [];
   private readonly bowProjectileVisuals = new Map<number, Phaser.GameObjects.Graphics>();
+  private readonly teleportingMagicians = new WeakSet<Enemy>();
+  private readonly queuedMagicianTeleports = new WeakMap<Enemy, Vector2>();
   private run = createRunState();
   private readonly enemyDirector = new EnemyDirector();
   private readonly weaponSystem = new WeaponSystem();
@@ -842,7 +844,71 @@ export class CaravanScene extends Phaser.Scene {
     this.activeBossGimmick = result.state;
     if (result.teleported) {
       const point = chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT);
-      enemy.setPosition(point.x, point.y);
+      this.teleportMagician(enemy, point);
+    }
+  }
+
+  private teleportMagician(enemy: Enemy, destination: Vector2): void {
+    if (this.teleportingMagicians.has(enemy)) {
+      this.queuedMagicianTeleports.set(enemy, destination);
+      return;
+    }
+    this.teleportingMagicians.add(enemy);
+    const origin = enemy.worldPosition;
+    const originalScale = enemy.scale;
+    this.playMagicianTeleportBurst(origin);
+    this.tweens.add({
+      targets: enemy,
+      alpha: 0,
+      scale: originalScale * 0.55,
+      duration: 170,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        if (!enemy.active || enemy.dead) {
+          this.teleportingMagicians.delete(enemy);
+          this.queuedMagicianTeleports.delete(enemy);
+          return;
+        }
+        enemy.setPosition(destination.x, destination.y).setAlpha(0).setScale(originalScale * 0.55);
+        this.playMagicianTeleportBurst(destination);
+        this.tweens.add({
+          targets: enemy,
+          alpha: 1,
+          scale: originalScale,
+          duration: 230,
+          ease: 'Back.easeOut',
+          onComplete: () => {
+            this.teleportingMagicians.delete(enemy);
+            const queued = this.queuedMagicianTeleports.get(enemy);
+            if (queued && enemy.active && !enemy.dead) {
+              this.queuedMagicianTeleports.delete(enemy);
+              this.teleportMagician(enemy, queued);
+            }
+          },
+        });
+      },
+    });
+  }
+
+  private playMagicianTeleportBurst(position: Vector2): void {
+    const ring = this.add.circle(position.x, position.y, 24, 0xff853d, 0.16)
+      .setStrokeStyle(4, 0xffd16a, 0.95).setScale(0.35).setDepth(13);
+    this.tweens.add({ targets: ring, scale: 1.8, alpha: 0, duration: 240, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
+    for (let index = 0; index < 8; index += 1) {
+      const angle = index / 8 * Math.PI * 2;
+      const distance = 34 + index % 3 * 10;
+      const shard = this.add.rectangle(position.x, position.y, 6, 6, index % 2 === 0 ? 0xffd16a : 0xff5f36)
+        .setRotation(angle).setDepth(14);
+      this.tweens.add({
+        targets: shard,
+        x: position.x + Math.cos(angle) * distance,
+        y: position.y + Math.sin(angle) * distance,
+        angle: Phaser.Math.RadToDeg(angle) + 90,
+        alpha: 0,
+        duration: 210 + index % 3 * 30,
+        ease: 'Cubic.easeOut',
+        onComplete: () => shard.destroy(),
+      });
     }
   }
 

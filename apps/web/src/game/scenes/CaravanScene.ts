@@ -32,7 +32,7 @@ import type { CharacterId } from '@caravan/contracts';
 import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 import { createSnapshot, mapSnapshotWorldPoint, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
 import { bossCatalog } from '../content/bosses.js';
-import { getBossTestScenario } from '../content/BossTestScenario.js';
+import { getBossPostClearTestScenario, getBossTestScenario } from '../content/BossTestScenario.js';
 import { campaignSchedule } from '../content/campaignSchedule.js';
 import { enemyForSpawnRoll, scaledEnemyHp } from '../systems/EnemyProgression.js';
 import { RewardPickup } from '../entities/RewardPickup.js';
@@ -47,7 +47,7 @@ import type { StageId } from '../content/biomes.js';
 import { getRestoredMilestoneId, migrateDefeatedMilestoneIds } from '../systems/CampaignProgressMigration.js';
 import { advanceBossGimmick, applyLavaMagicianDamage, avoidNearestWallChargeDirection, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition, clampBossPositionToWorld, createBossGimmickState, getLavaMagicianSummonInterval, LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_DAMAGE, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER, segmentIntersectsCircle, segmentIntersectsRect, shouldSummonPlayerTargetedLavaSigil, stunLavaGiant, type BossGimmickState, type LavaGiantState, type LavaMagicianState } from '../systems/BossGimmickSystem.js';
 
-export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId }
+export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId; debugPostClearBossId?: BossId }
 
 export class CaravanScene extends Phaser.Scene {
   private readonly initialRunConfig?: RunWorldConfig;
@@ -170,6 +170,10 @@ export class CaravanScene extends Phaser.Scene {
     const debugBossScenario = !snapshot && import.meta.env.DEV && data.debugBossId
       ? getBossTestScenario(data.debugBossId)
       : undefined;
+    const debugPostClearScenario = !snapshot && import.meta.env.DEV && data.debugPostClearBossId
+      ? getBossPostClearTestScenario(data.debugPostClearBossId)
+      : undefined;
+    const debugStartAtSeconds = debugBossScenario?.atSeconds ?? debugPostClearScenario?.atSeconds;
     if (debugBossScenario) {
       for (const milestone of campaignSchedule) {
         if (milestone.kind !== 'event' && milestone.atSeconds < debugBossScenario.atSeconds) {
@@ -177,12 +181,19 @@ export class CaravanScene extends Phaser.Scene {
         }
       }
     }
+    if (debugPostClearScenario) {
+      for (const milestone of campaignSchedule) {
+        if (milestone.kind !== 'event' && milestone.atSeconds <= debugPostClearScenario.atSeconds) {
+          this.defeatedBossMilestoneIds.add(milestone.id);
+        }
+      }
+    }
     this.campaignClock = new CampaignClock(campaignSchedule, snapshot
       ? { elapsedSeconds: snapshot.elapsedSeconds, emittedIds: emittedMilestones }
-      : debugBossScenario
-        ? { elapsedSeconds: debugBossScenario.atSeconds, emittedIds: campaignSchedule.filter((milestone) => milestone.atSeconds <= debugBossScenario.atSeconds).map((milestone) => milestone.id) }
+      : debugStartAtSeconds !== undefined
+        ? { elapsedSeconds: debugStartAtSeconds, emittedIds: campaignSchedule.filter((milestone) => milestone.atSeconds <= debugStartAtSeconds).map((milestone) => milestone.id) }
         : undefined);
-    this.campaignClock.elapsedSeconds = snapshot?.elapsedSeconds ?? debugBossScenario?.atSeconds ?? 0;
+    this.campaignClock.elapsedSeconds = snapshot?.elapsedSeconds ?? debugStartAtSeconds ?? 0;
     if (!snapshot && debugBossScenario?.bossId === 'king-guard') this.run.karma = -100;
     this.eventSystem = new EventSystem();
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -1243,7 +1254,7 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private createRunSnapshot(reason: 'autosave' | 'checkpoint' | 'manual'): void {
-    if (import.meta.env.DEV && this.initialRunConfig?.debugBossId) return;
+    if (import.meta.env.DEV && (this.initialRunConfig?.debugBossId || this.initialRunConfig?.debugPostClearBossId)) return;
     if (this.run.status !== 'active') return;
     const shouldPauseScene = reason === 'manual';
     const resumeAfterSave = shouldPauseScene && !this.uiPaused;

@@ -11,7 +11,7 @@ import { ProfileApiError } from '../profile/profileApi.js';
 import { RunController, RunControllerError } from '../run/RunController.js';
 import { LeaderboardPage } from '../leaderboards/LeaderboardPage.js';
 import { bossDisplayName } from '../../game/content/bosses.js';
-import { bossTestScenarios, getBossTestScenario } from '../../game/content/BossTestScenario.js';
+import { bossPostClearTestScenarios, bossTestScenarios, getBossPostClearTestScenario, getBossTestScenario } from '../../game/content/BossTestScenario.js';
 import './HomePage.css';
 
 type Section = 'home' | 'characters' | 'shop' | 'leaderboard';
@@ -25,7 +25,7 @@ export function HomePage(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null);
   const [busyUpgrade, setBusyUpgrade] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterId>('warrior');
-  const [runLaunch, setRunLaunch] = useState<{ runId: string; save?: CurrentRunSaveV1; debugBossId?: BossId } | null>(null);
+  const [runLaunch, setRunLaunch] = useState<{ runId: string; save?: CurrentRunSaveV1; debugBossId?: BossId; debugPostClearBossId?: BossId } | null>(null);
   const [developerBossPanel, setDeveloperBossPanel] = useState(false);
   const [pendingResult, setPendingResult] = useState<RunSubmission | null>(null);
   const controller = useMemo(() => data ? new RunController(getToken, data.profile) : null, [getToken, data?.profile.userId]);
@@ -64,6 +64,14 @@ export function HomePage(): JSX.Element {
     setPlaying(true);
     setNotice(null);
   }
+  function startDeveloperPostClearTest(bossId: BossId): void {
+    if (!import.meta.env.DEV || !getBossPostClearTestScenario(bossId)) return;
+    setSelectedCharacter('warrior');
+    setRunLaunch({ runId: `dev-post-clear-${bossId}-${Date.now()}`, debugPostClearBossId: bossId });
+    setDeveloperBossPanel(false);
+    setPlaying(true);
+    setNotice(null);
+  }
   async function continueRun(): Promise<void> {
     if (!controller) return;
     try { const save = await controller.continueRun(); setRunLaunch({ runId: save.runId, save }); setSelectedCharacter(save.snapshot.characterId); setPlaying(true); setNotice(null); }
@@ -91,7 +99,7 @@ export function HomePage(): JSX.Element {
 
   if (playing && profile && controller && runLaunch) return <main className="game-shell">
     <header className="game-topbar"><strong>공주님을 구했다!?</strong><span>{isLocalPlaytest && <b className="playtest-badge">LOCAL PLAYTEST</b>} {profile.displayName} · {selectedCharacter}</span></header>
-    <section className="game-frame"><GameCanvas key={runLaunch.runId} characterId={selectedCharacter} profile={profile} runId={runLaunch.runId} resumeSave={runLaunch.save} debugBossId={runLaunch.debugBossId} controller={controller} onExit={returnToHome} onProfileUpdated={onRunProfileUpdated} onSaved={() => replaceProfile(profile, true)} /></section>
+    <section className="game-frame"><GameCanvas key={runLaunch.runId} characterId={selectedCharacter} profile={profile} runId={runLaunch.runId} resumeSave={runLaunch.save} debugBossId={runLaunch.debugBossId} debugPostClearBossId={runLaunch.debugPostClearBossId} controller={controller} onExit={returnToHome} onProfileUpdated={onRunProfileUpdated} onSaved={() => replaceProfile(profile, true)} /></section>
   </main>;
 
   if (loading && !profile) return <main className="home-state" aria-live="polite"><span className="loading-seal" aria-hidden="true">✦</span><h1>원정 기록을 불러오는 중</h1><p>DEX 계정과 모험 기록을 확인하고 있습니다.</p></main>;
@@ -119,6 +127,9 @@ export function HomePage(): JSX.Element {
             <header><div><span className="eyebrow">LOCAL DEV ONLY</span><h2>보스 테스트</h2></div><button type="button" className="dev-boss-close" aria-label="보스 선택 닫기" onClick={() => setDeveloperBossPanel(false)}>×</button></header>
             <p>선택한 보스의 출현 시점에서 전투를 시작합니다. 테스트 기록은 저장되지 않습니다.</p>
             <div className="dev-boss-options">{bossTestScenarios.map(({ bossId, atSeconds }) => <button type="button" className="dev-boss-option" key={bossId} onClick={() => startDeveloperBossTest(bossId)}><span>{bossDisplayName[bossId]}</span><small>{Math.floor(atSeconds / 60)}분 시점</small></button>)}</div>
+            <h3 className="dev-boss-section-title">보스 클리어 후</h3>
+            <p>보스 처치 직후부터 다음 지역으로 배경이 전환되는 장면을 시작합니다.</p>
+            <div className="dev-boss-options">{bossPostClearTestScenarios.map(({ bossId, atSeconds, nextBiomeTitle }) => <button type="button" className="dev-boss-option" key={`post-clear-${bossId}`} onClick={() => startDeveloperPostClearTest(bossId)}><span>{bossDisplayName[bossId]} 클리어 후</span><small>{Math.floor(atSeconds / 60)}분 · {nextBiomeTitle}</small></button>)}</div>
           </aside>}
         </>}
         {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1></div><CharacterSelect profile={profile} onStart={(id) => void startNewRun(id)} /></>}

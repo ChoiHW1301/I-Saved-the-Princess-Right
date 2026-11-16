@@ -1,18 +1,18 @@
 ﻿# Current Context
 
 ## Active Plan
-[라바 매지션 텔레포트 중복 방지와 저체력 압박](./plans/2026-11-16-caravan-magician-pressure-teleport.md)
+[보스 클리어 후 장면 테스트](./plans/2026-11-16-caravan-boss-post-clear-tests.md)
 
 ## Active Phase
-[P01 목적지 중복 방지와 플레이어 표적 소환](./phases/2026-11-16-caravan-magician-pressure-teleport/P01-magician-pressure/phase.md)
+[P01 보스 클리어 후 테스트 장면](./phases/2026-11-16-caravan-boss-post-clear-tests/P01-post-clear-test-scenes/phase.md)
 
 ## Active Task
 없음 (완료)
 
 ## Status
-- 라바 매지션은 현재 및 연출 중 예약된 위치와 다른 곳으로 텔레포트한다.
-- 체력 50% 이하에서 기존 랜덤 마법진과 플레이어 위치 마법진을 매 주기 함께 소환한다.
-- 보스 기믹 테스트 8개, 웹 typecheck, production build 통과.
+- 보스 클리어 후 맵 전환 테스트 시나리오 구현 완료.
+- 관련 시나리오 테스트, 웹 typecheck, production build 통과.
+- 전체 웹 테스트에서는 별개인 CharacterCatalog 테스트 2건이 실패했다.
 
 ## Next Step
-필요하면 개발자 보스 테스트 모드에서 저체력 마법진 소환을 플레이 확인한다.
+- 개발자 모드에서 보스 클리어 후 시작 버튼으로 맵 전환 장면을 직접 확인할 수 있다.

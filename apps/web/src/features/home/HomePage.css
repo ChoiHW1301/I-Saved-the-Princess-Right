@@ -200,6 +200,7 @@
 .dev-boss-panel > p { color: #765d40; font-size: 13px; line-height: 1.6; }
 .dev-boss-close { width: 34px; height: 34px; border: 1px solid #c99e65; border-radius: 4px; color: #67421f; background: #ffedc8; font-size: 24px; cursor: pointer; }
 .dev-boss-options { display: grid; gap: 8px; }
+.dev-boss-section-title { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid #dfc49a; font: 18px "DungGeunMo", monospace; }
 .dev-boss-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 45px; padding: 9px 11px; border: 1px solid #d2ad7c; border-radius: 4px; color: #583a20; background: #fff9e9; text-align: left; cursor: pointer; }
 .dev-boss-option:hover, .dev-boss-option:focus-visible { border-color: #a84732; background: #ffe7b7; }
 .dev-boss-option small { flex: none; color: #9b6133; }

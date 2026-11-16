@@ -16,11 +16,11 @@ import { bossDisplayName } from './content/bosses.js';
 
 type ActiveBossEncounter = CampaignMilestone & { bossId: BossId };
 
-export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave, debugBossId, controller, onExit, onProfileUpdated, onSaved }: {
-  characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId; controller: RunController;
+export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave, debugBossId, debugPostClearBossId, controller, onExit, onProfileUpdated, onSaved }: {
+  characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId; debugPostClearBossId?: BossId; controller: RunController;
   onExit(): void; onProfileUpdated(profile: PlayerProfile): void; onSaved?(): void;
 }): JSX.Element {
-  const isDevBossTest = import.meta.env.DEV && debugBossId !== undefined;
+  const isDevBossTest = import.meta.env.DEV && (debugBossId !== undefined || debugPostClearBossId !== undefined);
   const hostRef = useRef<HTMLDivElement>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; choices: UpgradeChoice[] } | null>(null);
   const [storyEvent, setStoryEvent] = useState<StoryEvent | null>(null);
@@ -82,12 +82,12 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
     const host = hostRef.current;
     if (!host || host.dataset.gameMounted === 'true') return;
     host.dataset.gameMounted = 'true';
-    const game = new Phaser.Game(createGameConfig(host, { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: Date.now(), characterId, profile, runId, resumeSave, debugBossId: isDevBossTest ? debugBossId : undefined }));
+    const game = new Phaser.Game(createGameConfig(host, { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: Date.now(), characterId, profile, runId, resumeSave, debugBossId: isDevBossTest ? debugBossId : undefined, debugPostClearBossId: isDevBossTest ? debugPostClearBossId : undefined }));
     return () => {
       game.destroy(true);
       delete host.dataset.gameMounted;
     };
-  }, [characterId, debugBossId, isDevBossTest, resumeSave, runId]);
+  }, [characterId, debugBossId, debugPostClearBossId, isDevBossTest, resumeSave, runId]);
   useEffect(() => {
     if (isDevBossTest) return;
     const timer = window.setInterval(() => gameEventBus.emit('snapshot-request', { reason: 'autosave' }), 30_000);

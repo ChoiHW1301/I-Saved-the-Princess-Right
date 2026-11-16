@@ -104,20 +104,13 @@ export function segmentIntersectsCircle(start: Vector2, end: Vector2, center: Ve
   return Math.hypot(start.x + t * dx - center.x, start.y + t * dy - center.y) <= radius;
 }
 
-export function chooseLavaMagicianTeleport(
-  random: () => number, width: number, height: number, wagon: Vector2, wagonHalfWidth = 112, wagonHalfHeight = 36,
-): Vector2 {
+export function chooseLavaMagicianTeleport(random: () => number, width: number, height: number): Vector2 {
   const inset = BOSS_COLLISION_RADIUS + 2;
-  const candidates: Vector2[] = [];
-  for (let attempt = 0; attempt < 16; attempt += 1) {
-    const edge = Math.floor(random() * 4);
-    const along = inset + random() * (edge < 2 ? height - inset * 2 : width - inset * 2);
-    const point = edge === 0 ? { x: inset, y: along } : edge === 1 ? { x: width - inset, y: along }
-      : edge === 2 ? { x: along, y: inset } : { x: along, y: height - inset };
-    candidates.push(point);
-    if (!segmentIntersectsRect(point, point, { left: wagon.x - wagonHalfWidth - BOSS_COLLISION_RADIUS, right: wagon.x + wagonHalfWidth + BOSS_COLLISION_RADIUS, top: wagon.y - wagonHalfHeight - BOSS_COLLISION_RADIUS, bottom: wagon.y + wagonHalfHeight + BOSS_COLLISION_RADIUS })) return point;
-  }
-  return candidates.sort((a, b) => Math.hypot(b.x - wagon.x, b.y - wagon.y) - Math.hypot(a.x - wagon.x, a.y - wagon.y))[0] ?? { x: inset, y: inset };
+  const edge = Math.floor(random() * 4);
+  if (edge === 0) return { x: inset, y: height / 2 };
+  if (edge === 1) return { x: width - inset, y: height / 2 };
+  if (edge === 2) return { x: width / 2, y: inset };
+  return { x: width / 2, y: height - inset };
 }
 
 export function chooseLavaSigilPosition(random: () => number, width: number, height: number, wagon: Vector2): Vector2 {

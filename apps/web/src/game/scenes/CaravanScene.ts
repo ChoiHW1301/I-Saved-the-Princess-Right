@@ -666,7 +666,7 @@ export class CaravanScene extends Phaser.Scene {
       color: bossDefinition.color,
     };
     const magicianPosition = bossId === 'lava-magician'
-      ? chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT, { x: WORLD_WIDTH / 2, y: ROAD_CENTER_Y })
+      ? chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT)
       : undefined;
     const edgeX = magicianPosition?.x ?? (bossId === 'lava-giant'
       ? this.random() < 0.5 ? BOSS_COLLISION_RADIUS + 2 : WORLD_WIDTH - BOSS_COLLISION_RADIUS - 2
@@ -823,7 +823,7 @@ export class CaravanScene extends Phaser.Scene {
     const result = applyLavaMagicianDamage(this.activeBossGimmick, enemy.maxHp, enemy.hp);
     this.activeBossGimmick = result.state;
     if (result.teleported) {
-      const point = chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT, { x: WORLD_WIDTH / 2, y: ROAD_CENTER_Y });
+      const point = chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT);
       enemy.setPosition(point.x, point.y);
     }
   }
@@ -941,7 +941,7 @@ export class CaravanScene extends Phaser.Scene {
   private removeLavaSigil(sigil: LavaSigil): void {
     const index = this.lavaSigils.indexOf(sigil);
     if (index >= 0) this.lavaSigils.splice(index, 1);
-    sigil.destroy();
+    sigil.playDestroyEffect();
   }
 
   private detonateLavaSigil(x: number, y: number): void {

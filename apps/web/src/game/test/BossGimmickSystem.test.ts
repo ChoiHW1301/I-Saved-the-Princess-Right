@@ -57,9 +57,16 @@ describe('boss gimmick state', () => {
   });
 
   it('keeps mage teleports outside the wagon collision rectangle and checks swept charge collisions', () => {
-    const point = chooseLavaMagicianTeleport(() => 0.5, 1280, 960, { x: 640, y: 480 });
-    expect(point).toEqual({ x: 640, y: 94 });
+    const edgePositions = [0, 0.25, 0.5, 0.75].map((value) => chooseLavaMagicianTeleport(() => value, 1280, 960));
+    expect(edgePositions).toEqual([
+      { x: 94, y: 480 },
+      { x: 1186, y: 480 },
+      { x: 640, y: 94 },
+      { x: 640, y: 866 },
+    ]);
+    const point = edgePositions[2]!;
     const wagon = { left: 436, right: 844, top: 352, bottom: 608 };
+    expect(point.x > wagon.left && point.x < wagon.right && point.y > wagon.top && point.y < wagon.bottom).toBe(false);
     expect(segmentIntersectsRect({ x: 300, y: 480 }, { x: 900, y: 480 }, wagon)).toBe(true);
     expect(segmentIntersectsCircle({ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 200, y: 125 }, 26)).toBe(true);
     expect(segmentIntersectsCircle({ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 200, y: 130 }, 26)).toBe(false);

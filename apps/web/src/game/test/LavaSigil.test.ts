@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRunState } from '../state/createRunState.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
 import { resolveHit } from '../systems/CombatSystem.js';
-import { advanceLavaSigil, applyLavaSigilHit, isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS, LAVA_SIGIL_FUSE_MS, LAVA_SIGIL_MAX_HP } from '../systems/LavaSigilSystem.js';
+import { advanceLavaSigil, applyLavaSigilHit, isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_DISPLAY_DIAMETER, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS, LAVA_SIGIL_FUSE_MS, LAVA_SIGIL_HIT_RADIUS, LAVA_SIGIL_MAX_HP } from '../systems/LavaSigilSystem.js';
 
 function makeSigilTarget(id: string, x: number) {
   return {
@@ -15,6 +15,9 @@ describe('lava sigil combat and fuse', () => {
   it('destroys a one-HP sigil with its first real hit', () => {
     const sigil = { id: 'one-hit-sigil', hp: LAVA_SIGIL_MAX_HP, maxHp: LAVA_SIGIL_MAX_HP, dead: false };
     expect(LAVA_SIGIL_MAX_HP).toBe(1);
+    expect(LAVA_SIGIL_EXPLOSION_RADIUS).toBe(100);
+    expect(LAVA_SIGIL_HIT_RADIUS).toBe(LAVA_SIGIL_EXPLOSION_RADIUS);
+    expect(LAVA_SIGIL_DISPLAY_DIAMETER).toBe(LAVA_SIGIL_EXPLOSION_RADIUS * 2);
     expect(applyLavaSigilHit(sigil, 'sword')).toMatchObject({ damage: 1, killed: true });
     expect(sigil).toMatchObject({ hp: 0, dead: true });
     expect(applyLavaSigilHit(sigil, 'bow')).toBeNull();

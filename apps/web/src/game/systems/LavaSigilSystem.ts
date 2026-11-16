@@ -3,6 +3,8 @@ import { distanceSquared, resolveHit, type DamageResult, type Damageable, type V
 export const LAVA_SIGIL_MAX_HP = 1;
 export const LAVA_SIGIL_FUSE_MS = 3000;
 export const LAVA_SIGIL_EXPLOSION_RADIUS = 100;
+export const LAVA_SIGIL_HIT_RADIUS = LAVA_SIGIL_EXPLOSION_RADIUS;
+export const LAVA_SIGIL_DISPLAY_DIAMETER = LAVA_SIGIL_EXPLOSION_RADIUS * 2;
 export const LAVA_SIGIL_EXPLOSION_DAMAGE = 25;
 
 export interface LavaSigilFuseState {

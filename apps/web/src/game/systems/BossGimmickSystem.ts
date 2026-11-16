@@ -22,7 +22,6 @@ export const LAVA_MAGICIAN_SUMMON_REDUCTION_MS = 50;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_CHANCE = 0.25;
 export const LAVA_MAGICIAN_SIGIL_NEAR_WAGON_RADIUS = 120;
 export const BOSS_COLLISION_RADIUS = 92;
-export const LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE = BOSS_COLLISION_RADIUS * 3;
 export type LavaGiantFacing = { texture: 'lava-giant-up' | 'lava-giant-down' | 'lava-giant-side'; flipX: boolean };
 
 export function getLavaGiantFacing(dx: number, dy: number): LavaGiantFacing {
@@ -66,33 +65,46 @@ export function beginLavaGiantCharge(state: LavaGiantState, direction: Vector2):
   };
 }
 
-export function correctLavaGiantChargeDirection(start: Vector2, target: Vector2, width: number, height: number): Vector2 {
+export function avoidNearestWallChargeDirection(start: Vector2, target: Vector2, width: number, height: number): Vector2 {
   const dx = target.x - start.x;
   const dy = target.y - start.y;
   const length = Math.hypot(dx, dy);
-  const desired = length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 };
-  if (distanceToArenaBoundary(start, desired, width, height) >= LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE) return desired;
-
-  const desiredAngle = Math.atan2(desired.y, desired.x);
-  for (let stepDegrees = 0.5; stepDegrees <= 180; stepDegrees += 0.5) {
-    const step = stepDegrees * Math.PI / 180;
-    for (const sign of [1, -1]) {
-      const angle = desiredAngle + step * sign;
-      const candidate = { x: Math.cos(angle), y: Math.sin(angle) };
-      if (distanceToArenaBoundary(start, candidate, width, height) >= LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE) return candidate;
-    }
+  const direction = length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 };
+  const inset = BOSS_COLLISION_RADIUS;
+  const walls = [
+    { side: 'left', distance: start.x - inset },
+    { side: 'right', distance: width - inset - start.x },
+    { side: 'top', distance: start.y - inset },
+    { side: 'bottom', distance: height - inset - start.y },
+  ] as const;
+  const nearestDistance = Math.min(...walls.map((wall) => wall.distance));
+  const nearestWalls = walls.filter((wall) => Math.abs(wall.distance - nearestDistance) < 1e-6);
+  for (const wall of nearestWalls) {
+    if (wall.side === 'left' && direction.x < 0) direction.x = 0;
+    if (wall.side === 'right' && direction.x > 0) direction.x = 0;
+    if (wall.side === 'top' && direction.y < 0) direction.y = 0;
+    if (wall.side === 'bottom' && direction.y > 0) direction.y = 0;
   }
-  return desired;
+  const correctedLength = Math.hypot(direction.x, direction.y);
+  if (correctedLength > 0) return { x: direction.x / correctedLength, y: direction.y / correctedLength };
+
+  const awayFromNearestWalls = { x: 0, y: 0 };
+  for (const wall of nearestWalls) {
+    if (wall.side === 'left') awayFromNearestWalls.x += 1;
+    if (wall.side === 'right') awayFromNearestWalls.x -= 1;
+    if (wall.side === 'top') awayFromNearestWalls.y += 1;
+    if (wall.side === 'bottom') awayFromNearestWalls.y -= 1;
+  }
+  const awayLength = Math.hypot(awayFromNearestWalls.x, awayFromNearestWalls.y);
+  return awayLength > 0 ? { x: awayFromNearestWalls.x / awayLength, y: awayFromNearestWalls.y / awayLength } : { x: 1, y: 0 };
 }
 
-function distanceToArenaBoundary(start: Vector2, direction: Vector2, width: number, height: number): number {
-  const inset = BOSS_COLLISION_RADIUS;
-  let distance = Number.POSITIVE_INFINITY;
-  if (direction.x > 1e-8) distance = Math.min(distance, (width - inset - start.x) / direction.x);
-  else if (direction.x < -1e-8) distance = Math.min(distance, (inset - start.x) / direction.x);
-  if (direction.y > 1e-8) distance = Math.min(distance, (height - inset - start.y) / direction.y);
-  else if (direction.y < -1e-8) distance = Math.min(distance, (inset - start.y) / direction.y);
-  return Math.max(0, distance);
+export function clampBossPositionToWorld(position: Vector2, width: number, height: number, radius: number): Vector2 {
+  const inset = Math.max(0, radius);
+  return {
+    x: Math.max(inset, Math.min(width - inset, position.x)),
+    y: Math.max(inset, Math.min(height - inset, position.y)),
+  };
 }
 
 export function stunLavaGiant(state: LavaGiantState): LavaGiantState {

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { resolveHit } from '../systems/CombatSystem.js';
 import {
   advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition,
-  correctLavaGiantChargeDirection, createBossGimmickState, getLavaMagicianSummonInterval, getLavaMagicianThreshold,
-  LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER,
+  avoidNearestWallChargeDirection, clampBossPositionToWorld, createBossGimmickState, getLavaMagicianSummonInterval, getLavaMagicianThreshold,
+  LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_PRE_STUN_DAMAGE_TAKEN_MULTIPLIER, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER,
   LAVA_MAGICIAN_INITIAL_SUMMON_MS, LAVA_MAGICIAN_MIN_SUMMON_MS, LAVA_MAGICIAN_SUMMON_REDUCTION_MS, segmentIntersectsCircle, segmentIntersectsRect,
   stunLavaGiant, type LavaGiantState, type LavaMagicianState,
 } from '../systems/BossGimmickSystem.js';
@@ -23,18 +23,19 @@ describe('boss gimmick state', () => {
     expect(charging).toMatchObject({ phase: 'charge', chargeDirection: { x: 0.6, y: 0.8 }, hitPlayerThisCharge: false, hitWagonThisCharge: false });
   });
 
-  it('keeps player aim when there is room and steers minimally inward near a wall', () => {
-    const openField = correctLavaGiantChargeDirection({ x: 400, y: 400 }, { x: 700, y: 500 }, 1280, 960);
+  it('keeps player aim away from walls and removes only the nearest-wall component', () => {
+    const openField = avoidNearestWallChargeDirection({ x: 400, y: 400 }, { x: 700, y: 500 }, 1280, 960);
     expect(openField.x).toBeCloseTo(3 / Math.sqrt(10));
     expect(openField.y).toBeCloseTo(1 / Math.sqrt(10));
 
-    const nearWall = correctLavaGiantChargeDirection({ x: 100, y: 100 }, { x: 50, y: 100 }, 1280, 960);
-    const degreesFromAim = Math.acos(Math.max(-1, Math.min(1, nearWall.x * -1 + nearWall.y * 0))) * 180 / Math.PI;
-    const horizontalDistance = nearWall.x < 0 ? (BOSS_COLLISION_RADIUS - 100) / nearWall.x : (1280 - BOSS_COLLISION_RADIUS - 100) / nearWall.x;
-    const verticalDistance = nearWall.y < 0 ? (BOSS_COLLISION_RADIUS - 100) / nearWall.y : (960 - BOSS_COLLISION_RADIUS - 100) / nearWall.y;
-    const wallDistance = Math.min(horizontalDistance, verticalDistance);
-    expect(degreesFromAim).toBeLessThan(90);
-    expect(wallDistance).toBeGreaterThanOrEqual(LAVA_GIANT_MIN_WALL_CHARGE_DISTANCE);
+    const leftWall = avoidNearestWallChargeDirection({ x: 100, y: 480 }, { x: 0, y: 600 }, 1280, 960);
+    expect(leftWall).toEqual({ x: 0, y: 1 });
+    const directIntoWall = avoidNearestWallChargeDirection({ x: 100, y: 480 }, { x: 0, y: 480 }, 1280, 960);
+    expect(directIntoWall).toEqual({ x: 1, y: 0 });
+    const corner = avoidNearestWallChargeDirection({ x: 100, y: 100 }, { x: 0, y: 0 }, 1280, 960);
+    expect(corner.x).toBeGreaterThan(0);
+    expect(corner.y).toBeGreaterThan(0);
+    expect(clampBossPositionToWorld({ x: -20, y: 1000 }, 1280, 960, BOSS_COLLISION_RADIUS)).toEqual({ x: 92, y: 868 });
   });
 
   it('takes half damage before the wall and increased damage during the stun window', () => {

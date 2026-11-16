@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CurrentRunSaveV1, PlayerProfile, RunSnapshotV1, RunSubmission } from '@caravan/contracts';
+import { RunSnapshotV1Schema, type CurrentRunSaveV1, type PlayerProfile, type RunSnapshotV1, type RunSubmission } from '@caravan/contracts';
 import { RunController, RunControllerError } from './RunController.js';
 import type { LocalSaveStore } from './localSaveStore.js';
 import { createRunState } from '../../game/state/createRunState.js';
@@ -41,6 +41,21 @@ describe('run save, resume, and result flow', () => {
       approachingEvent: { eventId: 'wounded-messenger', x: 830 }, rewardPickups: [{ id: 'drop-1', remainingMs: 12_000 }],
       lavaSigils: [{ id: 'sigil-1', x: 560, y: 300, hp: 2, remainingMs: 1_700 }], defeatedBossMilestoneIds: ['lava-5min-slot'],
     });
+  });
+
+  it('round-trips the active lava boss gimmick without changing the selected boss', () => {
+    const run = createRunState('warrior');
+    run.runId = 'lava-boss-resume'; run.elapsedSeconds = 300;
+    const snapshot = createSnapshot({ run, player: { x: 360, y: 360 }, rngSeed: 42, ordinarySpawnCooldownMs: 2000,
+      enemies: [{ id: 'boss-1', typeId: 'lava-giant', x: 500, y: 360, hp: 140, attackCooldownMs: 0, bossMilestoneId: 'lava-5min-slot' }],
+      worldWidth: 1280, roadCenterY: 480, activeBossMaxHp: 220,
+      activeBossGimmick: { kind: 'lava-giant', phase: 'stunned', phaseRemainingMs: 1_250, nextTellMs: 0, chargeDirection: null, hitPlayerThisCharge: true, hitWagonThisCharge: false },
+    });
+    expect(snapshot.activeBoss).toMatchObject({ id: 'lava-5min-slot', typeId: 'lava-giant', hp: 140, maxHp: 220,
+      gimmick: { kind: 'lava-giant', phase: 'stunned', phaseRemainingMs: 1_250, hitPlayerThisCharge: true },
+    });
+    const legacy = { ...snapshot, activeBoss: { id: 'lava-5min-slot', typeId: 'lava-giant', hp: 140, maxHp: 220 } };
+    expect(RunSnapshotV1Schema.parse(legacy).activeBoss?.gimmick).toBeNull();
   });
 
   it('stores a failed autosave locally, pauses, then synchronizes with the server revision', async () => {

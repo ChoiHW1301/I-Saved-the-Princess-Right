@@ -16,7 +16,16 @@ const PlayerSnapshotSchema = z.object({
 }).strict();
 
 const WagonSnapshotSchema = z.object({ hp: CounterSchema, maxHp: CounterSchema }).strict();
-const BossSnapshotSchema = z.object({ id: IdSchema, typeId: IdSchema, hp: CounterSchema, maxHp: CounterSchema }).strict();
+const BossVectorSnapshotSchema = z.object({ x: CoordinateSchema, y: CoordinateSchema }).strict();
+const BossGimmickSnapshotSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('lava-giant'), phase: z.enum(['approach', 'tell', 'charge', 'stunned']),
+    phaseRemainingMs: CounterSchema, nextTellMs: CounterSchema,
+    chargeDirection: BossVectorSnapshotSchema.nullable(), hitPlayerThisCharge: z.boolean(), hitWagonThisCharge: z.boolean(),
+  }).strict(),
+  z.object({ kind: z.literal('lava-magician'), crossedHpThresholds: CounterSchema.max(10), summonCooldownMs: CounterSchema }).strict(),
+]);
+const BossSnapshotSchema = z.object({ id: IdSchema, typeId: IdSchema, hp: CounterSchema, maxHp: CounterSchema, gimmick: BossGimmickSnapshotSchema.nullable().default(null) }).strict();
 const EnemySnapshotSchema = z.object({
   id: IdSchema,
   typeId: IdSchema,

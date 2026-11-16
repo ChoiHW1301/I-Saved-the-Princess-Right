@@ -5,6 +5,7 @@ import { getBiomeAt } from './BiomeTransitionSystem.js';
 import type { RewardPickupState } from './RewardPickupSystem.js';
 import type { MoneyBombState } from '../entities/MoneyBomb.js';
 import type { LavaSigilState } from '../entities/LavaSigil.js';
+import type { BossGimmickState } from './BossGimmickSystem.js';
 
 export interface SnapshotEnemy { id: string; typeId: string; x: number; y: number; hp: number; attackCooldownMs: number; bossMilestoneId?: string; dead?: boolean }
 export interface SnapshotInput {
@@ -15,6 +16,7 @@ export interface SnapshotInput {
   rewardPickups?: readonly RewardPickupState[];
   moneyBombs?: readonly MoneyBombState[];
   lavaSigils?: readonly LavaSigilState[];
+  activeBossGimmick?: BossGimmickState | null;
 }
 
 export interface WorldPoint { x: number; y: number }
@@ -55,7 +57,7 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
     })),
     eventChoiceIds: [...run.eventChoiceIds],
     ordinarySpawnCooldownMs: Math.max(0, Math.floor(input.ordinarySpawnCooldownMs)),
-    activeBoss: boss ? { id: boss.bossMilestoneId!, typeId: boss.typeId, hp: Math.ceil(boss.hp), maxHp: Math.ceil(input.activeBossMaxHp ?? boss.hp) } : null,
+    activeBoss: boss ? { id: boss.bossMilestoneId!, typeId: boss.typeId, hp: Math.ceil(boss.hp), maxHp: Math.ceil(input.activeBossMaxHp ?? boss.hp), gimmick: input.activeBossGimmick ?? null } : null,
     player: { x: input.player.x, y: input.player.y, hp: Math.floor(run.player.hp), maxHp: Math.floor(run.player.maxHp), level: run.level, xp: run.xp, xpToNext: run.xpToNext, respawnMs: Math.ceil(run.player.respawnMs), respawnsRemaining: run.player.respawnsRemaining, invulnerableMs: Math.ceil(run.player.invulnerableMs) },
     wagon: { hp: Math.floor(run.caravan.hp), maxHp: Math.floor(run.caravan.maxHp) },
     runGold: run.runGold,

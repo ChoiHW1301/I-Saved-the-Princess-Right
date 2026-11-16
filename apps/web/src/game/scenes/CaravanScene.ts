@@ -44,6 +44,7 @@ import { placeMerchantMoneyBomb } from '../systems/ActiveAbilitySystem.js';
 import { rollCriticalDamage } from '../systems/CombatSystem.js';
 import type { StageId } from '../content/biomes.js';
 import { getRestoredMilestoneId, migrateDefeatedMilestoneIds } from '../systems/CampaignProgressMigration.js';
+import { advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition, createBossGimmickState, getLavaMagicianSummonInterval, LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_DAMAGE, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER, segmentIntersectsCircle, segmentIntersectsRect, stunLavaGiant, type BossGimmickState, type LavaGiantState, type LavaMagicianState } from '../systems/BossGimmickSystem.js';
 
 export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1 }
 
@@ -68,6 +69,7 @@ export class CaravanScene extends Phaser.Scene {
   private activeBossMilestoneId: string | null = null;
   private readonly defeatedBossMilestoneIds = new Set<string>();
   private activeBossId: BossId | null = null;
+  private activeBossGimmick: BossGimmickState | null = null;
   private activeBossIsFinal = false;
   private finalBossForRun: BossId | undefined;
   private readonly bossDirector = new BossDirector();
@@ -139,6 +141,7 @@ export class CaravanScene extends Phaser.Scene {
     this.activeBossMilestoneId = null;
     this.defeatedBossMilestoneIds.clear();
     this.activeBossId = null;
+    this.activeBossGimmick = null;
     this.activeBossIsFinal = false;
     this.pendingFinalVictory = false;
     this.random = seededRandom(snapshot?.rngSeed ?? data.seed);
@@ -205,6 +208,7 @@ export class CaravanScene extends Phaser.Scene {
         const boss = bossCatalog[snapshot.activeBoss.typeId as BossId];
         this.activeBossMilestoneId = restoredBossMilestoneId;
         this.activeBossId = boss?.id ?? null;
+        this.activeBossGimmick = snapshot.activeBoss.gimmick ?? (boss ? createBossGimmickState(boss.id) : null);
         this.activeBossIsFinal = snapshot.activeBoss.id === 'princess-demon';
         this.finalBossForRun = this.activeBossIsFinal ? boss?.id : undefined;
         this.campaignClock.pause(`boss:${restoredBossMilestoneId}`);
@@ -212,6 +216,12 @@ export class CaravanScene extends Phaser.Scene {
           const hpScale = snapshot.activeBoss.maxHp / boss.maxHp;
           this.bossDirector.startBoss(boss.id, this.run, hpScale);
           this.bossDirector.syncBoss(snapshot.activeBoss.hp, 0);
+          const activeBoss = this.enemies.find((enemy) => enemy.bossMilestoneId === restoredBossMilestoneId);
+          if (activeBoss && this.activeBossGimmick?.kind === 'lava-giant' && this.activeBossGimmick.phase === 'stunned') {
+            activeBoss.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
+          }
+          const milestone = campaignSchedule.find((candidate) => candidate.id === restoredBossMilestoneId);
+          if (milestone) gameEventBus.emit('boss-encounter', { ...milestone, bossId: boss.id });
         }
       }
       this.pendingFinalVictory = snapshot.elapsedSeconds >= 1200 && snapshot.defeatedBossIds.some((id) => id === 'princess-demon' || id === 'king-guard');
@@ -366,7 +376,10 @@ export class CaravanScene extends Phaser.Scene {
       this.spawnCooldownMs = Math.max(1200, 3000 - this.run.elapsedSeconds * 12);
     }
     const tauntUnlocked = this.run.characterId === 'warrior' && (this.run.trainingLevels['warrior-taunt'] ?? 0) >= 1;
-    for (const attack of this.enemyDirector.update(this.enemies, warriorPosition, caravanPosition, delta, !this.run.player.isDead, tauntUnlocked)) {
+    const directorEnemies = this.activeBossGimmick?.kind === 'lava-giant' && this.activeBossGimmick.phase !== 'approach'
+      ? this.enemies.filter((enemy) => enemy.bossMilestoneId !== this.activeBossMilestoneId)
+      : this.enemies;
+    for (const attack of this.enemyDirector.update(directorEnemies, warriorPosition, caravanPosition, delta, !this.run.player.isDead, tauntUnlocked)) {
       if (attack.target === 'caravan') {
         const previousHp = this.run.caravan.hp;
         if (this.health.damageCaravan(this.run.caravan, attack.damage, this.run)) {
@@ -385,7 +398,10 @@ export class CaravanScene extends Phaser.Scene {
         const reflect = Math.min(reflectRank * 0.05, 0.25) * attack.damage;
         if (wasDamaged && reflect > 0) {
           const reflected = resolveHit(attack.enemy, reflect, 'warrior-reflect');
-          if (reflected && reflected.damage > 0) this.showDamageNumber(attack.enemy.x, attack.enemy.y - 22, reflected.damage, '#ffe19a');
+          if (reflected && reflected.damage > 0) {
+            this.showDamageNumber(attack.enemy.x, attack.enemy.y - 22, reflected.damage, '#ffe19a');
+            this.resolveBossDamage(attack.enemy, reflected.damage);
+          }
           if (reflected?.killed) this.onEnemyDefeated(attack.enemy);
         }
       }
@@ -396,6 +412,7 @@ export class CaravanScene extends Phaser.Scene {
         (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
       }
     }
+    this.advanceActiveBossGimmick(delta, warriorPosition, caravanPosition);
     if (!this.run.player.isDead) {
       for (const enemy of this.weaponSystem.update(this.run, warriorPosition, this.enemies, delta, this.random, (projectile) => {
         const color = projectile.weaponId === 'sword' ? 0xdde8f2 : projectile.weaponId === 'bow' ? 0xd6b475
@@ -429,6 +446,7 @@ export class CaravanScene extends Phaser.Scene {
         }
       }, (target, damage) => {
         this.showDamageNumber(target.worldPosition.x, target.worldPosition.y - 22, damage);
+        if (target instanceof Enemy) this.resolveBossDamage(target, damage);
       }, this.lavaSigils, (target) => {
         if (target instanceof LavaSigil) this.removeLavaSigil(target);
       })) {
@@ -591,6 +609,7 @@ export class CaravanScene extends Phaser.Scene {
     }
     this.activeBossMilestoneId = milestone.id;
     this.activeBossId = bossId;
+    this.activeBossGimmick = createBossGimmickState(bossId);
     this.activeBossIsFinal = isFinal;
     if (isFinal) this.finalBossForRun = bossId;
     this.campaignClock.pause(`boss:${milestone.id}`);
@@ -611,8 +630,10 @@ export class CaravanScene extends Phaser.Scene {
       gold: isFinal ? 60 : 20,
       color: bossDefinition.color,
     };
-    const edgeX = this.random() < 0.5 ? 18 : WORLD_WIDTH - 18;
-    const bossY = WORLD_HEIGHT * (0.3 + this.random() * 0.4);
+    const edgeX = bossId === 'lava-magician' ? 48 + this.random() * (WORLD_WIDTH - 96)
+      : bossId === 'lava-giant' ? this.random() < 0.5 ? BOSS_COLLISION_RADIUS + 2 : WORLD_WIDTH - BOSS_COLLISION_RADIUS - 2
+        : this.random() < 0.5 ? 18 : WORLD_WIDTH - 18;
+    const bossY = bossId === 'lava-magician' ? 48 : WORLD_HEIGHT * (0.3 + this.random() * 0.4);
     this.enemies.push(new Enemy(this, edgeX, bossY, definition, milestone.id));
     if (bossId === 'king-guard') {
       const soldierHp = scaledEnemyHp(18, this.run.elapsedSeconds, this.run.level);
@@ -693,6 +714,7 @@ export class CaravanScene extends Phaser.Scene {
     this.defeatedBossMilestoneIds.add(milestoneId);
     this.activeBossMilestoneId = null;
     this.activeBossId = null;
+    this.activeBossGimmick = null;
     if (this.activeBossIsFinal) this.pendingFinalVictory = true;
     this.activeBossIsFinal = false;
     const choices = this.levelSystem.presentNextChoice(this.run);
@@ -758,6 +780,78 @@ export class CaravanScene extends Phaser.Scene {
     return sigil;
   }
 
+  private resolveBossDamage(enemy: Enemy, damage: number): void {
+    if (enemy.bossMilestoneId !== this.activeBossMilestoneId || damage <= 0 || this.activeBossGimmick?.kind !== 'lava-magician') return;
+    const result = applyLavaMagicianDamage(this.activeBossGimmick, enemy.maxHp, enemy.hp);
+    this.activeBossGimmick = result.state;
+    if (result.teleported) {
+      const point = chooseLavaMagicianTeleport(this.random, WORLD_WIDTH, WORLD_HEIGHT, { x: WORLD_WIDTH / 2, y: ROAD_CENTER_Y });
+      enemy.setPosition(point.x, point.y);
+    }
+  }
+
+  private advanceActiveBossGimmick(delta: number, warrior: Vector2, caravan: Vector2): void {
+    const enemy = this.enemies.find((candidate) => candidate.bossMilestoneId === this.activeBossMilestoneId);
+    if (!enemy || !this.activeBossGimmick || enemy.dead) return;
+    const previous = this.activeBossGimmick;
+    let next = advanceBossGimmick(previous, delta);
+    if (next.kind === 'lava-magician') {
+      if (next.summonCooldownMs === 0) {
+        const point = chooseLavaSigilPosition(this.random, WORLD_WIDTH, WORLD_HEIGHT, caravan);
+        this.addLavaSigil(point.x, point.y);
+        next = { ...next, summonCooldownMs: getLavaMagicianSummonInterval(enemy.maxHp, enemy.hp) };
+      }
+      this.activeBossGimmick = next;
+      return;
+    }
+
+    if (next.phase === 'stunned') enemy.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
+    else enemy.damageTakenMultiplier = 1;
+    if (next.phase === 'tell') {
+      const dx = warrior.x - enemy.x, dy = warrior.y - enemy.y;
+      const length = Math.hypot(dx, dy);
+      next = { ...next, chargeDirection: length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 } };
+    } else if (previous.kind === 'lava-giant' && previous.phase === 'tell' && next.phase === 'charge') {
+      const dx = warrior.x - enemy.x, dy = warrior.y - enemy.y;
+      const length = Math.hypot(dx, dy);
+      next = beginLavaGiantCharge(next, length > 0 ? { x: dx / length, y: dy / length } : { x: 1, y: 0 });
+    }
+    if (previous.kind === 'lava-giant' && previous.phase === 'charge' && next.phase === 'charge' && next.chargeDirection) {
+      const start = { x: enemy.x, y: enemy.y };
+      const direction = next.chargeDirection;
+      const distance = LAVA_GIANT_CHARGE_SPEED * Math.max(0, delta) / 1000;
+      const rawEnd = { x: start.x + direction.x * distance, y: start.y + direction.y * distance };
+      const end = { x: Phaser.Math.Clamp(rawEnd.x, BOSS_COLLISION_RADIUS, WORLD_WIDTH - BOSS_COLLISION_RADIUS), y: Phaser.Math.Clamp(rawEnd.y, BOSS_COLLISION_RADIUS, WORLD_HEIGHT - BOSS_COLLISION_RADIUS) };
+      const wagonBounds = { left: caravan.x - 112 - BOSS_COLLISION_RADIUS, right: caravan.x + 112 + BOSS_COLLISION_RADIUS, top: caravan.y - 36 - BOSS_COLLISION_RADIUS, bottom: caravan.y + 36 + BOSS_COLLISION_RADIUS };
+      if (!next.hitPlayerThisCharge && !this.run.player.isDead && segmentIntersectsCircle(start, end, warrior, BOSS_COLLISION_RADIUS + 18)) {
+        next = { ...next, hitPlayerThisCharge: true };
+        const before = this.run.player.hp;
+        if (this.health.damagePlayer(this.run.player, LAVA_GIANT_DAMAGE, this.run.upgradeStats['damage-reduction'] ?? 0)) {
+          this.showDamageFlash(); this.showDamageNumber(warrior.x, warrior.y - 36, before - this.run.player.hp, '#ff8278');
+          if (this.run.player.isDead) {
+            if (this.run.player.respawnMs === 0) this.run.status = 'lost';
+            this.warrior.setVisible(false); (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0); (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
+          }
+        }
+      }
+      if (!next.hitWagonThisCharge && segmentIntersectsRect(start, end, wagonBounds)) {
+        next = { ...next, hitWagonThisCharge: true };
+        const before = this.run.caravan.hp;
+        if (this.health.damageCaravan(this.run.caravan, LAVA_GIANT_DAMAGE, this.run)) {
+          this.showDamageFlash(); this.showDamageNumber(caravan.x, caravan.y - 62, before - this.run.caravan.hp, '#ff8278');
+        }
+      }
+      enemy.setPosition(end.x, end.y);
+      const hitBoundary = end.x !== rawEnd.x || end.y !== rawEnd.y;
+      if (hitBoundary) {
+        next = stunLavaGiant(next);
+        enemy.damageTakenMultiplier = LAVA_GIANT_STUN_DAMAGE_MULTIPLIER;
+        this.cameras.main.shake(180, 0.003);
+      }
+    }
+    this.activeBossGimmick = next;
+  }
+
   private advanceLavaSigils(delta: number): void {
     for (let index = this.lavaSigils.length - 1; index >= 0; index -= 1) {
       const sigil = this.lavaSigils[index]!;
@@ -816,6 +910,7 @@ export class CaravanScene extends Phaser.Scene {
       const critical = rollCriticalDamage(bomb.damage, this.run.upgradeStats['critical-chance'] ?? 0, this.random);
       const result = resolveHit(enemy, critical.damage, 'merchant-money-bomb');
       if (!result || result.damage <= 0) continue;
+      this.resolveBossDamage(enemy, result.damage);
       this.showDamageNumber(enemy.x, enemy.y - 22, result.damage);
       const coinAmount = Math.max(1, Math.round(result.damage / 20));
       this.dropGoldCoin(enemy.worldPosition, `coin-${bomb.id}-${enemy.id}`, coinAmount);
@@ -987,6 +1082,7 @@ export class CaravanScene extends Phaser.Scene {
       enemies: this.enemies.map((enemy) => ({ id: enemy.id, typeId: enemy.definition.id, x: enemy.x, y: enemy.y, hp: enemy.hp, attackCooldownMs: enemy.attackCooldownMs, bossMilestoneId: enemy.bossMilestoneId, dead: enemy.dead })),
       defeatedBossMilestoneIds: [...this.defeatedBossMilestoneIds],
       activeBossMaxHp: activeBoss?.maxHp, pendingEventId: this.eventSystem.pendingEventId,
+      activeBossGimmick: this.activeBossGimmick,
       approachingEvent: this.approachingEvent ? { eventId: this.approachingEvent.eventId, x: this.approachingEvent.x } : null,
       rewardPickups: this.rewardPickups.map(({ pickup }) => ({ ...pickup })),
       moneyBombs: this.moneyBombs.map(({ bomb }) => ({ ...bomb })),

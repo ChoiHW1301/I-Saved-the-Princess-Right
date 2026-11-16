@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import type { EnemyDefinition, EnemyTarget } from '../content/enemies.js';
-import type { Damageable, Vector2 } from '../systems/CombatSystem.js';
+import { resolveHit, type DamageResult, type WeaponAttackTarget, type Vector2 } from '../systems/CombatSystem.js';
 
 let nextEnemyId = 1;
-export class Enemy extends Phaser.GameObjects.Container implements Damageable {
+export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackTarget {
   readonly id = `enemy-${nextEnemyId++}`;
   hp: number;
   readonly maxHp: number;
   dead = false;
+  damageTakenMultiplier = 1;
   attackCooldownMs = 0;
   target: EnemyTarget = 'warrior';
   private readonly bodyImage: Phaser.GameObjects.Image;
@@ -44,6 +45,8 @@ export class Enemy extends Phaser.GameObjects.Container implements Damageable {
     scene.add.existing(this);
   }
   get worldPosition(): Vector2 { return { x: this.x, y: this.y }; }
+  get hitRadius(): number { return this.bossMilestoneId ? 48 : this.definition.flying ? 18 : 26; }
+  applyWeaponHit(amount: number, sourceId: string): DamageResult | null { return resolveHit(this, amount, sourceId); }
   setFacingDirection(horizontalDelta: number): void {
     if (horizontalDelta === 0) return;
     this.bodyImage.setFlipX(horizontalDelta < 0);

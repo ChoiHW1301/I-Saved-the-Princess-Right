@@ -21,4 +21,9 @@ describe('combat targeting and damage', () => {
     expect(resolveHit(target, 10, 'sword')).toBeNull();
     expect(resolveHit({ id: 'bad', hp: 8, maxHp: 8 }, Number.NaN, 'sword')).toBeNull();
   });
+  it('applies a temporary damage taken multiplier and reports the multiplied amount', () => {
+    const target: Damageable = { id: 'stunned-boss', hp: 100, maxHp: 100, damageTakenMultiplier: 1.5 };
+    expect(resolveHit(target, 10, 'sword')).toMatchObject({ damage: 15, killed: false });
+    expect(target.hp).toBe(85);
+  });
 });

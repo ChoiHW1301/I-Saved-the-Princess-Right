@@ -38,6 +38,12 @@ describe('shared document schemas', () => {
     expect(RunSnapshotV1Schema.parse({ ...snapshot, defeatedBossMilestoneIds: ['lava-5min-slot', 'castle-warlord-10min'] }).defeatedBossMilestoneIds)
       .toEqual(['lava-5min-slot', 'castle-warlord-10min']);
   });
+  it('defaults absent lava sigils and validates remaining fuse and hit points', () => {
+    expect(RunSnapshotV1Schema.parse(snapshot).lavaSigils).toEqual([]);
+    expect(RunSnapshotV1Schema.parse({ ...snapshot, lavaSigils: [{ id: 'sigil-1', x: 20, y: 30, hp: 2, remainingMs: 1700 }] }).lavaSigils)
+      .toEqual([{ id: 'sigil-1', x: 20, y: 30, hp: 2, remainingMs: 1700 }]);
+    expect(() => RunSnapshotV1Schema.parse({ ...snapshot, lavaSigils: [{ id: 'sigil-1', x: 20, y: 30, hp: 0, remainingMs: 1700 }] })).toThrow();
+  });
   it('accepts a profile, version 1 save, receipt, and leaderboard entry', () => {
     expect(PlayerProfileSchema.parse(profile).userId).toBe(userId);
     expect(CurrentRunSaveV1Schema.parse({

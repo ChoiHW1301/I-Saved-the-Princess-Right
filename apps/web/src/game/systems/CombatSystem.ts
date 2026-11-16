@@ -1,8 +1,13 @@
 import type { EnemyTarget } from '../content/enemies.js';
 
 export interface Vector2 { x: number; y: number }
-export interface Damageable { id: string; hp: number; maxHp: number; dead?: boolean }
+export interface Damageable { id: string; hp: number; maxHp: number; dead?: boolean; damageTakenMultiplier?: number }
 export interface DamageResult { target: Damageable; damage: number; killed: boolean; sourceId: string }
+export interface WeaponAttackTarget extends Damageable {
+  worldPosition: Vector2;
+  hitRadius: number;
+  applyWeaponHit(amount: number, sourceId: string): DamageResult | null;
+}
 export interface CriticalDamageResult { damage: number; critical: boolean }
 export type TargetPolicy = 'warrior-priority' | 'nearest' | 'caravan-priority';
 
@@ -28,7 +33,8 @@ export function chooseTarget(enemy: Vector2, warrior: Vector2, wagon: Vector2, p
 export function resolveHit<T extends Damageable>(target: T, amount: number, sourceId: string): DamageResult | null {
   if (target.dead || !Number.isFinite(amount) || amount <= 0) return null;
   const before = Math.max(0, Math.min(target.hp, target.maxHp));
-  target.hp = Math.max(0, Math.min(target.maxHp, before - amount));
+  const multiplier = Number.isFinite(target.damageTakenMultiplier) ? Math.max(0, target.damageTakenMultiplier ?? 1) : 1;
+  target.hp = Math.max(0, Math.min(target.maxHp, before - amount * multiplier));
   const killed = target.hp === 0;
   if (killed) target.dead = true;
   return { target, damage: before - target.hp, killed, sourceId };

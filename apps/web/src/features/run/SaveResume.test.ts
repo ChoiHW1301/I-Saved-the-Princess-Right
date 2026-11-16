@@ -8,7 +8,7 @@ import { createSnapshot, restoreSnapshot } from '../../game/systems/SaveSnapshot
 const userId = '11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222';
 const profile: PlayerProfile = { id: 'profile', userId, tenantId: userId.split(':')[0]!, objectId: userId.split(':')[1]!, version: 1, displayName: 'Warrior', goldBalance: 0, lifetimeGoldEarned: 0, unlockedCharacters: ['warrior'], permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: '2026-10-22T00:00:00.000Z' };
 const snapshot: RunSnapshotV1 = {
-  characterId: 'warrior', worldWidth: 1280, roadCenterY: 267, elapsedSeconds: 30, stageId: 'demon-castle', rngSeed: 99, karma: 0, status: 'active', pendingEventId: null, approachingEvent: null, rewardPickups: [], moneyBombs: [], eventChoiceIds: [], ordinarySpawnCooldownMs: 500, activeBoss: null,
+  characterId: 'warrior', worldWidth: 1280, roadCenterY: 267, elapsedSeconds: 30, stageId: 'demon-castle', rngSeed: 99, karma: 0, status: 'active', pendingEventId: null, approachingEvent: null, rewardPickups: [], moneyBombs: [], lavaSigils: [], eventChoiceIds: [], ordinarySpawnCooldownMs: 500, activeBoss: null,
   player: { x: 320, y: 340, hp: 100, maxHp: 100, level: 1, xp: 0, xpToNext: 10, respawnMs: 0, respawnsRemaining: 0, invulnerableMs: 0 }, wagon: { hp: 250, maxHp: 250 }, runGold: 0, kills: 0, pendingLevelUps: 0, pendingChoices: [], weaponLevels: { sword: 1 }, upgradeStats: {}, trainingLevels: {}, activeAbilityCooldownMs: 0, dashRemainingMs: 0, dashDirection: { x: 1, y: 0 }, upgradeIds: [], defeatedBossIds: [], defeatedBossMilestoneIds: [], enemies: [], projectiles: [],
 };
 function save(runId = 'run-1', revision = 0, state = snapshot): CurrentRunSaveV1 { return { id: 'current', userId, schemaVersion: 1, revision, runId, savedAt: '2026-10-22T00:00:00.000Z', snapshot: state }; }
@@ -33,11 +33,13 @@ describe('run save, resume, and result flow', () => {
     const snapshot = createSnapshot({ run, player: { x: 400, y: 300 }, rngSeed: 1234, ordinarySpawnCooldownMs: 600, enemies: [], worldWidth: 960, roadCenterY: 360, defeatedBossMilestoneIds: ['lava-5min-slot'],
       approachingEvent: { eventId: 'wounded-messenger', x: 830 },
       rewardPickups: [{ id: 'drop-1', type: 'caravan-repair', x: 500, y: 360, amount: 40, remainingMs: 12_000 }],
+      lavaSigils: [{ id: 'sigil-1', x: 560, y: 300, hp: 2, remainingMs: 1_700 }],
     });
     const restored = restoreSnapshot(save('run-restore', 1, snapshot));
     expect(restored).toMatchObject({ runId: 'run-restore', characterId: 'archer', elapsedSeconds: 180, level: 3, xp: 5, karma: 42, kills: 19, runGold: 11, pendingChoices: [{ id: 'arrow-range' }], equippedWeaponIds: ['bow'] });
     expect(snapshot).toMatchObject({ rngSeed: 1234, player: { x: 400, y: 300 }, ordinarySpawnCooldownMs: 600,
-      approachingEvent: { eventId: 'wounded-messenger', x: 830 }, rewardPickups: [{ id: 'drop-1', remainingMs: 12_000 }], defeatedBossMilestoneIds: ['lava-5min-slot'],
+      approachingEvent: { eventId: 'wounded-messenger', x: 830 }, rewardPickups: [{ id: 'drop-1', remainingMs: 12_000 }],
+      lavaSigils: [{ id: 'sigil-1', x: 560, y: 300, hp: 2, remainingMs: 1_700 }], defeatedBossMilestoneIds: ['lava-5min-slot'],
     });
   });
 

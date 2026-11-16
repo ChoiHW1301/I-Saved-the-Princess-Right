@@ -1,6 +1,6 @@
 # Task: T02 Attackable Lava Sigils
 
-## Status: pending
+## Status: done
 
 ## Goal
 라바 매지션의 마법진을 모든 실제 무기 타격으로 파괴할 수 있고, 3초 경고 뒤 플레이어·마차에 폭발 피해를 적용하며 임시 저장에서 남은 마법진을 복원한다.
@@ -162,10 +162,10 @@
   5. Explosions still resolve after the mage is defeated because sigil updates are independent of active-boss state. If the encounter scene pauses for event/level-up, Phaser scene time pauses all fuses consistently.
 
 ## Acceptance Criteria
-- [ ] Bow penetration counts every individual collision as a hit and stops when its existing penetration count is exhausted; a sigil counts each arrow only once.
-- [ ] Sword, area impact, single projectile and spread projectiles can damage a sigil if their actual impact geometry intersects it.
-- [ ] A sigil is removed on the third hit; otherwise it explodes exactly once after 3 seconds, damaging player and wagon independently when inside the 100-pixel range.
-- [ ] Save/reload preserves each sigil position, remaining lifetime, and remaining hits; old saves without the field remain valid.
+- [x] Bow penetration counts every individual collision as a hit and stops when its existing penetration count is exhausted; a sigil counts each arrow only once.
+- [x] Sword, area impact, single projectile and spread projectiles can damage a sigil if their actual impact geometry intersects it.
+- [x] A sigil is removed on the third hit; otherwise it explodes exactly once after 3 seconds, damaging player and wagon independently when inside the 100-pixel range.
+- [x] Save/reload preserves each sigil position, remaining lifetime, and remaining hits; old saves without the field remain valid.
 
 ## Validation
 - `npm run test --workspace @caravan/contracts -- test/schema.test.ts` — old and new v1 snapshot shapes parse correctly.
@@ -185,6 +185,6 @@ Task: T02-lava-sigils
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
-- commit: pending
+- [x] 구현 완료
+- [x] 검증 통과
+- commit: recorded in Git history

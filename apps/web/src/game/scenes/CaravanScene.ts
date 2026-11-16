@@ -38,6 +38,8 @@ import { RewardPickup } from '../entities/RewardPickup.js';
 import type { RewardPickupState } from '../systems/RewardPickupSystem.js';
 import { chooseRewardType } from '../systems/RewardPickupSystem.js';
 import { MoneyBomb, type MoneyBombState } from '../entities/MoneyBomb.js';
+import { LavaSigil } from '../entities/LavaSigil.js';
+import { isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS } from '../systems/LavaSigilSystem.js';
 import { placeMerchantMoneyBomb } from '../systems/ActiveAbilitySystem.js';
 import { rollCriticalDamage } from '../systems/CombatSystem.js';
 import type { StageId } from '../content/biomes.js';
@@ -53,6 +55,7 @@ export class CaravanScene extends Phaser.Scene {
   private readonly enemies: Enemy[] = [];
   private readonly rewardPickups: RewardPickup[] = [];
   private readonly moneyBombs: MoneyBomb[] = [];
+  private readonly lavaSigils: LavaSigil[] = [];
   private readonly bowProjectileVisuals = new Map<number, Phaser.GameObjects.Graphics>();
   private run = createRunState();
   private readonly enemyDirector = new EnemyDirector();
@@ -111,6 +114,8 @@ export class CaravanScene extends Phaser.Scene {
     this.reviveLifeIcons = [];
     this.moneyBombs.forEach((bomb) => bomb.destroy());
     this.moneyBombs.length = 0;
+    this.lavaSigils.forEach((sigil) => sigil.destroy());
+    this.lavaSigils.length = 0;
     this.bowProjectileVisuals.forEach((projectile) => projectile.destroy());
     this.bowProjectileVisuals.clear();
     if (!this.anims.exists('monster-death')) this.anims.create({
@@ -180,6 +185,10 @@ export class CaravanScene extends Phaser.Scene {
       const damage = 40 * 1.1 ** Math.max(0, rank - 1) * (1 + Math.max(0, this.run.upgradeStats['global-damage-multiplier'] ?? 0));
       const radius = 100 + 10 * Math.max(0, rank - 1);
       this.moneyBombs.push(new MoneyBomb(this, { ...saved, ...point, damage, radius }));
+    }
+    for (const saved of snapshot?.lavaSigils ?? []) {
+      const point = mapSnapshotWorldPoint(saved, snapshot!, { width: WORLD_WIDTH, height: WORLD_HEIGHT, roadCenterY: ROAD_CENTER_Y });
+      this.lavaSigils.push(new LavaSigil(this, saved.id, point.x, point.y, saved.hp, saved.remainingMs));
     }
     if (snapshot) {
       this.run.elapsedSeconds = snapshot.elapsedSeconds;
@@ -334,6 +343,7 @@ export class CaravanScene extends Phaser.Scene {
     this.warrior.updateWalkMotion(_time);
     this.background.update(delta);
     this.advanceMoneyBombs(delta);
+    this.advanceLavaSigils(delta);
     for (let index = this.rewardPickups.length - 1; index >= 0; index -= 1) {
       const pickup = this.rewardPickups[index]!;
       if (!pickup.advance(delta)) { pickup.destroy(); this.rewardPickups.splice(index, 1); continue; }
@@ -417,8 +427,10 @@ export class CaravanScene extends Phaser.Scene {
           arrow.destroy();
           this.bowProjectileVisuals.delete(projectile.projectileId);
         }
-      }, (enemy, damage) => {
-        this.showDamageNumber(enemy.x, enemy.y - 22, damage);
+      }, (target, damage) => {
+        this.showDamageNumber(target.worldPosition.x, target.worldPosition.y - 22, damage);
+      }, this.lavaSigils, (target) => {
+        if (target instanceof LavaSigil) this.removeLavaSigil(target);
       })) {
         this.onEnemyDefeated(enemy);
       }
@@ -739,6 +751,61 @@ export class CaravanScene extends Phaser.Scene {
     }
   }
 
+  private addLavaSigil(x: number, y: number): LavaSigil {
+    const id = `lava-sigil-${this.run.runId}-${Math.floor(this.run.elapsedSeconds * 1000)}-${this.lavaSigils.length}`;
+    const sigil = new LavaSigil(this, id, x, y);
+    this.lavaSigils.push(sigil);
+    return sigil;
+  }
+
+  private advanceLavaSigils(delta: number): void {
+    for (let index = this.lavaSigils.length - 1; index >= 0; index -= 1) {
+      const sigil = this.lavaSigils[index]!;
+      const result = sigil.advance(delta);
+      if (result === 'active') continue;
+      const position = { x: sigil.x, y: sigil.y };
+      this.lavaSigils.splice(index, 1);
+      sigil.destroy();
+      if (result === 'expired') this.detonateLavaSigil(position.x, position.y);
+    }
+  }
+
+  private removeLavaSigil(sigil: LavaSigil): void {
+    const index = this.lavaSigils.indexOf(sigil);
+    if (index >= 0) this.lavaSigils.splice(index, 1);
+    sigil.destroy();
+  }
+
+  private detonateLavaSigil(x: number, y: number): void {
+    const radius = LAVA_SIGIL_EXPLOSION_RADIUS;
+    const damage = LAVA_SIGIL_EXPLOSION_DAMAGE;
+    const blast = this.add.circle(x, y, radius, 0xff4e28, 0.18).setStrokeStyle(5, 0xffbd62, 0.95).setScale(0.15).setDepth(13);
+    this.tweens.add({ targets: blast, scale: 1, alpha: 0, duration: 300, ease: 'Cubic.easeOut', onComplete: () => blast.destroy() });
+
+    const wagonBounds = { left: WORLD_WIDTH / 2 - 112, right: WORLD_WIDTH / 2 + 112, top: ROAD_CENTER_Y - 36, bottom: ROAD_CENTER_Y + 36 };
+    if (isWithinLavaSigilRectRadius({ x, y }, wagonBounds, radius)) {
+      const previousHp = this.run.caravan.hp;
+      if (this.health.damageCaravan(this.run.caravan, damage, this.run)) {
+        this.showDamageFlash();
+        this.showDamageNumber(WORLD_WIDTH / 2, ROAD_CENTER_Y - 62, previousHp - this.run.caravan.hp, '#ff8278');
+      }
+    }
+
+    if (!this.run.player.isDead && isWithinLavaSigilRadius({ x, y }, { x: this.warrior.x, y: this.warrior.y }, radius)) {
+      const previousHp = this.run.player.hp;
+      if (this.health.damagePlayer(this.run.player, damage, this.run.upgradeStats['damage-reduction'] ?? 0)) {
+        this.showDamageFlash();
+        this.showDamageNumber(this.warrior.x, this.warrior.y - 36, previousHp - this.run.player.hp, '#ff8278');
+        if (this.run.player.isDead) {
+          if (this.run.player.respawnMs === 0) this.run.status = 'lost';
+          this.warrior.setVisible(false);
+          (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+          (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
+        }
+      }
+    }
+  }
+
   private detonateMoneyBomb(bomb: MoneyBombState): void {
     const blast = this.add.circle(bomb.x, bomb.y, bomb.radius, 0xf59e35, 0.22)
       .setStrokeStyle(5, 0xffe19a, 0.9).setScale(0.4).setDepth(13);
@@ -923,6 +990,7 @@ export class CaravanScene extends Phaser.Scene {
       approachingEvent: this.approachingEvent ? { eventId: this.approachingEvent.eventId, x: this.approachingEvent.x } : null,
       rewardPickups: this.rewardPickups.map(({ pickup }) => ({ ...pickup })),
       moneyBombs: this.moneyBombs.map(({ bomb }) => ({ ...bomb })),
+      lavaSigils: this.lavaSigils.map((sigil) => sigil.toState()),
     });
     gameEventBus.emit('snapshot-ready', { runId: this.run.runId, characterId: this.run.characterId, snapshot, reason, resumeAfterSave });
   }

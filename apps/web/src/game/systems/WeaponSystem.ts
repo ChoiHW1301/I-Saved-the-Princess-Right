@@ -2,19 +2,20 @@ import type { CharacterId, RunState, WeaponDefinition } from '@caravan/contracts
 import { getCharacterDefinition } from '../content/characters.js';
 import { weaponCatalog } from '../content/weapons.js';
 import type { Enemy } from '../entities/Enemy.js';
-import { distanceSquared, resolveHit, rollCriticalDamage, type Vector2 } from './CombatSystem.js';
+import { distanceSquared, resolveHit, rollCriticalDamage, type Vector2, type WeaponAttackTarget } from './CombatSystem.js';
 
 export interface ProjectileSpawn {
-  weaponId: string; targets: Enemy[]; targetPositions: Vector2[]; damage: number; penetration: number;
+  weaponId: string; targets: WeaponAttackTarget[]; targetPositions: Vector2[]; damage: number; penetration: number;
   projectileId?: number; origin?: Vector2; directionAngle?: number; speed?: number; statusEffect?: 'burn';
 }
 export interface ProjectileProgress { projectileId: number; position: Vector2; directionAngle: number; finished: boolean }
-export type EnemyDamageCallback = (enemy: Enemy, damage: number, sourceId: string) => void;
+export type WeaponDamageCallback = (target: WeaponAttackTarget, damage: number, sourceId: string) => void;
+export type WeaponTargetDefeatedCallback = (target: WeaponAttackTarget) => void;
 interface BurnState { remainingMs: number; cooldownMs: number; damage: number }
 interface ActiveArrow {
   id: number; origin: Vector2; directionAngle: number; range: number; traveled: number; speed: number;
   damage: number; remainingHits: number; criticalChance: number; burnDamage: number;
-  hitEnemies: Set<Enemy>;
+  hitTargets: Set<WeaponAttackTarget>;
 }
 
 export const BOW_PROJECTILE_SPEED = 600;
@@ -35,11 +36,13 @@ export class WeaponSystem {
 
   update(run: RunState, origin: Vector2, enemies: readonly Enemy[], delta: number, random: () => number = Math.random,
     onFire?: (projectile: ProjectileSpawn) => void, aimPoint: Vector2 = { x: origin.x + 1, y: origin.y },
-    onProjectileUpdate?: (projectile: ProjectileProgress) => void, onDamage?: EnemyDamageCallback): Enemy[] {
+    onProjectileUpdate?: (projectile: ProjectileProgress) => void, onDamage?: WeaponDamageCallback,
+    attackables: readonly WeaponAttackTarget[] = [], onTargetDefeated?: WeaponTargetDefeatedCallback): Enemy[] {
     const killed = new Set<Enemy>();
     this.updateBurns(enemies, delta, killed, onDamage);
     if (run.status !== 'active' || run.player.isDead || run.pausedBy === 'event' || run.pausedBy === 'level-up' || run.pausedBy === 'network') return [...killed];
-    this.advanceArrows(run, enemies, delta, random, onProjectileUpdate, onDamage, killed);
+    const allTargets = [...enemies.filter((target) => !target.dead), ...attackables.filter((target) => !target.dead)];
+    this.advanceArrows(run, allTargets, delta, random, onProjectileUpdate, onDamage, killed, onTargetDefeated);
     const character = getCharacterDefinition(run.characterId);
     for (const weaponId of run.equippedWeaponIds) {
       const weapon = weaponCatalog[weaponId];
@@ -67,15 +70,14 @@ export class WeaponSystem {
         y: origin.y + Math.sin(angle) * attackDistance,
       }));
       const available = weaponId === 'sword'
-        ? enemies.filter((enemy) => {
-          if (enemy.dead) return false;
-          const x = enemy.worldPosition.x - origin.x;
-          const y = enemy.worldPosition.y - origin.y;
+        ? allTargets.filter((target) => {
+          const x = target.worldPosition.x - origin.x;
+          const y = target.worldPosition.y - origin.y;
           return x * x + y * y <= range * range && x * Math.cos(directionAngle) + y * Math.sin(directionAngle) >= 0;
         })
         : weapon.kind === 'spread'
-          ? spreadAngles.flatMap((angle) => findTargetsOnAim(origin, angle, attackDistance, enemies).slice(0, 1))
-          : findTargetsOnAim(origin, directionAngle, attackDistance, enemies).slice(0, targetCount);
+          ? spreadAngles.flatMap((angle) => findTargetsOnAim(origin, angle, attackDistance, allTargets).slice(0, 1))
+          : findTargetsOnAim(origin, directionAngle, attackDistance, allTargets).slice(0, targetCount);
       const weakCopyChance = weaponId === 'fireball' ? run.upgradeStats['fireball-weak-copy'] ?? 0 : 0;
       const directTargets = available;
       const damageMultiplier = character.baseStats.damageMultiplier * (1 + (run.upgradeStats['global-damage-multiplier'] ?? 0));
@@ -87,8 +89,8 @@ export class WeaponSystem {
       const impactArea = weaponId === 'fireball' ? run.upgradeStats['fireball-impact-area'] ?? 0 : 0;
       const impactRadius = impactArea + (run.upgradeStats['fireball-size'] ?? 0);
       if (impactRadius > 0 && targetPositions[0]) {
-        for (const enemy of enemies) {
-          if (distanceSquared(targetPositions[0], enemy.worldPosition) <= impactRadius * impactRadius && !hitTargets.includes(enemy)) hitTargets.push(enemy);
+        for (const target of allTargets) {
+          if (distanceSquared(targetPositions[0], target.worldPosition) <= impactRadius * impactRadius && !hitTargets.includes(target)) hitTargets.push(target);
         }
       }
       if (weaponId === 'bow') {
@@ -97,44 +99,51 @@ export class WeaponSystem {
           speed: BOW_PROJECTILE_SPEED, ...(statusEffect ? { statusEffect } : {}) });
         this.arrows.push({ id: projectileId, origin: { ...origin }, directionAngle, range, traveled: 0, speed: BOW_PROJECTILE_SPEED,
           damage, remainingHits: 1 + penetration, criticalChance: run.upgradeStats['critical-chance'] ?? 0,
-          burnDamage: bowBurn, hitEnemies: new Set() });
+          burnDamage: bowBurn, hitTargets: new Set() });
         this.cooldowns.set(weaponId, intervalMs);
         continue;
       }
       onFire?.({ weaponId, targets: directTargets, targetPositions, damage, penetration, ...(statusEffect ? { statusEffect } : {}) });
-      for (const enemy of hitTargets) {
+      for (const target of hitTargets) {
         const copyDamage = weaponId === 'fireball' && random() < weakCopyChance ? damage * 0.45 : 0;
         const critical = rollCriticalDamage(damage + copyDamage, run.upgradeStats['critical-chance'] ?? 0, random);
-        const hit = resolveHit(enemy, critical.damage, weaponId);
-        if (hit && hit.damage > 0) onDamage?.(enemy, hit.damage, weaponId);
-        if (hit?.killed) killed.add(enemy);
-        if (statusEffect && !enemy.dead) this.applyBurn(enemy, bowBurn || Math.max(1, damage * 0.12));
+        const hit = target.applyWeaponHit(critical.damage, weaponId);
+        if (hit && hit.damage > 0) onDamage?.(target, hit.damage, weaponId);
+        if (hit?.killed) {
+          if (isEnemy(target)) killed.add(target);
+          else onTargetDefeated?.(target);
+        }
+        if (isEnemy(target) && statusEffect && !target.dead) this.applyBurn(target, bowBurn || Math.max(1, damage * 0.12));
       }
       this.cooldowns.set(weaponId, intervalMs);
     }
     return [...killed];
   }
 
-  private advanceArrows(run: RunState, enemies: readonly Enemy[], delta: number, random: () => number,
-    onProjectileUpdate: ((projectile: ProjectileProgress) => void) | undefined, onDamage: EnemyDamageCallback | undefined, killed: Set<Enemy>): void {
+  private advanceArrows(run: RunState, targets: readonly WeaponAttackTarget[], delta: number, random: () => number,
+    onProjectileUpdate: ((projectile: ProjectileProgress) => void) | undefined, onDamage: WeaponDamageCallback | undefined,
+    killed: Set<Enemy>, onTargetDefeated?: WeaponTargetDefeatedCallback): void {
     for (let index = this.arrows.length - 1; index >= 0; index -= 1) {
       const arrow = this.arrows[index]!;
       const previousDistance = arrow.traveled;
       const nextDistance = Math.min(arrow.range, previousDistance + arrow.speed * delta / 1000);
       let stoppedAt: number | undefined;
-      for (const enemy of findTargetsOnAim(arrow.origin, arrow.directionAngle, nextDistance, enemies)) {
-        if (arrow.hitEnemies.has(enemy)) continue;
-        const dx = enemy.worldPosition.x - arrow.origin.x;
-        const dy = enemy.worldPosition.y - arrow.origin.y;
+      for (const target of findTargetsOnAim(arrow.origin, arrow.directionAngle, nextDistance, targets)) {
+        if (arrow.hitTargets.has(target)) continue;
+        const dx = target.worldPosition.x - arrow.origin.x;
+        const dy = target.worldPosition.y - arrow.origin.y;
         const along = dx * Math.cos(arrow.directionAngle) + dy * Math.sin(arrow.directionAngle);
-        const collisionRadius = enemy.bossMilestoneId ? 48 : enemy.definition.flying ? 18 : 26;
+        const collisionRadius = target.hitRadius;
         if (along + collisionRadius < previousDistance) continue;
-        arrow.hitEnemies.add(enemy);
+        arrow.hitTargets.add(target);
         const critical = rollCriticalDamage(arrow.damage, arrow.criticalChance, random);
-        const hit = resolveHit(enemy, critical.damage, 'bow');
-        if (hit && hit.damage > 0) onDamage?.(enemy, hit.damage, 'bow');
-        if (hit?.killed) killed.add(enemy);
-        if (!enemy.dead && arrow.burnDamage > 0) this.applyBurn(enemy, arrow.burnDamage);
+        const hit = target.applyWeaponHit(critical.damage, 'bow');
+        if (hit && hit.damage > 0) onDamage?.(target, hit.damage, 'bow');
+        if (hit?.killed) {
+          if (isEnemy(target)) killed.add(target);
+          else onTargetDefeated?.(target);
+        }
+        if (isEnemy(target) && !target.dead && arrow.burnDamage > 0) this.applyBurn(target, arrow.burnDamage);
         arrow.remainingHits -= 1;
         if (arrow.remainingHits <= 0) {
           stoppedAt = Math.max(previousDistance, along);
@@ -159,7 +168,7 @@ export class WeaponSystem {
     enemy.setBurning(true);
   }
 
-  private updateBurns(enemies: readonly Enemy[], delta: number, killed: Set<Enemy>, onDamage?: EnemyDamageCallback): void {
+  private updateBurns(enemies: readonly Enemy[], delta: number, killed: Set<Enemy>, onDamage?: WeaponDamageCallback): void {
     for (const enemy of enemies) {
       const burn = this.burns.get(enemy);
       if (!burn) continue;
@@ -184,19 +193,22 @@ export class WeaponSystem {
   }
 }
 
-function findTargetsOnAim(origin: Vector2, angle: number, distance: number, enemies: readonly Enemy[]): Enemy[] {
+function findTargetsOnAim(origin: Vector2, angle: number, distance: number, targets: readonly WeaponAttackTarget[]): WeaponAttackTarget[] {
   const direction = { x: Math.cos(angle), y: Math.sin(angle) };
-  return enemies.flatMap((enemy) => {
-    if (enemy.dead) return [];
-    const offsetX = enemy.worldPosition.x - origin.x;
-    const offsetY = enemy.worldPosition.y - origin.y;
+  return targets.flatMap((target) => {
+    if (target.dead) return [];
+    const offsetX = target.worldPosition.x - origin.x;
+    const offsetY = target.worldPosition.y - origin.y;
     const along = offsetX * direction.x + offsetY * direction.y;
     if (along < 0 || along > distance) return [];
     const nearestX = origin.x + direction.x * along;
     const nearestY = origin.y + direction.y * along;
-    const radius = enemy.bossMilestoneId ? 48 : enemy.definition?.flying ? 18 : 26;
-    return distanceSquared({ x: nearestX, y: nearestY }, enemy.worldPosition) <= radius * radius ? [{ enemy, along }] : [];
-  }).sort((a, b) => a.along - b.along).map(({ enemy }) => enemy);
+    return distanceSquared({ x: nearestX, y: nearestY }, target.worldPosition) <= target.hitRadius * target.hitRadius ? [{ target, along }] : [];
+  }).sort((a, b) => a.along - b.along).map(({ target }) => target);
+}
+
+function isEnemy(target: WeaponAttackTarget): target is Enemy {
+  return 'definition' in target;
 }
 
 export function fireWeapons(state: RunState, targets: Enemy[]): ProjectileSpawn[] {

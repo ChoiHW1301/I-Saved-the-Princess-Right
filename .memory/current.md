@@ -7,10 +7,10 @@
 [P01 Lava Boss Encounters](./phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/phase.md)
 
 ## Active Task
-[T02 Attackable Lava Sigils](./phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/T02-lava-sigils.md)
+[T03 Boss Gimmicks](./phases/2026-11-13-caravan-random-10min-boss/P01-lava-boss-encounters/T03-boss-gimmicks.md)
 
 ## Status
-- T01 완료
+- T01·T02 완료
 
 ## Next Step
-T02 청사진에 따라 마법진의 개별 무기 피격 판정, 폭발, 저장·복원을 구현
+T03 청사진에 따라 거인의 돌진·약점과 매지션 순간이동·마법진 소환 기믹을 구현

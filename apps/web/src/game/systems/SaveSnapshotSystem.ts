@@ -4,6 +4,7 @@ import { upgradeCatalog } from '../content/upgrades.js';
 import { getBiomeAt } from './BiomeTransitionSystem.js';
 import type { RewardPickupState } from './RewardPickupSystem.js';
 import type { MoneyBombState } from '../entities/MoneyBomb.js';
+import type { LavaSigilState } from '../entities/LavaSigil.js';
 
 export interface SnapshotEnemy { id: string; typeId: string; x: number; y: number; hp: number; attackCooldownMs: number; bossMilestoneId?: string; dead?: boolean }
 export interface SnapshotInput {
@@ -13,6 +14,7 @@ export interface SnapshotInput {
   approachingEvent?: { eventId: string; x: number } | null;
   rewardPickups?: readonly RewardPickupState[];
   moneyBombs?: readonly MoneyBombState[];
+  lavaSigils?: readonly LavaSigilState[];
 }
 
 export interface WorldPoint { x: number; y: number }
@@ -46,6 +48,11 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
       ...pickup, lifetimeMs: pickup.lifetimeMs ?? 30_000, blinkDurationMs: pickup.blinkDurationMs ?? 5_000,
     })),
     moneyBombs: (input.moneyBombs ?? []).map(({ id, x, y, remainingMs }) => ({ id, x, y, remainingMs: Math.ceil(remainingMs) })),
+    lavaSigils: (input.lavaSigils ?? []).filter((sigil) => sigil.hp > 0 && sigil.remainingMs > 0).map((sigil) => ({
+      id: sigil.id, x: sigil.x, y: sigil.y,
+      hp: Math.max(1, Math.min(3, Math.floor(sigil.hp))),
+      remainingMs: Math.max(1, Math.min(3000, Math.ceil(sigil.remainingMs))),
+    })),
     eventChoiceIds: [...run.eventChoiceIds],
     ordinarySpawnCooldownMs: Math.max(0, Math.floor(input.ordinarySpawnCooldownMs)),
     activeBoss: boss ? { id: boss.bossMilestoneId!, typeId: boss.typeId, hp: Math.ceil(boss.hp), maxHp: Math.ceil(input.activeBossMaxHp ?? boss.hp) } : null,

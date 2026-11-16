@@ -9,6 +9,7 @@ export interface SnapshotEnemy { id: string; typeId: string; x: number; y: numbe
 export interface SnapshotInput {
   run: RunState; player: { x: number; y: number }; rngSeed: number; ordinarySpawnCooldownMs: number;
   enemies: readonly SnapshotEnemy[]; worldWidth: number; roadCenterY: number; activeBossMaxHp?: number; pendingEventId?: string | null;
+  defeatedBossMilestoneIds?: readonly string[];
   approachingEvent?: { eventId: string; x: number } | null;
   rewardPickups?: readonly RewardPickupState[];
   moneyBombs?: readonly MoneyBombState[];
@@ -35,7 +36,7 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
     worldWidth: input.worldWidth,
     roadCenterY: input.roadCenterY,
     elapsedSeconds: Math.floor(run.elapsedSeconds),
-    stageId: getBiomeAt(run.elapsedSeconds, run.defeatedBossIds).to,
+    stageId: getBiomeAt(run.elapsedSeconds, run.defeatedBossIds, input.defeatedBossMilestoneIds).to,
     rngSeed: input.rngSeed >>> 0,
     karma: run.karma,
     status: run.status === 'active' ? 'active' : run.status,
@@ -62,6 +63,7 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
     dashDirection: { ...run.dashDirection },
     upgradeIds: [...run.selectedUpgradeIds],
     defeatedBossIds: [...run.defeatedBossIds],
+    defeatedBossMilestoneIds: [...(input.defeatedBossMilestoneIds ?? [])],
     enemies: input.enemies.filter((enemy) => !enemy.dead).map(({ id, typeId, x, y, hp, attackCooldownMs }) => ({ id, typeId, x, y, hp: Math.ceil(hp), attackCooldownMs: Math.ceil(attackCooldownMs) })),
     projectiles: [],
   };

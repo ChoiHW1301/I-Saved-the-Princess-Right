@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseFinalBoss } from '../content/bosses.js';
+import { chooseFinalBoss, chooseLavaBoss } from '../content/bosses.js';
 import { createRunState } from '../state/createRunState.js';
 import { BossDirector } from '../systems/BossDirector.js';
 import { applyKarma, getKarmaTier } from '../systems/KarmaSystem.js';
@@ -21,6 +21,13 @@ describe('karma routes and boss director', () => {
     expect(chooseFinalBoss('evil')).toBe('king-guard');
     expect(chooseFinalBoss('neutral')).toBe('princess-demon');
     expect(chooseFinalBoss('good')).toBe('princess-demon');
+  });
+
+  it('selects the two lava bosses with an even deterministic boundary', () => {
+    expect(chooseLavaBoss(() => 0)).toBe('lava-giant');
+    expect(chooseLavaBoss(() => 0.499999)).toBe('lava-giant');
+    expect(chooseLavaBoss(() => 0.5)).toBe('lava-magician');
+    expect(chooseLavaBoss(() => 0.999999)).toBe('lava-magician');
   });
 
   it('pauses for one active boss, tracks defeat once, and rejects unknown content safely', () => {

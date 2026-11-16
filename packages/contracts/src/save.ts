@@ -79,6 +79,7 @@ export const RunSnapshotV1Schema = z.object({
   dashDirection: z.object({ x: CoordinateSchema, y: CoordinateSchema }).strict().default({ x: 1, y: 0 }),
   upgradeIds: z.array(IdSchema).max(100).transform((ids) => ids.map((id) => id.startsWith('hero-') ? `warrior-${id.slice(5)}` : id)),
   defeatedBossIds: z.array(IdSchema).max(100),
+  defeatedBossMilestoneIds: z.array(IdSchema).max(100).default([]),
   enemies: z.array(EnemySnapshotSchema).max(500),
   projectiles: z.array(ProjectileSnapshotSchema).max(500),
 }).strict();

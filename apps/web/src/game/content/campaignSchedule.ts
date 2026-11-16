@@ -1,17 +1,18 @@
 export type CampaignMilestoneKind = 'event' | 'miniboss' | 'final-boss';
-export interface CampaignMilestone { atSeconds: number; kind: CampaignMilestoneKind; id: string }
+import type { BossId } from '@caravan/contracts';
+export interface CampaignMilestone { atSeconds: number; kind: CampaignMilestoneKind; id: string; bossId?: BossId }
 
 export const CAMPAIGN_DURATION_SECONDS = 1200;
 export const BIOME_TRANSITION_SECONDS = 30;
 
 export const campaignSchedule: readonly CampaignMilestone[] = [
   { atSeconds: 180, kind: 'event', id: 'wounded-messenger' },
-  { atSeconds: 300, kind: 'miniboss', id: 'castle-warlord' },
+  { atSeconds: 300, kind: 'miniboss', id: 'lava-5min-slot' },
   { atSeconds: 360, kind: 'event', id: 'abandoned-supply-cart' },
   { atSeconds: 540, kind: 'event', id: 'captured-scout' },
-  { atSeconds: 600, kind: 'miniboss', id: 'lava-behemoth' },
+  { atSeconds: 600, kind: 'miniboss', id: 'castle-warlord-10min', bossId: 'castle-warlord' },
   { atSeconds: 720, kind: 'event', id: 'village-refugees' },
-  { atSeconds: 900, kind: 'miniboss', id: 'forest-warden' },
+  { atSeconds: 900, kind: 'miniboss', id: 'forest-warden', bossId: 'forest-warden' },
   { atSeconds: 1080, kind: 'event', id: 'forest-wayfarer' },
   { atSeconds: 1200, kind: 'final-boss', id: 'princess-demon' },
 ];
@@ -22,7 +23,8 @@ export function validateCampaignSchedule(schedule: readonly CampaignMilestone[])
   for (const milestone of schedule) {
     if (!milestone.id.trim() || ids.has(milestone.id) || !Number.isFinite(milestone.atSeconds)
       || milestone.atSeconds <= previousTime || milestone.atSeconds > CAMPAIGN_DURATION_SECONDS
-      || !['event', 'miniboss', 'final-boss'].includes(milestone.kind)) {
+      || !['event', 'miniboss', 'final-boss'].includes(milestone.kind)
+      || (milestone.bossId !== undefined && milestone.kind !== 'miniboss')) {
       throw new Error(`Invalid campaign milestone: ${milestone.id}`);
     }
     ids.add(milestone.id);

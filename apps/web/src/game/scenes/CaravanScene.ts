@@ -23,7 +23,7 @@ import type { CampaignMilestone } from '../content/campaignSchedule.js';
 import type { BossId, PlayerProfile, RunEndingSummary } from '@caravan/contracts';
 import type { CurrentRunSaveV1 } from '@caravan/contracts';
 import { getKarmaTier } from '../systems/KarmaSystem.js';
-import { chooseFinalBoss } from '../content/bosses.js';
+import { chooseFinalBoss, chooseLavaBoss } from '../content/bosses.js';
 import { BossDirector } from '../systems/BossDirector.js';
 import { resolveEnding } from '../systems/EndingSystem.js';
 import { getCharacterDefinition } from '../content/characters.js';
@@ -41,6 +41,7 @@ import { MoneyBomb, type MoneyBombState } from '../entities/MoneyBomb.js';
 import { placeMerchantMoneyBomb } from '../systems/ActiveAbilitySystem.js';
 import { rollCriticalDamage } from '../systems/CombatSystem.js';
 import type { StageId } from '../content/biomes.js';
+import { getRestoredMilestoneId, migrateDefeatedMilestoneIds } from '../systems/CampaignProgressMigration.js';
 
 export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1 }
 
@@ -62,6 +63,7 @@ export class CaravanScene extends Phaser.Scene {
   private campaignClock!: CampaignClock;
   private eventSystem!: EventSystem;
   private activeBossMilestoneId: string | null = null;
+  private readonly defeatedBossMilestoneIds = new Set<string>();
   private activeBossId: BossId | null = null;
   private activeBossIsFinal = false;
   private finalBossForRun: BossId | undefined;
@@ -130,18 +132,21 @@ export class CaravanScene extends Phaser.Scene {
     this.levelUpAnnouncing = false;
     this.finalBossForRun = undefined;
     this.activeBossMilestoneId = null;
+    this.defeatedBossMilestoneIds.clear();
     this.activeBossId = null;
     this.activeBossIsFinal = false;
     this.pendingFinalVictory = false;
     this.random = seededRandom(snapshot?.rngSeed ?? data.seed);
     this.levelSystem = new LevelSystem(() => this.random());
+    const restoredBossMilestoneId = snapshot ? getRestoredMilestoneId(snapshot) : null;
+    if (snapshot) for (const id of migrateDefeatedMilestoneIds(snapshot)) this.defeatedBossMilestoneIds.add(id);
     const emittedMilestones = snapshot ? campaignSchedule.filter((milestone) => {
       if (milestone.atSeconds > snapshot.elapsedSeconds) return false;
       return milestone.kind === 'event'
         ? snapshot.eventChoiceIds.some((id) => id.startsWith(`${milestone.id}:`)) || snapshot.pendingEventId === milestone.id || snapshot.approachingEvent?.eventId === milestone.id
         : milestone.kind === 'final-boss'
           ? snapshot.defeatedBossIds.some((id) => id === 'princess-demon' || id === 'king-guard') || snapshot.activeBoss?.id === milestone.id
-          : snapshot.defeatedBossIds.includes(milestone.id as BossId) || snapshot.activeBoss?.id === milestone.id;
+          : this.defeatedBossMilestoneIds.has(milestone.id) || restoredBossMilestoneId === milestone.id;
     }).map((milestone) => milestone.id) : [];
     this.campaignClock = new CampaignClock(campaignSchedule, snapshot ? { elapsedSeconds: snapshot.elapsedSeconds, emittedIds: emittedMilestones } : undefined);
     this.campaignClock.elapsedSeconds = snapshot?.elapsedSeconds ?? 0;
@@ -181,7 +186,7 @@ export class CaravanScene extends Phaser.Scene {
       for (const saved of snapshot.enemies) {
         const sourceDefinition = this.enemyDefinition(saved.typeId);
         const definition = { ...sourceDefinition, maxHp: scaledEnemyHp(sourceDefinition.maxHp, snapshot.elapsedSeconds, snapshot.player.level) };
-        const milestone = snapshot.activeBoss?.typeId === saved.typeId ? snapshot.activeBoss.id : undefined;
+        const milestone = snapshot.activeBoss?.typeId === saved.typeId ? restoredBossMilestoneId ?? undefined : undefined;
         const position = mapSnapshotWorldPoint(saved, snapshot, { width: WORLD_WIDTH, height: WORLD_HEIGHT, roadCenterY: ROAD_CENTER_Y });
         const enemy = new Enemy(this, position.x, position.y, definition, milestone);
         enemy.hp = Math.min(enemy.maxHp, saved.hp); enemy.attackCooldownMs = saved.attackCooldownMs;
@@ -189,11 +194,11 @@ export class CaravanScene extends Phaser.Scene {
       }
       if (snapshot.activeBoss) {
         const boss = bossCatalog[snapshot.activeBoss.typeId as BossId];
-        this.activeBossMilestoneId = snapshot.activeBoss.id;
+        this.activeBossMilestoneId = restoredBossMilestoneId;
         this.activeBossId = boss?.id ?? null;
         this.activeBossIsFinal = snapshot.activeBoss.id === 'princess-demon';
         this.finalBossForRun = this.activeBossIsFinal ? boss?.id : undefined;
-        this.campaignClock.pause(`boss:${snapshot.activeBoss.id}`);
+        this.campaignClock.pause(`boss:${restoredBossMilestoneId}`);
         if (boss) {
           const hpScale = snapshot.activeBoss.maxHp / boss.maxHp;
           this.bossDirector.startBoss(boss.id, this.run, hpScale);
@@ -299,7 +304,7 @@ export class CaravanScene extends Phaser.Scene {
       this.approachingEvent.sprite.setX(this.approachingEvent.x);
       if (this.approachingEvent.x <= WORLD_WIDTH / 2 + 148) this.triggerApproachingEvent();
     }
-    const biome = getBiomeAt(this.run.elapsedSeconds, this.run.defeatedBossIds);
+    const biome = getBiomeAt(this.run.elapsedSeconds, this.run.defeatedBossIds, [...this.defeatedBossMilestoneIds]);
     this.background.setTransition(biome.from, biome.to, biome.progress);
     const revived = this.respawn.update(this.run.player, delta);
     if (revived) {
@@ -558,7 +563,11 @@ export class CaravanScene extends Phaser.Scene {
 
   private startBoss(milestone: CampaignMilestone): void {
     const isFinal = milestone.kind === 'final-boss';
-    const bossId = isFinal ? chooseFinalBoss(getKarmaTier(this.run.karma)) : milestone.id as BossId;
+    const bossId = isFinal
+      ? chooseFinalBoss(getKarmaTier(this.run.karma))
+      : milestone.id === 'lava-5min-slot'
+        ? chooseLavaBoss(this.random)
+        : milestone.bossId ?? milestone.id as BossId;
     const baseBossDefinition = bossCatalog[bossId];
     const hpScale = baseBossDefinition
       ? scaledEnemyHp(baseBossDefinition.maxHp, this.run.elapsedSeconds, this.run.level) / baseBossDefinition.maxHp
@@ -581,7 +590,7 @@ export class CaravanScene extends Phaser.Scene {
       ...base,
       id: bossId,
       maxHp: bossDefinition.maxHp,
-      speed: isFinal ? 48 : 42,
+      speed: bossDefinition.speed,
       damage: bossDefinition.damage,
       attackRange: bossDefinition.attacks[0]?.range ?? 46,
       targetPolicy: 'nearest' as const,
@@ -669,6 +678,7 @@ export class CaravanScene extends Phaser.Scene {
   private completeBoss(milestoneId: string): void {
     if (this.activeBossMilestoneId !== milestoneId || !this.activeBossId || !this.bossDirector.defeatBoss(this.activeBossId, this.run)
       || !this.campaignClock.resume(`boss:${milestoneId}`)) return;
+    this.defeatedBossMilestoneIds.add(milestoneId);
     this.activeBossMilestoneId = null;
     this.activeBossId = null;
     if (this.activeBossIsFinal) this.pendingFinalVictory = true;
@@ -908,6 +918,7 @@ export class CaravanScene extends Phaser.Scene {
       worldWidth: WORLD_WIDTH, roadCenterY: ROAD_CENTER_Y,
       ordinarySpawnCooldownMs: this.spawnCooldownMs,
       enemies: this.enemies.map((enemy) => ({ id: enemy.id, typeId: enemy.definition.id, x: enemy.x, y: enemy.y, hp: enemy.hp, attackCooldownMs: enemy.attackCooldownMs, bossMilestoneId: enemy.bossMilestoneId, dead: enemy.dead })),
+      defeatedBossMilestoneIds: [...this.defeatedBossMilestoneIds],
       activeBossMaxHp: activeBoss?.maxHp, pendingEventId: this.eventSystem.pendingEventId,
       approachingEvent: this.approachingEvent ? { eventId: this.approachingEvent.eventId, x: this.approachingEvent.x } : null,
       rewardPickups: this.rewardPickups.map(({ pickup }) => ({ ...pickup })),
@@ -922,7 +933,7 @@ export class CaravanScene extends Phaser.Scene {
     const ordinary = enemyCatalog.find((definition) => definition.id === migratedTypeId);
     if (ordinary) return ordinary;
     const boss = bossCatalog[typeId as BossId];
-    if (boss) return { id: boss.id, maxHp: boss.maxHp, speed: 48, damage: boss.damage, attackRange: boss.attacks[0]?.range ?? 46, targetPolicy: 'nearest', wagonPriority: false, experience: 0, gold: 0, color: boss.color };
+    if (boss) return { id: boss.id, maxHp: boss.maxHp, speed: boss.speed, damage: boss.damage, attackRange: boss.attacks[0]?.range ?? 46, targetPolicy: 'nearest', wagonPriority: false, experience: 0, gold: 0, color: boss.color };
     if (typeId === 'king-soldier') return { id: typeId, maxHp: 18, speed: 54, damage: 8, attackRange: 40, targetPolicy: 'nearest', wagonPriority: false, experience: 0, gold: 0, color: 0xc5b783 };
     throw new Error(`Cannot restore unknown saved enemy type: ${typeId}`);
   }

@@ -33,6 +33,11 @@ describe('shared document schemas', () => {
     expect(RunSnapshotV1Schema.parse({ ...snapshot, characterId: 'hero', upgradeStats: { 'hero-reflect': 3 }, upgradeIds: ['hero-reflect'] }))
       .toMatchObject({ characterId: 'warrior', upgradeStats: { 'warrior-reflect': 3 }, upgradeIds: ['warrior-reflect'] });
   });
+  it('defaults missing campaign slot markers for existing version 1 saves', () => {
+    expect(RunSnapshotV1Schema.parse(snapshot).defeatedBossMilestoneIds).toEqual([]);
+    expect(RunSnapshotV1Schema.parse({ ...snapshot, defeatedBossMilestoneIds: ['lava-5min-slot', 'castle-warlord-10min'] }).defeatedBossMilestoneIds)
+      .toEqual(['lava-5min-slot', 'castle-warlord-10min']);
+  });
   it('accepts a profile, version 1 save, receipt, and leaderboard entry', () => {
     expect(PlayerProfileSchema.parse(profile).userId).toBe(userId);
     expect(CurrentRunSaveV1Schema.parse({

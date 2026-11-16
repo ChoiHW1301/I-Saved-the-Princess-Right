@@ -8,7 +8,7 @@ const CurrentEndingIdSchema = z.enum(['princess-purified', 'princess-died', 'war
 const LegacyEndingIdSchema = z.literal('hero-new-demon-king').transform(() => 'warrior-new-demon-king' as const);
 export const EndingIdSchema = z.union([CurrentEndingIdSchema, LegacyEndingIdSchema]);
 export type EndingId = z.infer<typeof EndingIdSchema>;
-export const BossIdSchema = z.enum(['castle-warlord', 'lava-behemoth', 'forest-warden', 'princess-demon', 'king-guard']);
+export const BossIdSchema = z.enum(['castle-warlord', 'lava-behemoth', 'lava-giant', 'lava-magician', 'forest-warden', 'princess-demon', 'king-guard']);
 export type BossId = z.infer<typeof BossIdSchema>;
 
 export const RunReceiptDocumentSchema = withDocumentLimit(z.object({

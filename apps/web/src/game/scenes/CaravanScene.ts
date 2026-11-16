@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { ROAD_CENTER_Y, VIEW_HEIGHT, VIEW_WIDTH, WORLD_DISPLAY_SCALE, WORLD_HEIGHT, WORLD_WIDTH } from '../config/createGameConfig.js';
-import { Caravan } from '../entities/Caravan.js';
+import { CARAVAN_SPRITE_HEIGHT, CARAVAN_SPRITE_WIDTH, Caravan } from '../entities/Caravan.js';
 import { Enemy } from '../entities/Enemy.js';
 import { Warrior } from '../entities/Warrior.js';
 import { enemyCatalog, type EnemyDefinition } from '../content/enemies.js';
@@ -40,7 +40,7 @@ import type { RewardPickupState } from '../systems/RewardPickupSystem.js';
 import { chooseRewardType } from '../systems/RewardPickupSystem.js';
 import { MoneyBomb, type MoneyBombState } from '../entities/MoneyBomb.js';
 import { LavaSigil } from '../entities/LavaSigil.js';
-import { isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS } from '../systems/LavaSigilSystem.js';
+import { isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS, shouldRenderLavaSigilBehindWagon } from '../systems/LavaSigilSystem.js';
 import { placeMerchantMoneyBomb } from '../systems/ActiveAbilitySystem.js';
 import { rollCriticalDamage } from '../systems/CombatSystem.js';
 import type { StageId } from '../content/biomes.js';
@@ -214,7 +214,9 @@ export class CaravanScene extends Phaser.Scene {
     }
     for (const saved of snapshot?.lavaSigils ?? []) {
       const point = mapSnapshotWorldPoint(saved, snapshot!, { width: WORLD_WIDTH, height: WORLD_HEIGHT, roadCenterY: ROAD_CENTER_Y });
-      this.lavaSigils.push(new LavaSigil(this, saved.id, point.x, point.y, saved.hp, saved.remainingMs));
+      const sigil = new LavaSigil(this, saved.id, point.x, point.y, saved.hp, saved.remainingMs);
+      this.positionLavaSigilLayer(sigil);
+      this.lavaSigils.push(sigil);
     }
     if (snapshot) {
       this.run.elapsedSeconds = snapshot.elapsedSeconds;
@@ -819,8 +821,19 @@ export class CaravanScene extends Phaser.Scene {
   private addLavaSigil(x: number, y: number): LavaSigil {
     const id = `lava-sigil-${this.run.runId}-${Math.floor(this.run.elapsedSeconds * 1000)}-${this.lavaSigils.length}`;
     const sigil = new LavaSigil(this, id, x, y);
+    this.positionLavaSigilLayer(sigil);
     this.lavaSigils.push(sigil);
     return sigil;
+  }
+
+  private positionLavaSigilLayer(sigil: LavaSigil): void {
+    const wagonBounds = {
+      left: WORLD_WIDTH / 2 - CARAVAN_SPRITE_WIDTH / 2,
+      right: WORLD_WIDTH / 2 + CARAVAN_SPRITE_WIDTH / 2,
+      top: ROAD_CENTER_Y - CARAVAN_SPRITE_HEIGHT / 2,
+      bottom: ROAD_CENTER_Y + CARAVAN_SPRITE_HEIGHT / 2,
+    };
+    sigil.setDepth(shouldRenderLavaSigilBehindWagon(sigil.worldPosition, wagonBounds) ? 5 : 7);
   }
 
   private resolveBossDamage(enemy: Enemy, damage: number): void {

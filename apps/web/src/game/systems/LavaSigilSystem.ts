@@ -23,6 +23,10 @@ export function isWithinLavaSigilRectRadius(center: Vector2, rect: LavaSigilRect
   return distanceSquared(center, nearest) <= radius * radius;
 }
 
+export function shouldRenderLavaSigilBehindWagon(center: Vector2, wagonBounds: LavaSigilRect): boolean {
+  return isWithinLavaSigilRectRadius(center, wagonBounds, LAVA_SIGIL_EXPLOSION_RADIUS);
+}
+
 export function applyLavaSigilHit(target: Damageable, sourceId: string): DamageResult | null {
   return resolveHit(target, 1, sourceId);
 }

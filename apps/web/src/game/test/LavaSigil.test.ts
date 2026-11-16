@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRunState } from '../state/createRunState.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
 import { resolveHit } from '../systems/CombatSystem.js';
-import { advanceLavaSigil, applyLavaSigilHit, isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_DISPLAY_DIAMETER, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS, LAVA_SIGIL_FUSE_MS, LAVA_SIGIL_HIT_RADIUS, LAVA_SIGIL_MAX_HP } from '../systems/LavaSigilSystem.js';
+import { advanceLavaSigil, applyLavaSigilHit, isWithinLavaSigilRadius, isWithinLavaSigilRectRadius, LAVA_SIGIL_DISPLAY_DIAMETER, LAVA_SIGIL_EXPLOSION_DAMAGE, LAVA_SIGIL_EXPLOSION_RADIUS, LAVA_SIGIL_FUSE_MS, LAVA_SIGIL_HIT_RADIUS, LAVA_SIGIL_MAX_HP, shouldRenderLavaSigilBehindWagon } from '../systems/LavaSigilSystem.js';
 
 function makeSigilTarget(id: string, x: number) {
   return {
@@ -68,6 +68,13 @@ describe('lava sigil combat and fuse', () => {
     expect(isWithinLavaSigilRectRadius({ x: 90, y: 250 }, wagon)).toBe(true);
     expect(isWithinLavaSigilRectRadius({ x: 0, y: 0 }, wagon)).toBe(false);
     expect(isWithinLavaSigilRectRadius({ x: 200, y: 250 }, wagon)).toBe(true);
+  });
+
+  it('places only sigils whose visible range overlaps the wagon behind its sprite', () => {
+    const wagonSpriteBounds = { left: 516, right: 764, top: 409, bottom: 551 };
+    expect(shouldRenderLavaSigilBehindWagon({ x: 640, y: 480 }, wagonSpriteBounds)).toBe(true);
+    expect(shouldRenderLavaSigilBehindWagon({ x: 864, y: 480 }, wagonSpriteBounds)).toBe(true);
+    expect(shouldRenderLavaSigilBehindWagon({ x: 865, y: 480 }, wagonSpriteBounds)).toBe(false);
   });
 
   it('lets weapon geometry hit attackables and consumes bow penetration on each target', () => {

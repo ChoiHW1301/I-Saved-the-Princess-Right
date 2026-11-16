@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useMsal } from '@azure/msal-react';
-import type { CharacterId, CurrentRunSaveV1, MetaUpgradeId, PlayerProfile, RunSubmission, TrainingId } from '@caravan/contracts';
+import type { BossId, CharacterId, CurrentRunSaveV1, MetaUpgradeId, PlayerProfile, RunSubmission, TrainingId } from '@caravan/contracts';
 import { useApiToken } from '../../auth/useApiToken.js';
 import { isLocalPlaytest, loginRequest } from '../../auth/msalConfig.js';
 import { GameCanvas } from '../../game/GameCanvas.js';
@@ -10,6 +10,8 @@ import { useProfile } from '../profile/useProfile.js';
 import { ProfileApiError } from '../profile/profileApi.js';
 import { RunController, RunControllerError } from '../run/RunController.js';
 import { LeaderboardPage } from '../leaderboards/LeaderboardPage.js';
+import { bossDisplayName } from '../../game/content/bosses.js';
+import { bossTestScenarios, getBossTestScenario } from '../../game/content/BossTestScenario.js';
 import './HomePage.css';
 
 type Section = 'home' | 'characters' | 'shop' | 'leaderboard';
@@ -23,7 +25,8 @@ export function HomePage(): JSX.Element {
   const [notice, setNotice] = useState<string | null>(null);
   const [busyUpgrade, setBusyUpgrade] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterId>('warrior');
-  const [runLaunch, setRunLaunch] = useState<{ runId: string; save?: CurrentRunSaveV1 } | null>(null);
+  const [runLaunch, setRunLaunch] = useState<{ runId: string; save?: CurrentRunSaveV1; debugBossId?: BossId } | null>(null);
+  const [developerBossPanel, setDeveloperBossPanel] = useState(false);
   const [pendingResult, setPendingResult] = useState<RunSubmission | null>(null);
   const controller = useMemo(() => data ? new RunController(getToken, data.profile) : null, [getToken, data?.profile.userId]);
   useEffect(() => { if (controller && data) controller.setProfile(data.profile); }, [controller, data?.profile]);
@@ -53,6 +56,14 @@ export function HomePage(): JSX.Element {
     try { const next = await controller.startNew(id); replaceProfile(profile!, false); setSelectedCharacter(id); setRunLaunch(next); setPlaying(true); setNotice(null); }
     catch (caught) { setNotice(caught instanceof RunControllerError ? caught.message : '새 원정을 시작하지 못했습니다. 연결을 확인해 주세요.'); }
   }
+  function startDeveloperBossTest(bossId: BossId): void {
+    if (!import.meta.env.DEV || !getBossTestScenario(bossId)) return;
+    setSelectedCharacter('warrior');
+    setRunLaunch({ runId: `dev-boss-${bossId}-${Date.now()}`, debugBossId: bossId });
+    setDeveloperBossPanel(false);
+    setPlaying(true);
+    setNotice(null);
+  }
   async function continueRun(): Promise<void> {
     if (!controller) return;
     try { const save = await controller.continueRun(); setRunLaunch({ runId: save.runId, save }); setSelectedCharacter(save.snapshot.characterId); setPlaying(true); setNotice(null); }
@@ -80,7 +91,7 @@ export function HomePage(): JSX.Element {
 
   if (playing && profile && controller && runLaunch) return <main className="game-shell">
     <header className="game-topbar"><strong>공주님을 구했다!?</strong><span>{isLocalPlaytest && <b className="playtest-badge">LOCAL PLAYTEST</b>} {profile.displayName} · {selectedCharacter}</span></header>
-    <section className="game-frame"><GameCanvas key={runLaunch.runId} characterId={selectedCharacter} profile={profile} runId={runLaunch.runId} resumeSave={runLaunch.save} controller={controller} onExit={returnToHome} onProfileUpdated={onRunProfileUpdated} onSaved={() => replaceProfile(profile, true)} /></section>
+    <section className="game-frame"><GameCanvas key={runLaunch.runId} characterId={selectedCharacter} profile={profile} runId={runLaunch.runId} resumeSave={runLaunch.save} debugBossId={runLaunch.debugBossId} controller={controller} onExit={returnToHome} onProfileUpdated={onRunProfileUpdated} onSaved={() => replaceProfile(profile, true)} /></section>
   </main>;
 
   if (loading && !profile) return <main className="home-state" aria-live="polite"><span className="loading-seal" aria-hidden="true">✦</span><h1>원정 기록을 불러오는 중</h1><p>DEX 계정과 모험 기록을 확인하고 있습니다.</p></main>;
@@ -101,7 +112,14 @@ export function HomePage(): JSX.Element {
         {notice && <p className="home-notice" role="status">{notice}</p>}
         {pendingResult && <div className="home-notice pending-result" role="status"><span>이전 원정 결과가 아직 계정에 기록되지 않았습니다.</span><button type="button" className="button button-secondary" onClick={() => void retryPendingResult()}>결과 다시 제출</button></div>}
         {section === 'home' && <>
-          <section className="welcome-banner"><div className="banner-copy"><span className="eyebrow">구출은 성공했다. 귀환은 이제부터.</span><h1 className="game-logo"><img src="/game-assets/logo-princess-rescued.png" alt="공주님을 구했다!?" /></h1><p>공주를 태운 마차가 왕국에 닿을 때까지.<br /><strong>왕국으로 무사 귀환하라.</strong></p><div className="banner-actions"><button type="button" className="button button-primary" disabled={Boolean(pendingResult)} onClick={() => { setSection('characters'); setNotice(null); }}>새 원정 시작 <span aria-hidden="true">→</span></button><button type="button" className="button button-ghost" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>이어하기 {data.hasCurrentSave ? '· 저장 있음' : '· 저장 없음'}</button></div></div><div className="banner-art" aria-hidden="true"><img src="/game-assets/homecoming-scene.png" alt="" /></div></section>
+          <section className="welcome-banner"><div className="banner-copy"><span className="eyebrow">구출은 성공했다. 귀환은 이제부터.</span><h1 className="game-logo">{import.meta.env.DEV
+            ? <button type="button" className="game-logo-secret" aria-label="개발자 보스 테스트 선택 열기" onClick={() => setDeveloperBossPanel((open) => !open)}><img src="/game-assets/logo-princess-rescued.png" alt="공주님을 구했다!?" /></button>
+            : <img src="/game-assets/logo-princess-rescued.png" alt="공주님을 구했다!?" />}</h1><p>공주를 태운 마차가 왕국에 닿을 때까지.<br /><strong>왕국으로 무사 귀환하라.</strong></p><div className="banner-actions"><button type="button" className="button button-primary" disabled={Boolean(pendingResult)} onClick={() => { setSection('characters'); setNotice(null); }}>새 원정 시작 <span aria-hidden="true">→</span></button><button type="button" className="button button-ghost" disabled={!data.hasCurrentSave || Boolean(pendingResult)} onClick={() => void continueRun()}>이어하기 {data.hasCurrentSave ? '· 저장 있음' : '· 저장 없음'}</button></div></div><div className="banner-art" aria-hidden="true"><img src="/game-assets/homecoming-scene.png" alt="" /></div></section>
+          {import.meta.env.DEV && developerBossPanel && <aside className="dev-boss-panel" aria-label="개발자 보스 테스트">
+            <header><div><span className="eyebrow">LOCAL DEV ONLY</span><h2>보스 테스트</h2></div><button type="button" className="dev-boss-close" aria-label="보스 선택 닫기" onClick={() => setDeveloperBossPanel(false)}>×</button></header>
+            <p>선택한 보스의 출현 시점에서 전투를 시작합니다. 테스트 기록은 저장되지 않습니다.</p>
+            <div className="dev-boss-options">{bossTestScenarios.map(({ bossId, atSeconds }) => <button type="button" className="dev-boss-option" key={bossId} onClick={() => startDeveloperBossTest(bossId)}><span>{bossDisplayName[bossId]}</span><small>{Math.floor(atSeconds / 60)}분 시점</small></button>)}</div>
+          </aside>}
         </>}
         {section === 'characters' && <><div className="page-intro"><span className="eyebrow">YOUR COMPANIONS</span><h1>호위대 선택</h1></div><CharacterSelect profile={profile} onStart={(id) => void startNewRun(id)} /></>}
         {section === 'shop' && <><div className="page-intro"><span className="eyebrow">CAMP PROVISIONS</span><h1>상점</h1><p>원정에서 모은 골드로 다음 여정을 준비합니다.</p></div><MetaShop profile={profile} onPurchased={(updated) => replaceProfile(updated)} onBuyUpgrade={(id) => buy(id)} onBuyTraining={buyCharacterTraining} onRecruitMerchant={recruitMerchantFromShop} busy={busyUpgrade || loading} error={error ? errorMessage : null} /></>}

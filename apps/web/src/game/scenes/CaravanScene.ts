@@ -32,6 +32,7 @@ import type { CharacterId } from '@caravan/contracts';
 import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 import { createSnapshot, mapSnapshotWorldPoint, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
 import { bossCatalog } from '../content/bosses.js';
+import { getBossTestScenario } from '../content/BossTestScenario.js';
 import { campaignSchedule } from '../content/campaignSchedule.js';
 import { enemyForSpawnRoll, scaledEnemyHp } from '../systems/EnemyProgression.js';
 import { RewardPickup } from '../entities/RewardPickup.js';
@@ -46,7 +47,7 @@ import type { StageId } from '../content/biomes.js';
 import { getRestoredMilestoneId, migrateDefeatedMilestoneIds } from '../systems/CampaignProgressMigration.js';
 import { advanceBossGimmick, applyLavaMagicianDamage, beginLavaGiantCharge, BOSS_COLLISION_RADIUS, chooseLavaMagicianTeleport, chooseLavaSigilPosition, createBossGimmickState, getLavaMagicianSummonInterval, LAVA_GIANT_CHARGE_SPEED, LAVA_GIANT_DAMAGE, LAVA_GIANT_STUN_DAMAGE_MULTIPLIER, segmentIntersectsCircle, segmentIntersectsRect, stunLavaGiant, type BossGimmickState, type LavaGiantState, type LavaMagicianState } from '../systems/BossGimmickSystem.js';
 
-export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1 }
+export interface RunWorldConfig { width: number; height: number; seed: number; characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId }
 
 export class CaravanScene extends Phaser.Scene {
   private readonly initialRunConfig?: RunWorldConfig;
@@ -163,8 +164,23 @@ export class CaravanScene extends Phaser.Scene {
           ? snapshot.defeatedBossIds.some((id) => id === 'princess-demon' || id === 'king-guard') || snapshot.activeBoss?.id === milestone.id
           : this.defeatedBossMilestoneIds.has(milestone.id) || restoredBossMilestoneId === milestone.id;
     }).map((milestone) => milestone.id) : [];
-    this.campaignClock = new CampaignClock(campaignSchedule, snapshot ? { elapsedSeconds: snapshot.elapsedSeconds, emittedIds: emittedMilestones } : undefined);
-    this.campaignClock.elapsedSeconds = snapshot?.elapsedSeconds ?? 0;
+    const debugBossScenario = !snapshot && import.meta.env.DEV && data.debugBossId
+      ? getBossTestScenario(data.debugBossId)
+      : undefined;
+    if (debugBossScenario) {
+      for (const milestone of campaignSchedule) {
+        if (milestone.kind !== 'event' && milestone.atSeconds < debugBossScenario.atSeconds) {
+          this.defeatedBossMilestoneIds.add(milestone.id);
+        }
+      }
+    }
+    this.campaignClock = new CampaignClock(campaignSchedule, snapshot
+      ? { elapsedSeconds: snapshot.elapsedSeconds, emittedIds: emittedMilestones }
+      : debugBossScenario
+        ? { elapsedSeconds: debugBossScenario.atSeconds, emittedIds: campaignSchedule.filter((milestone) => milestone.atSeconds <= debugBossScenario.atSeconds).map((milestone) => milestone.id) }
+        : undefined);
+    this.campaignClock.elapsedSeconds = snapshot?.elapsedSeconds ?? debugBossScenario?.atSeconds ?? 0;
+    if (!snapshot && debugBossScenario?.bossId === 'king-guard') this.run.karma = -100;
     this.eventSystem = new EventSystem();
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     this.cameras.main.setZoom(WORLD_DISPLAY_SCALE);
@@ -291,6 +307,15 @@ export class CaravanScene extends Phaser.Scene {
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeResume);
     this.refreshHud();
+    if (debugBossScenario && data.debugBossId) {
+      const milestone: CampaignMilestone = {
+        atSeconds: debugBossScenario.atSeconds,
+        id: debugBossScenario.milestoneId,
+        kind: debugBossScenario.kind,
+        bossId: data.debugBossId,
+      };
+      this.startBoss(milestone, data.debugBossId);
+    }
     if (this.run.pendingChoices.length) {
       this.uiPaused = true; this.scene.pause();
       gameEventBus.emit('level-up', { level: this.run.level, choices: this.run.pendingChoices });
@@ -601,13 +626,13 @@ export class CaravanScene extends Phaser.Scene {
     if (enemy.bossMilestoneId) gameEventBus.emit('boss-defeated', { milestoneId: enemy.bossMilestoneId });
   }
 
-  private startBoss(milestone: CampaignMilestone): void {
+  private startBoss(milestone: CampaignMilestone, forcedBossId?: BossId): void {
     const isFinal = milestone.kind === 'final-boss';
-    const bossId = isFinal
+    const bossId = forcedBossId ?? (isFinal
       ? chooseFinalBoss(getKarmaTier(this.run.karma))
       : milestone.id === 'lava-5min-slot'
         ? chooseLavaBoss(this.random)
-        : milestone.bossId ?? milestone.id as BossId;
+        : milestone.bossId ?? milestone.id as BossId);
     const baseBossDefinition = bossCatalog[bossId];
     const hpScale = baseBossDefinition
       ? scaledEnemyHp(baseBossDefinition.maxHp, this.run.elapsedSeconds, this.run.level) / baseBossDefinition.maxHp
@@ -1116,6 +1141,7 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private createRunSnapshot(reason: 'autosave' | 'checkpoint' | 'manual'): void {
+    if (import.meta.env.DEV && this.initialRunConfig?.debugBossId) return;
     if (this.run.status !== 'active') return;
     const shouldPauseScene = reason === 'manual';
     const resumeAfterSave = shouldPauseScene && !this.uiPaused;

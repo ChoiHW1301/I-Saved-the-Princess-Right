@@ -191,6 +191,19 @@
 /* The home hero uses one illustrated scene instead of the old CSS-shape landscape. */
 .welcome-banner { isolation: isolate; }
 .banner-copy { width: min(58%, 640px); }
+
+.game-logo-secret { display: block; width: 100%; padding: 0; border: 0; margin: 0; color: inherit; background: transparent; cursor: pointer; }
+.game-logo-secret:focus-visible { outline: 2px dashed #a84732; outline-offset: 5px; }
+.dev-boss-panel { position: fixed; z-index: 120; inset: 50% 24px auto auto; transform: translateY(-50%); width: min(340px, calc(100vw - 32px)); max-height: min(82vh, 680px); overflow: auto; padding: 20px; border: 2px solid #725034; border-radius: 8px; color: #51351f; background: #fff3d9; box-shadow: 5px 6px 0 #8c6a3c, 0 16px 46px #26170e66; }
+.dev-boss-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dev-boss-panel h2 { margin: 5px 0 0; font: 24px "DungGeunMo", monospace; }
+.dev-boss-panel > p { color: #765d40; font-size: 13px; line-height: 1.6; }
+.dev-boss-close { width: 34px; height: 34px; border: 1px solid #c99e65; border-radius: 4px; color: #67421f; background: #ffedc8; font-size: 24px; cursor: pointer; }
+.dev-boss-options { display: grid; gap: 8px; }
+.dev-boss-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 45px; padding: 9px 11px; border: 1px solid #d2ad7c; border-radius: 4px; color: #583a20; background: #fff9e9; text-align: left; cursor: pointer; }
+.dev-boss-option:hover, .dev-boss-option:focus-visible { border-color: #a84732; background: #ffe7b7; }
+.dev-boss-option small { flex: none; color: #9b6133; }
+@media (max-width: 600px) { .dev-boss-panel { inset: auto 12px 12px; transform: none; width: auto; max-height: 70vh; } }
 .banner-art { z-index: 1; inset: 0 0 0 43%; overflow: hidden; opacity: 1; background: none; }
 .banner-art::before { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, #fff4dd 0%, #fff4ddc9 12%, #fff4dd00 43%), linear-gradient(0deg, #e9c58155, transparent 30%); content: ''; pointer-events: none; }
 .banner-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; image-rendering: auto; }

@@ -16,10 +16,11 @@ import { bossDisplayName } from './content/bosses.js';
 
 type ActiveBossEncounter = CampaignMilestone & { bossId: BossId };
 
-export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave, controller, onExit, onProfileUpdated, onSaved }: {
-  characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; controller: RunController;
+export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave, debugBossId, controller, onExit, onProfileUpdated, onSaved }: {
+  characterId?: CharacterId; profile?: PlayerProfile; runId?: string; resumeSave?: CurrentRunSaveV1; debugBossId?: BossId; controller: RunController;
   onExit(): void; onProfileUpdated(profile: PlayerProfile): void; onSaved?(): void;
 }): JSX.Element {
+  const isDevBossTest = import.meta.env.DEV && debugBossId !== undefined;
   const hostRef = useRef<HTMLDivElement>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; choices: UpgradeChoice[] } | null>(null);
   const [storyEvent, setStoryEvent] = useState<StoryEvent | null>(null);
@@ -51,17 +52,19 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
       setMiniBossWarning(false);
     });
     const unsubscribeRunEnded = gameEventBus.on('run-ended', (summary) => {
-      setRunSummary(summary); setLevelUp(null); setStoryEvent(null); setBossEncounter(null); setSubmitting(true); setResultError(null);
+      setRunSummary(summary); setLevelUp(null); setStoryEvent(null); setBossEncounter(null); setSubmitting(!isDevBossTest); setResultError(null);
+      if (isDevBossTest) return;
       const submission: RunSubmission = { runId: summary.runId, characterId: summary.characterId, status: summary.status, elapsedSeconds: Math.floor(summary.elapsedSeconds), kills: summary.kills, defeatedBossIds: summary.defeatedBossIds, karma: summary.karma, endingId: summary.endingId };
       void controller.submitResult(submission).then((receipt) => { setRunReceipt(receipt); onProfileUpdated(receipt.profile); }).catch((error: unknown) => {
         setResultError(error instanceof RunControllerError ? error.message : '결과 제출에 실패했습니다. 다시 시도해 주세요.');
       }).finally(() => setSubmitting(false));
     });
     return () => { unsubscribeLevelUp(); unsubscribeComplete(); unsubscribeEvent(); unsubscribeEventComplete(); unsubscribeBoss(); unsubscribeWarning(); unsubscribeBossComplete(); unsubscribeRunEnded(); };
-  }, [controller, onProfileUpdated]);
+  }, [controller, isDevBossTest, onProfileUpdated]);
 
   useEffect(() => {
     const unsubscribeSnapshot = gameEventBus.on('snapshot-ready', (request) => {
+      if (isDevBossTest) return;
       setSaving(true);
       void controller.saveSnapshot(request.runId, request.snapshot).then(() => {
         gameEventBus.emit('snapshot-saved', { reason: request.reason, resume: request.resumeAfterSave });
@@ -73,24 +76,26 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
       }).finally(() => setSaving(false));
     });
     return () => unsubscribeSnapshot();
-  }, [controller, onExit, onSaved]);
+  }, [controller, isDevBossTest, onExit, onSaved]);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host || host.dataset.gameMounted === 'true') return;
     host.dataset.gameMounted = 'true';
-    const game = new Phaser.Game(createGameConfig(host, { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: Date.now(), characterId, profile, runId, resumeSave }));
+    const game = new Phaser.Game(createGameConfig(host, { width: WORLD_WIDTH, height: WORLD_HEIGHT, seed: Date.now(), characterId, profile, runId, resumeSave, debugBossId: isDevBossTest ? debugBossId : undefined }));
     return () => {
       game.destroy(true);
       delete host.dataset.gameMounted;
     };
-  }, [characterId, resumeSave, runId]);
+  }, [characterId, debugBossId, isDevBossTest, resumeSave, runId]);
   useEffect(() => {
+    if (isDevBossTest) return;
     const timer = window.setInterval(() => gameEventBus.emit('snapshot-request', { reason: 'autosave' }), 30_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [isDevBossTest]);
 
   async function retrySubmission(): Promise<void> {
+    if (isDevBossTest) return;
     setSubmitting(true); setResultError(null);
     try { const receipt = await controller.retryResult(); setRunReceipt(receipt); onProfileUpdated(receipt.profile); }
     catch (error) { setResultError(error instanceof RunControllerError ? error.message : '결과 재제출에 실패했습니다.'); }
@@ -118,9 +123,11 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
       {bossEncounter && <div role="status" style={{ position: 'absolute', zIndex: 15, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', padding: '10px 22px', border: '1px solid #b86556', borderRadius: 999, background: '#251414dd', color: '#f0c6a8', letterSpacing: '.12em', pointerEvents: 'none' }}>
         {bossEncounter.kind === 'final-boss' ? '최종 보스' : '중간 보스'} · {bossDisplayName[bossEncounter.bossId]}
       </div>}
-      {pauseMenu && !runSummary && <section className="run-dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title"><div><span className="eyebrow">CARAVAN CAMP</span><h2 id="pause-title">원정 일시 정지</h2><p>진행 상황을 저장하고 야영지로 돌아갈 수 있습니다.</p><button type="button" className="button button-primary" disabled={saving} onClick={() => gameEventBus.emit('snapshot-request', { reason: 'manual' })}>{saving ? '저장 중…' : '저장하고 야영지로'}</button><button type="button" className="button button-secondary" onClick={() => { setPauseMenu(false); gameEventBus.emit('resume-run', null); }}>계속 플레이</button></div></section>}
+      {pauseMenu && !runSummary && <section className="run-dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title"><div><span className="eyebrow">CARAVAN CAMP</span><h2 id="pause-title">원정 일시 정지</h2><p>{isDevBossTest ? '개발자 보스 테스트 중입니다. 테스트 진행 상황은 저장되지 않습니다.' : '진행 상황을 저장하고 야영지로 돌아갈 수 있습니다.'}</p>{isDevBossTest ? <button type="button" className="button button-primary" onClick={onExit}>야영지로 돌아가기</button> : <button type="button" className="button button-primary" disabled={saving} onClick={() => gameEventBus.emit('snapshot-request', { reason: 'manual' })}>{saving ? '저장 중…' : '저장하고 야영지로'}</button>}<button type="button" className="button button-secondary" onClick={() => { setPauseMenu(false); gameEventBus.emit('resume-run', null); }}>계속 플레이</button></div></section>}
       {networkError && !runSummary && <section className="run-dialog" role="alertdialog" aria-modal="true" aria-labelledby="network-title"><div><span className="eyebrow">SAVE SYNC</span><h2 id="network-title">게임을 멈췄습니다</h2><p>{networkError}</p><button type="button" className="button button-primary" disabled={saving} onClick={() => void resumeNetworkRun()}>{saving ? '동기화 중…' : '연결 확인 후 동기화'}</button>{controller.syncStatus === 'conflict' && <button type="button" className="button button-secondary" disabled={saving} onClick={() => void returnToServerSave()}>서버 저장을 사용하고 야영지로</button>}<button type="button" className="button button-secondary" disabled={saving} onClick={() => { if (controller.syncStatus !== 'clean') onSaved?.(); onExit(); }}>야영지로 돌아가기</button></div></section>}
-      {runSummary && <ResultPage summary={runSummary} receipt={runReceipt} error={resultError} busy={submitting} onRetry={() => void retrySubmission()} onContinue={onExit} />}
+      {runSummary && (isDevBossTest
+        ? <section className="run-dialog" role="dialog" aria-modal="true" aria-labelledby="debug-result-title"><div><span className="eyebrow">LOCAL DEV TEST · NOT SAVED</span><h1 id="debug-result-title">보스 테스트 종료</h1><p>처치 {runSummary.kills} · 생존 {Math.floor(runSummary.elapsedSeconds)}초</p><button type="button" className="button button-primary" onClick={onExit}>야영지로 돌아가기</button></div></section>
+        : <ResultPage summary={runSummary} receipt={runReceipt} error={resultError} busy={submitting} onRetry={() => void retrySubmission()} onContinue={onExit} />)}
     </>
   );
 }

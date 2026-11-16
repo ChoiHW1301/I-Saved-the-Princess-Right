@@ -23,6 +23,23 @@ describe('lava sigil combat and fuse', () => {
     expect(applyLavaSigilHit(sigil, 'bow')).toBeNull();
   });
 
+  it('removes a one-HP sigil after one weapon-system hit', () => {
+    const run = createRunState('warrior');
+    const weapons = new WeaponSystem();
+    const sigil = {
+      id: 'weapon-path-sigil', hp: LAVA_SIGIL_MAX_HP, maxHp: LAVA_SIGIL_MAX_HP, dead: false,
+      hitRadius: LAVA_SIGIL_HIT_RADIUS, worldPosition: { x: 50, y: 0 },
+      applyWeaponHit(_amount: number, sourceId: string) { return applyLavaSigilHit(this, sourceId); },
+    };
+    const remove = vi.fn();
+
+    weapons.update(run, { x: 0, y: 0 }, [], 16, () => 0, undefined, { x: 100, y: 0 }, undefined, undefined, [sigil], remove);
+
+    expect(sigil).toMatchObject({ hp: 0, dead: true });
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith(sigil);
+  });
+
   it('takes one hit point per real hit and ignores hits after destruction', () => {
     const sigil = { id: 'sigil', hp: 3, maxHp: 3, dead: false };
     expect(applyLavaSigilHit(sigil, 'bow')?.damage).toBe(1);

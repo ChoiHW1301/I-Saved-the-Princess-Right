@@ -11,7 +11,7 @@ export type BossGimmickState = LavaGiantState | LavaMagicianState;
 
 export const LAVA_GIANT_TELL_MS = 2_000;
 export const LAVA_GIANT_TELL_INTERVAL_MS = 6_000;
-export const LAVA_GIANT_CHARGE_SPEED = 1080;
+export const LAVA_GIANT_CHARGE_SPEED = 864;
 export const LAVA_GIANT_WALL_STUN_MS = 4_000;
 export const LAVA_GIANT_DAMAGE = 40;
 export const LAVA_GIANT_STUN_DAMAGE_MULTIPLIER = 1.5;

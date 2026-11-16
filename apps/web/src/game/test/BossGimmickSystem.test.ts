@@ -8,7 +8,7 @@ import {
 
 describe('boss gimmick state', () => {
   it('starts giant tells after six seconds and locks aim when the two-second tell ends', () => {
-    expect(LAVA_GIANT_CHARGE_SPEED).toBe(1080);
+    expect(LAVA_GIANT_CHARGE_SPEED).toBe(864);
     expect(BOSS_COLLISION_RADIUS).toBe(92);
     const initial = createBossGimmickState('lava-giant') as LavaGiantState;
     const waiting = advanceBossGimmick(initial, 5_999);

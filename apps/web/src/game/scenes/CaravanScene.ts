@@ -64,6 +64,8 @@ export class CaravanScene extends Phaser.Scene {
   private vanguardAura: Phaser.GameObjects.Arc | null = null;
   private vanguardHeatCooldownMs = 500;
   private whirlwindVisual: Phaser.GameObjects.Image | null = null;
+  private whirlwindTrailBack: Phaser.GameObjects.Graphics | null = null;
+  private whirlwindTrailFront: Phaser.GameObjects.Graphics | null = null;
   private whirlwindElapsedMs = 0;
   private readonly teleportingMagicians = new WeakSet<Enemy>();
   private readonly queuedMagicianTeleports = new WeakMap<Enemy, Vector2>();
@@ -145,6 +147,10 @@ export class CaravanScene extends Phaser.Scene {
     this.vanguardHeatCooldownMs = 500;
     this.whirlwindVisual?.destroy();
     this.whirlwindVisual = null;
+    this.whirlwindTrailBack?.destroy();
+    this.whirlwindTrailBack = null;
+    this.whirlwindTrailFront?.destroy();
+    this.whirlwindTrailFront = null;
     this.whirlwindElapsedMs = 0;
     if (!this.anims.exists('monster-death')) this.anims.create({
       key: 'monster-death', frames: this.anims.generateFrameNumbers('death-keep-ghoul', { start: 0, end: 3 }), frameRate: 9, repeat: 0,
@@ -325,6 +331,10 @@ export class CaravanScene extends Phaser.Scene {
       this.vanguardAura = null;
       this.whirlwindVisual?.destroy();
       this.whirlwindVisual = null;
+      this.whirlwindTrailBack?.destroy();
+      this.whirlwindTrailBack = null;
+      this.whirlwindTrailFront?.destroy();
+      this.whirlwindTrailFront = null;
     });
     const unsubscribeChoice = gameEventBus.on('upgrade-choice', ({ upgradeId }) => this.chooseUpgrade(upgradeId));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeChoice);
@@ -502,6 +512,8 @@ export class CaravanScene extends Phaser.Scene {
         if (this.run.player.respawnMs === 0) this.run.status = 'lost';
         this.warrior.setVisible(false);
         this.whirlwindVisual?.setVisible(false);
+        this.whirlwindTrailBack?.setVisible(false);
+        this.whirlwindTrailFront?.setVisible(false);
         (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
         (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
       }
@@ -574,9 +586,13 @@ export class CaravanScene extends Phaser.Scene {
 
   private createWhirlwindVisual(): void {
     this.whirlwindVisual?.destroy();
+    this.whirlwindTrailBack?.destroy();
+    this.whirlwindTrailFront?.destroy();
     this.whirlwindElapsedMs = 0;
+    this.whirlwindTrailBack = this.add.graphics().setDepth(this.warrior.depth + 0.05);
     this.whirlwindVisual = this.add.image(this.warrior.x, this.warrior.y, this.warrior.texture.key)
       .setDisplaySize(78, 70).setDepth(this.warrior.depth + 0.1);
+    this.whirlwindTrailFront = this.add.graphics().setDepth(this.warrior.depth + 0.15);
     this.updateWhirlwindVisual(0);
   }
 
@@ -585,6 +601,8 @@ export class CaravanScene extends Phaser.Scene {
     if (!visual || this.run.warriorEvolutionId !== 'whirlwind') return;
     const visible = !this.run.player.isDead && this.warrior.visible;
     visual.setVisible(visible);
+    this.whirlwindTrailBack?.setVisible(visible);
+    this.whirlwindTrailFront?.setVisible(visible);
     if (!visible) return;
 
     const interval = getWhirlwindIntervalMs(this.run.upgradeStats['attack-speed'] ?? 0);
@@ -594,7 +612,40 @@ export class CaravanScene extends Phaser.Scene {
     visual.setPosition(this.warrior.x, this.warrior.y).setDisplaySize(78 * widthRatio, 70)
       .setFlipX((turn < 0) !== this.warrior.flipX).setAngle(this.warrior.angle)
       .setTint(this.warrior.tintTopLeft).setAlpha(this.warrior.alpha);
+    this.drawWhirlwindTrail(2 * Math.PI * this.whirlwindElapsedMs / interval,
+      Math.min(118, 90 + (this.run.upgradeStats['sword-range'] ?? 0) * 0.2));
     this.warrior.setAlpha(0);
+  }
+
+  private drawWhirlwindTrail(phase: number, radius: number): void {
+    const back = this.whirlwindTrailBack;
+    const front = this.whirlwindTrailFront;
+    if (!back || !front) return;
+    back.clear().setPosition(this.warrior.x, this.warrior.y);
+    front.clear().setPosition(this.warrior.x, this.warrior.y);
+
+    // The broken, elliptical sweep follows the sword rather than flashing a complete ring.
+    const drawSweep = (arcLength: number, inset: number, width: number, color: number, opacity: number, steps: number): void => {
+      const head = phase - Math.PI / 2;
+      for (let index = 0; index < steps; index += 1) {
+        const progress = (index + 0.5) / steps;
+        const start = head - arcLength + arcLength * index / steps;
+        const end = head - arcLength + arcLength * (index + 1) / steps;
+        const mid = (start + end) / 2;
+        const layer = Math.sin(mid) < 0 ? back : front;
+        const sweepRadius = radius - inset;
+        const alpha = opacity * Math.pow(progress, 1.4) * this.warrior.alpha;
+        layer.lineStyle(width, color, alpha).lineBetween(
+          Math.cos(start) * sweepRadius, Math.sin(start) * sweepRadius * 0.48 + 5,
+          Math.cos(end) * sweepRadius, Math.sin(end) * sweepRadius * 0.48 + 5,
+        );
+      }
+    };
+
+    drawSweep(Math.PI * 1.35, 0, 7, 0xf5a331, 0.24, 28);
+    drawSweep(Math.PI * 1.35, 0, 3, 0xffd675, 0.55, 28);
+    drawSweep(Math.PI * 0.36, 0, 2, 0xfff3c8, 0.8, 10);
+    drawSweep(Math.PI * 0.95, 13, 2, 0xd9e3e6, 0.24, 20);
   }
 
   private createVanguardAura(): void {
@@ -1166,7 +1217,7 @@ export class CaravanScene extends Phaser.Scene {
           this.showDamageFlash(); this.showDamageNumber(warrior.x, warrior.y - 36, before - this.run.player.hp, '#ff8278');
           if (this.run.player.isDead) {
             if (this.run.player.respawnMs === 0) this.run.status = 'lost';
-            this.warrior.setVisible(false); this.whirlwindVisual?.setVisible(false); (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0); (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
+            this.warrior.setVisible(false); this.whirlwindVisual?.setVisible(false); this.whirlwindTrailBack?.setVisible(false); this.whirlwindTrailFront?.setVisible(false); (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0); (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
           }
         }
       }
@@ -1239,6 +1290,8 @@ export class CaravanScene extends Phaser.Scene {
           if (this.run.player.respawnMs === 0) this.run.status = 'lost';
           this.warrior.setVisible(false);
           this.whirlwindVisual?.setVisible(false);
+          this.whirlwindTrailBack?.setVisible(false);
+          this.whirlwindTrailFront?.setVisible(false);
           (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
           (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
         }

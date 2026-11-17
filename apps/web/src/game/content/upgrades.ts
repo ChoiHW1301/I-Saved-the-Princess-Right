@@ -1,7 +1,18 @@
 import type { UpgradeDefinition } from '@caravan/contracts';
 import type { CharacterId, RunState } from '@caravan/contracts';
+import { warriorEvolutionUpgradeIds } from './warriorEvolution.js';
+
+export function isUpgradeAvailableForEvolution(upgrade: UpgradeDefinition, state: RunState): boolean {
+  const requiredTree = (Object.entries(warriorEvolutionUpgradeIds) as [string, string][])
+    .find(([, id]) => id === upgrade.id)?.[0];
+  return requiredTree === undefined || (state.characterId === 'warrior' && state.warriorEvolutionId === requiredTree);
+}
 
 export const upgradeCatalog: readonly UpgradeDefinition[] = [
+  { id: 'whirlwind-damage', name: '승리를 위한 회전', description: '회전당 검 피해 비율 10%p 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'whirlwind-damage-ratio', values: [0.1, 0.1, 0.1, 0.1, 0.1], weight: 6, characterIds: ['warrior'] },
+  { id: 'multi-sword-count', name: 'N도류', description: '연속 참격 횟수 1회 증가', maxLevel: 3, appliesTo: 'weapon', stat: 'multi-sword-count', values: [1, 1, 1], weight: 6, characterIds: ['warrior'] },
+  { id: 'sword-wave-penetration', name: '검기 강화', description: '검기의 추가 적중 횟수 1회 증가', maxLevel: 4, appliesTo: 'weapon', stat: 'sword-wave-penetration', values: [1, 1, 1, 1], weight: 6, characterIds: ['warrior'] },
+  { id: 'vanguard-heat', name: '뜨거운 열기', description: '열기 피해 2 증가', maxLevel: 5, appliesTo: 'warrior', stat: 'vanguard-heat-damage', values: [2, 2, 2, 2, 2], weight: 6, characterIds: ['warrior'] },
   { id: 'sword-damage', name: '날카로운 검', description: '검 공격 피해 증가', maxLevel: 5, appliesTo: 'weapon', stat: 'sword-damage', values: [4, 5, 6, 8, 10], weight: 10, characterIds: ['warrior'] },
   { id: 'sword-range', name: '크게 휘둘러라', description: '검 공격 범위 증가', maxLevel: 4, appliesTo: 'weapon', stat: 'sword-range', values: [18, 22, 28, 35], weight: 8, characterIds: ['warrior'] },
   { id: 'warrior-regeneration', name: '들끓는 심장', description: '초당 체력을 0.2 회복합니다.', maxLevel: 5, appliesTo: 'warrior', stat: 'health-regeneration', values: [0.2, 0.2, 0.2, 0.2, 0.2], weight: 7, characterIds: ['warrior'] },
@@ -31,5 +42,6 @@ export const upgradeCatalog: readonly UpgradeDefinition[] = [
 
 export function getAvailableUpgrades(characterId: CharacterId, state: RunState): UpgradeDefinition[] {
   return upgradeCatalog.filter((upgrade) => (upgrade.characterIds === undefined || upgrade.characterIds.includes(characterId))
+    && isUpgradeAvailableForEvolution(upgrade, state)
     && (state.weaponLevels[upgrade.id] ?? 0) < upgrade.maxLevel);
 }

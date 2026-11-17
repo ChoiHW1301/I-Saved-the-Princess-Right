@@ -37,6 +37,7 @@ export function createSnapshot(input: SnapshotInput): RunSnapshotV1 {
   const boss = input.enemies.find((enemy) => enemy.bossMilestoneId);
   return {
     characterId: run.characterId,
+    warriorEvolutionId: run.warriorEvolutionId,
     worldWidth: input.worldWidth,
     roadCenterY: input.roadCenterY,
     elapsedSeconds: Math.floor(run.elapsedSeconds),
@@ -82,6 +83,7 @@ export function restoreSnapshot(save: CurrentRunSaveV1): RunState {
   const snapshot = save.snapshot;
   return {
     runId: save.runId, status: 'active', elapsedSeconds: snapshot.elapsedSeconds, characterId: snapshot.characterId,
+    warriorEvolutionId: snapshot.warriorEvolutionId,
     level: snapshot.player.level, xp: snapshot.player.xp, xpToNext: snapshot.player.xpToNext,
     karma: snapshot.karma, runGold: snapshot.runGold, kills: snapshot.kills,
     selectedUpgradeIds: [...snapshot.upgradeIds], weaponLevels: { ...snapshot.weaponLevels },

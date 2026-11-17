@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CharacterIdSchema, TrainingIdSchema } from './profile.js';
+import { WarriorEvolutionIdSchema } from './gameplay.js';
 import { CoordinateSchema, CounterSchema, IdSchema, IsoDateTimeSchema, UserIdSchema, withDocumentLimit } from './validation.js';
 
 const PlayerSnapshotSchema = z.object({
@@ -65,6 +66,7 @@ const LavaSigilSnapshotSchema = z.object({
 
 export const RunSnapshotV1Schema = z.object({
   characterId: CharacterIdSchema.default('warrior'),
+  warriorEvolutionId: WarriorEvolutionIdSchema.nullable().default(null),
   worldWidth: CounterSchema.default(1280),
   roadCenterY: CounterSchema.default(267),
   elapsedSeconds: CounterSchema,

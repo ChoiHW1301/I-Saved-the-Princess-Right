@@ -1,8 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { createRunState } from '../state/createRunState.js';
 import { LevelSystem } from '../systems/LevelSystem.js';
+import { getAvailableUpgrades, upgradeCatalog } from '../content/upgrades.js';
 
 describe('run XP and level-up choices', () => {
+  it('only offers the selected warrior evolution and stops at its maximum rank', () => {
+    const run = createRunState('warrior');
+    const ids = ['whirlwind-damage', 'multi-sword-count', 'sword-wave-penetration', 'vanguard-heat'];
+    expect(getAvailableUpgrades('warrior', run).filter(({ id }) => ids.includes(id))).toHaveLength(0);
+    run.warriorEvolutionId = 'multi-sword';
+    expect(getAvailableUpgrades('warrior', run).filter(({ id }) => ids.includes(id)).map(({ id }) => id)).toEqual(['multi-sword-count']);
+    const injected = new LevelSystem(() => 0, upgradeCatalog.filter(({ id }) => ids.includes(id)));
+    expect(injected.rollChoices(run).map(({ id }) => id)).toEqual(['multi-sword-count']);
+    run.weaponLevels['multi-sword-count'] = 3;
+    expect(injected.rollChoices(run)).toEqual([]);
+    expect(getAvailableUpgrades('warrior', run).some(({ id }) => id === 'multi-sword-count')).toBe(false);
+    const archer = createRunState('archer');
+    expect(getAvailableUpgrades('archer', archer).some(({ id }) => ids.includes(id))).toBe(false);
+  });
   it('uses the configured increasing thresholds and carries XP remainder', () => {
     const run = createRunState();
     const levels = new LevelSystem(() => 0);

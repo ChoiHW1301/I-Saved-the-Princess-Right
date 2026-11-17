@@ -29,10 +29,13 @@ export const CaravanRunStateSchema = z.object({
 }).strict();
 export interface PlayerRunState { hp: number; maxHp: number; isDead: boolean; respawnMs: number; respawnsRemaining: number; invulnerableMs: number }
 export interface CaravanRunState { hp: number; maxHp: number }
+export const WarriorEvolutionIdSchema = z.enum(['whirlwind', 'multi-sword', 'sword-wave', 'vanguard']);
+export type WarriorEvolutionId = z.infer<typeof WarriorEvolutionIdSchema>;
 
 export const RunStateSchema = z.object({
   runId: z.string().min(1).max(128), status: z.enum(['active', 'won', 'lost']), elapsedSeconds: z.number().finite().nonnegative(),
   characterId: CharacterIdSchema, level: z.number().int().min(1), xp: z.number().int().nonnegative(), xpToNext: z.number().int().positive(),
+  warriorEvolutionId: WarriorEvolutionIdSchema.nullable(),
   karma: z.number().int().min(-100).max(100), runGold: z.number().int().nonnegative(), kills: z.number().int().nonnegative(),
   selectedUpgradeIds: z.array(z.string().min(1).max(64)).max(500), weaponLevels: z.record(z.string().min(1).max(64), z.number().int().nonnegative()),
   equippedWeaponIds: z.array(z.string().min(1).max(64)).max(20),
@@ -47,6 +50,7 @@ export const RunStateSchema = z.object({
 }).strict();
 export interface RunState {
   runId: string; status: RunStatus; elapsedSeconds: number; characterId: CharacterId;
+  warriorEvolutionId: WarriorEvolutionId | null;
   level: number; xp: number; xpToNext: number; karma: number; runGold: number; kills: number;
   selectedUpgradeIds: string[]; weaponLevels: Record<string, number>; equippedWeaponIds: string[]; eventChoiceIds: string[]; defeatedBossIds: import('./leaderboard.js').BossId[];
   pausedBy: 'none' | 'level-up' | 'event' | 'boss' | 'network';

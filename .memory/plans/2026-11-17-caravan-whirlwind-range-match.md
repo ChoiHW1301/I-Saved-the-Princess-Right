@@ -6,7 +6,7 @@
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | 범위 공식 공유 및 궤적 수정 | [P01](../phases/2026-11-17-caravan-whirlwind-range-match/P01-range-match/phase.md) |
+| P01 | `done` | 범위 공식 공유 및 궤적 수정 | [P01](../phases/2026-11-17-caravan-whirlwind-range-match/P01-range-match/phase.md) |
 
 ## Execution Order
 1. T01 범위 계산을 공유하고 궤적을 실제 판정과 맞춘다.

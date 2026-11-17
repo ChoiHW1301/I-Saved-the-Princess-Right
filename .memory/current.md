@@ -1,16 +1,16 @@
 # Current Context
 
 ## Active Plan
-[훨윈드 범위 일치](./plans/2026-11-17-caravan-whirlwind-range-match.md)
+[Caravan 공유 Cosmos 저장 연동](./plans/2026-11-17-caravan-shared-cosmos-persistence.md)
 
 ## Active Phase
-[P01 범위 일치](./phases/2026-11-17-caravan-whirlwind-range-match/P01-range-match/phase.md)
+[P01 Azure 연결](./phases/2026-11-17-caravan-shared-cosmos-persistence/P01-azure-connection/phase.md)
 
 ## Active Task
-없음 (계획 완료)
+[T02 API 배포 준비](./phases/2026-11-17-caravan-shared-cosmos-persistence/P01-azure-connection/T02-api-readiness.md)
 
 ## Status
-- T01 완료 (`0351409`); P01 1/1 완료
+- T01 완료 (`c83d244`); P01 1/4 완료
 
 ## Next Step
-- 개발자 모드에서 훨윈드의 기본 및 사거리 강화 후 시각 범위를 실제 화면에서 확인한다.
+- T02 청사진을 읽고 API 테스트와 배포 패키지를 검증한다.

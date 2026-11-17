@@ -54,4 +54,4 @@ Task: T01-shared-database
 - [x] 구현 완료
 - [x] 검증 통과
 - Azure deployment: `caravan-shared-db-20261117` (`Succeeded`); What-If: 4 create, 59 ignore.
-- commit: pending
+- commit: `c83d244`

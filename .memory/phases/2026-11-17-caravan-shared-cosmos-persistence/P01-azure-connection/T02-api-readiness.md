@@ -51,4 +51,4 @@ Task: T02-api-readiness
 - [x] 구현 완료
 - [x] 검증 통과
 - Packaging note: `Compress-Archive` stalled on roughly 13,000 npm files; switched to Windows bsdtar ZIP creation. Verified `host.json`, `package.json`, and `dist/src/functions/index.js` are at the archive root.
-- commit: pending
+- commit: `6984c0a`

@@ -1,6 +1,6 @@
 # Task: T03 Managed identity access and Functions release
 
-## Status: pending
+## Status: done
 
 ## Goal
 Connect the existing Function to the shared Cosmos database using managed identity, deploy the API, and verify its public and protected endpoints.
@@ -28,9 +28,9 @@ Connect the existing Function to the shared Cosmos database using managed identi
 - Deploy the API package once Storage roles have propagated. Verify `az functionapp function list` indexes health, profile, save, runs, leaderboards. Health returns 200; anonymous protected requests return 401. Do not print bearer tokens or app-setting values that may contain secrets.
 
 ## Acceptance Criteria
-- [ ] Function has required Storage and Cosmos data roles, scoped to Caravan resources.
-- [ ] Cosmos endpoint points at shared account and API handlers are indexed.
-- [ ] Health and protected-route smoke checks pass.
+- [x] Function has required Storage and Cosmos data roles, scoped to Caravan resources.
+- [x] Cosmos endpoint points at shared account and API handlers are indexed.
+- [x] Health and protected-route smoke checks pass.
 
 ## Validation
 - `az functionapp function list --resource-group grill-me-edu --name caravan-grill-api-e21002 -o table` — expected handlers.
@@ -50,6 +50,12 @@ Task: T03-api-deployment
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
+- 2026-11-17: Created the Function system identity's Cosmos DB Built-in Data Contributor assignment scoped to `/dbs/caravan-game` in `maze-rescue-ms-b7af62a9`.
+- 2026-11-17: Updated the Function's `COSMOS_ENDPOINT` app setting to the shared account endpoint. The API deployment has not started.
+- 2026-11-17: Storage role assignment attempted as `hw.choi2@dexconsulting.net` and rejected by Azure with `AuthorizationFailed` for `Microsoft.Authorization/roleAssignments/write`. The three roles must be granted by an account with role-assignment authority, scoped to `caravangstge21002`; do not grant them at the resource-group or subscription scope.
+- 2026-11-17: Microsoft Graph read of the Web registration also requires a refreshed MFA session; this does not block the Storage role assignment but will matter before the web release.
+- 2026-11-17: Verified the administrator's three Storage data-role assignments on `caravangstge21002` for Function principal `1b48f7e1-1b39-498d-8958-61f1d946db7e`; verified Cosmos data role at `/dbs/caravan-game` and the shared Cosmos endpoint host.
+- 2026-11-17: `./scripts/deploy-api.ps1 -ResourceGroup grill-me-edu -FunctionAppName caravan-grill-api-e21002` completed. Azure indexed 12 functions. Release smoke checks passed: health 200; unauthenticated `/api/me`, `/api/profile`, `/api/save`, and both leaderboard routes 401. No game data was written.
 - commit: pending

@@ -6,6 +6,8 @@ Record the release version, environment, operator, date, and outcome in the team
 
 The Caravan deployment in `grill-me-edu` uses the existing `maze-rescue-ms-b7af62a9` account and its own `caravan-game` database. Provision only with `infra/shared-cosmos-game.bicep`. The older `infra/main.bicep` provisions a separate Cosmos account and must not be rerun for this connection. The database uses 400 RU/s shared by `profiles`, `saves`, and `leaderboards`; this reserved throughput can incur charges beyond the account's free-tier allowance.
 
+The Function App `caravan-grill-api-e21002` uses its system-assigned managed identity. Its Cosmos DB Built-in Data Contributor assignment is scoped to `/dbs/caravan-game`. On the dedicated Storage account `caravangstge21002`, that same identity has `Storage Blob Data Owner`, `Storage Queue Data Contributor`, and `Storage Table Data Contributor` at the Storage account scope. Keep these roles off the resource group and subscription scopes; do not add shared account keys to the web app or API configuration. The API deployment and read-only release smoke checks passed on 2026-11-17. Interactive DEX sign-in, saved-run persistence, and leaderboard writes remain separate release checks.
+
 ## Automated read-only checks
 
 - [ ] `GET /api/health` returns HTTP 200 and `{ "status": "ok" }`.

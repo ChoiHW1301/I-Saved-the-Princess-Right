@@ -28,7 +28,7 @@ import { BossDirector } from '../systems/BossDirector.js';
 import { resolveEnding } from '../systems/EndingSystem.js';
 import { getCharacterDefinition } from '../content/characters.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
-import { getVanguardHeatDamage, getVanguardMaxHp } from '../systems/WarriorEvolutionCombat.js';
+import { getVanguardHeatDamage, getVanguardMaxHp, getWhirlwindIntervalMs } from '../systems/WarriorEvolutionCombat.js';
 import type { CharacterId } from '@caravan/contracts';
 import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 import { createSnapshot, mapSnapshotWorldPoint, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
@@ -63,6 +63,8 @@ export class CaravanScene extends Phaser.Scene {
   private readonly bowProjectileVisuals = new Map<number, Phaser.GameObjects.Graphics>();
   private vanguardAura: Phaser.GameObjects.Arc | null = null;
   private vanguardHeatCooldownMs = 500;
+  private whirlwindVisual: Phaser.GameObjects.Image | null = null;
+  private whirlwindElapsedMs = 0;
   private readonly teleportingMagicians = new WeakSet<Enemy>();
   private readonly queuedMagicianTeleports = new WeakMap<Enemy, Vector2>();
   private readonly magicianTeleportTargets = new WeakMap<Enemy, Vector2>();
@@ -141,6 +143,9 @@ export class CaravanScene extends Phaser.Scene {
     this.vanguardAura?.destroy();
     this.vanguardAura = null;
     this.vanguardHeatCooldownMs = 500;
+    this.whirlwindVisual?.destroy();
+    this.whirlwindVisual = null;
+    this.whirlwindElapsedMs = 0;
     if (!this.anims.exists('monster-death')) this.anims.create({
       key: 'monster-death', frames: this.anims.generateFrameNumbers('death-keep-ghoul', { start: 0, end: 3 }), frameRate: 9, repeat: 0,
     });
@@ -223,6 +228,7 @@ export class CaravanScene extends Phaser.Scene {
     this.physics.add.collider(this.warrior, this.caravanCollision);
     this.warrior.setKarmaTier(getKarmaTier(this.run.karma));
     this.warrior.moveSpeed = getCharacterDefinition(this.run.characterId).baseStats.speed + (this.run.upgradeStats['movement-speed'] ?? 0);
+    if (this.run.warriorEvolutionId === 'whirlwind') this.createWhirlwindVisual();
     this.spawnCooldownMs = snapshot?.ordinarySpawnCooldownMs ?? 2000;
     if (snapshot?.approachingEvent) {
       const eventSprite = this.add.image(snapshot.approachingEvent.x, ROAD_CENTER_Y, 'encounter-atlas', encounterFrame(snapshot.approachingEvent.eventId)).setDisplaySize(72, 72).setDepth(9);
@@ -317,6 +323,8 @@ export class CaravanScene extends Phaser.Scene {
       this.bowProjectileVisuals.clear();
       this.vanguardAura?.destroy();
       this.vanguardAura = null;
+      this.whirlwindVisual?.destroy();
+      this.whirlwindVisual = null;
     });
     const unsubscribeChoice = gameEventBus.on('upgrade-choice', ({ upgradeId }) => this.chooseUpgrade(upgradeId));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeChoice);
@@ -434,6 +442,7 @@ export class CaravanScene extends Phaser.Scene {
       this.warrior.setDashVelocity(this.run.dashDirection, dashSpeed);
     } else this.warrior.setInput(movement);
     this.warrior.updateWalkMotion(_time);
+    this.updateWhirlwindVisual(delta);
     this.background.update(delta);
     this.advanceMoneyBombs(delta);
     this.advanceLavaSigils(delta);
@@ -492,6 +501,7 @@ export class CaravanScene extends Phaser.Scene {
       if (this.run.player.isDead) {
         if (this.run.player.respawnMs === 0) this.run.status = 'lost';
         this.warrior.setVisible(false);
+        this.whirlwindVisual?.setVisible(false);
         (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
         (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
       }
@@ -512,8 +522,6 @@ export class CaravanScene extends Phaser.Scene {
           return;
         }
         if (projectile.evolution === 'whirlwind') {
-          const ring = this.add.circle(this.warrior.x, this.warrior.y, projectile.range ?? 125, 0xdde8f2, 0.1).setStrokeStyle(5, 0xf5f8ff, 0.8).setDepth(12);
-          this.tweens.add({ targets: ring, alpha: 0, scale: 1.08, duration: 180, onComplete: () => ring.destroy() });
           return;
         }
         if (projectile.weaponId === 'sword') {
@@ -563,6 +571,31 @@ export class CaravanScene extends Phaser.Scene {
   }
   getWorldSeedSample(): number { return this.random(); }
   getTravelDistance(): number { return this.background?.getDistance() ?? 0; }
+
+  private createWhirlwindVisual(): void {
+    this.whirlwindVisual?.destroy();
+    this.whirlwindElapsedMs = 0;
+    this.whirlwindVisual = this.add.image(this.warrior.x, this.warrior.y, this.warrior.texture.key)
+      .setDisplaySize(78, 70).setDepth(this.warrior.depth + 0.1);
+    this.updateWhirlwindVisual(0);
+  }
+
+  private updateWhirlwindVisual(delta: number): void {
+    const visual = this.whirlwindVisual;
+    if (!visual || this.run.warriorEvolutionId !== 'whirlwind') return;
+    const visible = !this.run.player.isDead && this.warrior.visible;
+    visual.setVisible(visible);
+    if (!visible) return;
+
+    const interval = getWhirlwindIntervalMs(this.run.upgradeStats['attack-speed'] ?? 0);
+    this.whirlwindElapsedMs = (this.whirlwindElapsedMs + delta) % interval;
+    const turn = Math.cos(2 * Math.PI * this.whirlwindElapsedMs / interval);
+    const widthRatio = Math.max(0.18, Math.abs(turn));
+    visual.setPosition(this.warrior.x, this.warrior.y).setDisplaySize(78 * widthRatio, 70)
+      .setFlipX((turn < 0) !== this.warrior.flipX).setAngle(this.warrior.angle)
+      .setTint(this.warrior.tintTopLeft).setAlpha(this.warrior.alpha);
+    this.warrior.setAlpha(0);
+  }
 
   private createVanguardAura(): void {
     this.vanguardAura?.destroy();
@@ -753,6 +786,7 @@ export class CaravanScene extends Phaser.Scene {
     if (this.fiveMinuteBossDeathPhase !== 'choice' || !isWarriorEvolutionChoice(this.pendingEvolutionChoices, evolutionId)
       || this.run.warriorEvolutionId !== null || this.run.status !== 'active') return;
     this.run.warriorEvolutionId = evolutionId;
+    if (evolutionId === 'whirlwind') this.createWhirlwindVisual();
     if (evolutionId === 'vanguard') {
       const baseHp = getCharacterDefinition('warrior').baseStats.maxHp;
       const nextMaxHp = getVanguardMaxHp(baseHp, this.run.player.maxHp);
@@ -1132,7 +1166,7 @@ export class CaravanScene extends Phaser.Scene {
           this.showDamageFlash(); this.showDamageNumber(warrior.x, warrior.y - 36, before - this.run.player.hp, '#ff8278');
           if (this.run.player.isDead) {
             if (this.run.player.respawnMs === 0) this.run.status = 'lost';
-            this.warrior.setVisible(false); (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0); (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
+            this.warrior.setVisible(false); this.whirlwindVisual?.setVisible(false); (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0); (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
           }
         }
       }
@@ -1204,6 +1238,7 @@ export class CaravanScene extends Phaser.Scene {
         if (this.run.player.isDead) {
           if (this.run.player.respawnMs === 0) this.run.status = 'lost';
           this.warrior.setVisible(false);
+          this.whirlwindVisual?.setVisible(false);
           (this.warrior.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
           (this.warrior.body as Phaser.Physics.Arcade.Body).enable = false;
         }

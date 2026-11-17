@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getMultiSwordStrikeCount, getSwordWaveHitProfile, getVanguardHeatDamage, getVanguardMaxHp, getWhirlwindDamageRatio, getWhirlwindIntervalMs } from '../systems/WarriorEvolutionCombat.js';
+import { getMultiSwordStrikeCount, getSwordWaveHitProfile, getVanguardHeatDamage, getVanguardMaxHp, getWarriorSwordRange, getWhirlwindDamageRatio, getWhirlwindIntervalMs } from '../systems/WarriorEvolutionCombat.js';
 import { createRunState } from '../state/createRunState.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
 import { resolveHit, type WeaponAttackTarget } from '../systems/CombatSystem.js';
@@ -12,6 +12,11 @@ function dummyTarget(id: string, x: number, y: number, hp = 100): WeaponAttackTa
 }
 
 describe('warrior evolution combat values', () => {
+  it('uses the full sword range for the whirlwind sweep', () => {
+    expect(getWarriorSwordRange(125, 0)).toBe(125);
+    expect(getWarriorSwordRange(125, 18)).toBe(143);
+    expect(getWarriorSwordRange(125, 18 + 22 + 28 + 35)).toBe(228);
+  });
   it('scales whirlwind from two rotations a second and 50 to 100 percent damage', () => {
     expect(getWhirlwindIntervalMs(0)).toBe(500);
     expect(getWhirlwindIntervalMs(0.5)).toBeCloseTo(500 / 1.5);
@@ -37,6 +42,20 @@ describe('warrior evolution combat values', () => {
 describe('warrior evolution weapon behavior', () => {
   const origin = { x: 100, y: 100 };
   const aim = { x: 200, y: 100 };
+  it('extends whirlwind hits to the sword range after a range upgrade', () => {
+    const run = createRunState('warrior');
+    run.warriorEvolutionId = 'whirlwind';
+    const edge = dummyTarget('edge', 225, 100);
+    const beyond = dummyTarget('beyond', 243, 100);
+    const weapons = new WeaponSystem();
+    weapons.update(run, origin, [], 16, () => 0.9, undefined, aim, undefined, undefined, [edge, beyond]);
+    expect(edge.hp).toBe(94);
+    expect(beyond.hp).toBe(100);
+
+    run.upgradeStats['sword-range'] = 18;
+    weapons.update(run, origin, [], 500, () => 0.9, undefined, aim, undefined, undefined, [edge, beyond]);
+    expect(beyond.hp).toBe(94);
+  });
   it('whirlwind hits behind the warrior twice in one second at half sword damage', () => {
     const run = createRunState('warrior');
     run.warriorEvolutionId = 'whirlwind';

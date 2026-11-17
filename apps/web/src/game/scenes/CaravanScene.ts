@@ -27,8 +27,9 @@ import { chooseFinalBoss, chooseLavaBoss } from '../content/bosses.js';
 import { BossDirector } from '../systems/BossDirector.js';
 import { resolveEnding } from '../systems/EndingSystem.js';
 import { getCharacterDefinition } from '../content/characters.js';
+import { weaponCatalog } from '../content/weapons.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
-import { getVanguardHeatDamage, getVanguardMaxHp, getWhirlwindIntervalMs } from '../systems/WarriorEvolutionCombat.js';
+import { getVanguardHeatDamage, getVanguardMaxHp, getWarriorSwordRange, getWhirlwindIntervalMs } from '../systems/WarriorEvolutionCombat.js';
 import type { CharacterId } from '@caravan/contracts';
 import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 import { createSnapshot, mapSnapshotWorldPoint, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
@@ -613,7 +614,7 @@ export class CaravanScene extends Phaser.Scene {
       .setFlipX((turn < 0) !== this.warrior.flipX).setAngle(this.warrior.angle)
       .setTint(this.warrior.tintTopLeft).setAlpha(this.warrior.alpha);
     this.drawWhirlwindTrail(2 * Math.PI * this.whirlwindElapsedMs / interval,
-      Math.min(118, 90 + (this.run.upgradeStats['sword-range'] ?? 0) * 0.2));
+      getWarriorSwordRange(weaponCatalog['sword']!.range, this.run.upgradeStats['sword-range'] ?? 0));
     this.warrior.setAlpha(0);
   }
 
@@ -624,7 +625,7 @@ export class CaravanScene extends Phaser.Scene {
     back.clear().setPosition(this.warrior.x, this.warrior.y);
     front.clear().setPosition(this.warrior.x, this.warrior.y);
 
-    // The broken, elliptical sweep follows the sword rather than flashing a complete ring.
+    // The broken sweep reaches the same circular boundary used by sword hit detection.
     const drawSweep = (arcLength: number, inset: number, width: number, color: number, opacity: number, steps: number): void => {
       const head = phase - Math.PI / 2;
       for (let index = 0; index < steps; index += 1) {
@@ -633,11 +634,11 @@ export class CaravanScene extends Phaser.Scene {
         const end = head - arcLength + arcLength * (index + 1) / steps;
         const mid = (start + end) / 2;
         const layer = Math.sin(mid) < 0 ? back : front;
-        const sweepRadius = radius - inset;
+        const sweepRadius = radius - inset - width / 2;
         const alpha = opacity * Math.pow(progress, 1.4) * this.warrior.alpha;
         layer.lineStyle(width, color, alpha).lineBetween(
-          Math.cos(start) * sweepRadius, Math.sin(start) * sweepRadius * 0.48 + 5,
-          Math.cos(end) * sweepRadius, Math.sin(end) * sweepRadius * 0.48 + 5,
+          Math.cos(start) * sweepRadius, Math.sin(start) * sweepRadius,
+          Math.cos(end) * sweepRadius, Math.sin(end) * sweepRadius,
         );
       }
     };

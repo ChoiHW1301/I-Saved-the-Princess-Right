@@ -2,6 +2,10 @@ export function getWhirlwindIntervalMs(attackSpeedBonus: number): number {
   return 500 / Math.max(0.1, 1 + (Number.isFinite(attackSpeedBonus) ? attackSpeedBonus : 0));
 }
 
+export function getWarriorSwordRange(baseRange: number, swordRangeBonus: number): number {
+  return baseRange + swordRangeBonus;
+}
+
 export function getWhirlwindDamageRatio(rank: number): number {
   return 0.5 + 0.1 * Math.min(5, Math.max(0, Math.floor(Number.isFinite(rank) ? rank : 0)));
 }

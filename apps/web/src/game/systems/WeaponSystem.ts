@@ -3,7 +3,7 @@ import { getCharacterDefinition } from '../content/characters.js';
 import { weaponCatalog } from '../content/weapons.js';
 import type { Enemy } from '../entities/Enemy.js';
 import { distanceSquared, resolveHit, rollCriticalDamage, type Vector2, type WeaponAttackTarget } from './CombatSystem.js';
-import { getMultiSwordStrikeCount, getSwordWaveHitProfile, getWhirlwindDamageRatio, getWhirlwindIntervalMs } from './WarriorEvolutionCombat.js';
+import { getMultiSwordStrikeCount, getSwordWaveHitProfile, getWarriorSwordRange, getWhirlwindDamageRatio, getWhirlwindIntervalMs } from './WarriorEvolutionCombat.js';
 
 export interface ProjectileSpawn {
   weaponId: string; targets: WeaponAttackTarget[]; targetPositions: Vector2[]; damage: number; penetration: number;
@@ -66,7 +66,9 @@ export class WeaponSystem {
       const cooldown = Math.max(0, (this.cooldowns.get(weaponId) ?? 0) - delta);
       if (cooldown > 0) { this.cooldowns.set(weaponId, cooldown); continue; }
       const rangeBonus = weaponId === 'sword' ? 0 : run.upgradeStats[`${weaponId}-range`] ?? run.upgradeStats['projectile-range'] ?? 0;
-      const range = weapon.range + rangeBonus + (weaponId === 'sword' ? run.upgradeStats['sword-range'] ?? 0 : 0);
+      const range = weaponId === 'sword'
+        ? getWarriorSwordRange(weapon.range, run.upgradeStats['sword-range'] ?? 0)
+        : weapon.range + rangeBonus;
       const aimX = aimPoint.x - origin.x;
       const aimY = aimPoint.y - origin.y;
       const aimLength = Math.hypot(aimX, aimY);

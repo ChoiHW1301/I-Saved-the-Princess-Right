@@ -6,7 +6,7 @@
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | 훨윈드 지속 검 궤적 구현 | [P01](../phases/2026-11-17-caravan-whirlwind-sword-trail/P01-trail-visual/phase.md) |
+| P01 | `done` | 훨윈드 지속 검 궤적 구현 | [P01](../phases/2026-11-17-caravan-whirlwind-sword-trail/P01-trail-visual/phase.md) |
 
 ## Execution Order
 1. T01 전사의 회전 위상에 맞춰 앞·뒤 검 궤적을 그린다.

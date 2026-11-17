@@ -3,7 +3,7 @@
 ## Tasks
 | Task | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| T01 | `in_progress 🔵` | 검 궤적 앞뒤 레이어와 회전 위상 연결 | [T01](./T01-trail-rendering.md) |
+| T01 | `done` | 검 궤적 앞뒤 레이어와 회전 위상 연결 | [T01](./T01-trail-rendering.md) |
 
 ## Progress
-- done: 0/1 (active: T01)
+- done: 1/1 (complete)

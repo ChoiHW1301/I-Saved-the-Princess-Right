@@ -2,6 +2,10 @@
 
 Record the release version, environment, operator, date, and outcome in the team's release record. Use dedicated test identities and never record passwords, bearer tokens, or personal data in the record.
 
+## Shared Cosmos account for Caravan
+
+The Caravan deployment in `grill-me-edu` uses the existing `maze-rescue-ms-b7af62a9` account and its own `caravan-game` database. Provision only with `infra/shared-cosmos-game.bicep`. The older `infra/main.bicep` provisions a separate Cosmos account and must not be rerun for this connection. The database uses 400 RU/s shared by `profiles`, `saves`, and `leaderboards`; this reserved throughput can incur charges beyond the account's free-tier allowance.
+
 ## Automated read-only checks
 
 - [ ] `GET /api/health` returns HTTP 200 and `{ "status": "ok" }`.

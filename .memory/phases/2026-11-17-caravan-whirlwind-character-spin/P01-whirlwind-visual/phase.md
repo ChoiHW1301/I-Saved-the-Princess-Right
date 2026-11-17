@@ -3,7 +3,7 @@
 ## Tasks
 | Task | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| T01 | `in_progress 🔵` | 전사 회전 표시 및 눈부신 원형 섬광 제거 | [T01](./T01-character-spin.md) |
+| T01 | `done ✅` | 전사 회전 표시 및 눈부신 원형 섬광 제거 | [T01](./T01-character-spin.md) |
 
 ## Progress
-- done: 0/1 (active: T01)
+- done: 1/1 (complete)

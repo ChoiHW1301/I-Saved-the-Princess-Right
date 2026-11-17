@@ -6,7 +6,7 @@
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | 훨윈드 렌더링 교체 및 검증 | [P01](../phases/2026-11-17-caravan-whirlwind-character-spin/P01-whirlwind-visual/phase.md) |
+| P01 | `done` | 훨윈드 렌더링 교체 및 검증 | [P01](../phases/2026-11-17-caravan-whirlwind-character-spin/P01-whirlwind-visual/phase.md) |
 
 ## Execution Order
 1. T01 훨윈드 캐릭터 회전 애니메이션 및 원형 섬광 제거

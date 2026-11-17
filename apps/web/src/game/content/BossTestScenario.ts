@@ -40,3 +40,7 @@ export function getBossTestScenario(bossId: BossId): BossTestScenario | undefine
 export function getBossPostClearTestScenario(bossId: BossId): BossPostClearTestScenario | undefined {
   return bossPostClearTestScenarios.find((scenario) => scenario.bossId === bossId);
 }
+
+export function shouldOfferPostClearEvolution(bossId: BossId, characterId: string): boolean {
+  return characterId === 'warrior' && getBossPostClearTestScenario(bossId)?.milestoneId === 'lava-5min-slot';
+}

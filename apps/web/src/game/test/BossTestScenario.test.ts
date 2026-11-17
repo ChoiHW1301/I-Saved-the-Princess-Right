@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bossPostClearTestScenarios, bossTestScenarios, getBossPostClearTestScenario, getBossTestScenario } from '../content/BossTestScenario.js';
+import { bossPostClearTestScenarios, bossTestScenarios, getBossPostClearTestScenario, getBossTestScenario, shouldOfferPostClearEvolution } from '../content/BossTestScenario.js';
 import { getBiomeAt } from '../systems/BiomeTransitionSystem.js';
 import { campaignSchedule } from '../content/campaignSchedule.js';
 
@@ -40,5 +40,13 @@ describe('boss test scenario mapping', () => {
         progress: 0,
       });
     }
+  });
+  it('offers evolution only for warrior five-minute post-clear tests', () => {
+    expect(shouldOfferPostClearEvolution('lava-giant', 'warrior')).toBe(true);
+    expect(shouldOfferPostClearEvolution('lava-magician', 'warrior')).toBe(true);
+    expect(shouldOfferPostClearEvolution('castle-warlord', 'warrior')).toBe(false);
+    expect(shouldOfferPostClearEvolution('forest-warden', 'warrior')).toBe(false);
+    expect(shouldOfferPostClearEvolution('lava-giant', 'archer')).toBe(false);
+    expect(shouldOfferPostClearEvolution('princess-demon', 'warrior')).toBe(false);
   });
 });

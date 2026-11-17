@@ -33,7 +33,7 @@ import type { CharacterId } from '@caravan/contracts';
 import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 import { createSnapshot, mapSnapshotWorldPoint, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
 import { bossCatalog } from '../content/bosses.js';
-import { getBossPostClearTestScenario, getBossTestScenario } from '../content/BossTestScenario.js';
+import { getBossPostClearTestScenario, getBossTestScenario, shouldOfferPostClearEvolution } from '../content/BossTestScenario.js';
 import { isWarriorEvolutionChoice, rollWarriorEvolutionChoices, shouldOfferWarriorEvolution, type WarriorEvolutionId } from '../content/warriorEvolution.js';
 import { campaignSchedule } from '../content/campaignSchedule.js';
 import { enemyForSpawnRoll, scaledEnemyHp } from '../systems/EnemyProgression.js';
@@ -80,6 +80,7 @@ export class CaravanScene extends Phaser.Scene {
   private activeBossGimmick: BossGimmickState | null = null;
   private activeBossIsFinal = false;
   private fiveMinuteBossDeathPhase: 'animation' | 'choice' | null = null;
+  private postClearEvolutionTest = false;
   private pendingEvolutionChoices: readonly [WarriorEvolutionId, WarriorEvolutionId] | null = null;
   private finalBossForRun: BossId | undefined;
   private readonly bossDirector = new BossDirector();
@@ -164,6 +165,7 @@ export class CaravanScene extends Phaser.Scene {
     this.activeBossGimmick = null;
     this.activeBossIsFinal = false;
     this.fiveMinuteBossDeathPhase = null;
+    this.postClearEvolutionTest = false;
     this.pendingEvolutionChoices = null;
     this.pendingFinalVictory = false;
     this.random = seededRandom(snapshot?.rngSeed ?? data.seed);
@@ -347,6 +349,11 @@ export class CaravanScene extends Phaser.Scene {
         bossId: data.debugBossId,
       };
       this.startBoss(milestone, data.debugBossId);
+    }
+    if (debugPostClearScenario && data.debugPostClearBossId
+      && shouldOfferPostClearEvolution(data.debugPostClearBossId, this.run.characterId)) {
+      this.postClearEvolutionTest = true;
+      this.offerWarriorEvolution();
     }
     if (this.run.pendingChoices.length) {
       this.uiPaused = true; this.scene.pause();
@@ -730,6 +737,10 @@ export class CaravanScene extends Phaser.Scene {
       gameEventBus.emit('boss-defeated', { milestoneId });
       return;
     }
+    this.offerWarriorEvolution();
+  }
+
+  private offerWarriorEvolution(): void {
     this.fiveMinuteBossDeathPhase = 'choice';
     this.pendingEvolutionChoices = rollWarriorEvolutionChoices(this.random);
     this.warrior.setInput({ x: 0, y: 0 });
@@ -754,7 +765,7 @@ export class CaravanScene extends Phaser.Scene {
     this.uiPaused = false;
     this.scene.resume();
     gameEventBus.emit('warrior-evolution-complete', null);
-    gameEventBus.emit('boss-defeated', { milestoneId: 'lava-5min-slot' });
+    if (!this.postClearEvolutionTest) gameEventBus.emit('boss-defeated', { milestoneId: 'lava-5min-slot' });
   }
 
   private startBoss(milestone: CampaignMilestone, forcedBossId?: BossId): void {

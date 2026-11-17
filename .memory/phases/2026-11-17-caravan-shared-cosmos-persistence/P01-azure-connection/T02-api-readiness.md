@@ -1,6 +1,6 @@
 # Task: T02 API test and release readiness
 
-## Status: pending
+## Status: done
 
 ## Goal
 Make the current API tests pass under the ranked training rules and prepare a Function deployment package without changing game behavior.
@@ -27,8 +27,8 @@ Make the current API tests pass under the ranked training rules and prepare a Fu
 - Run API suite, root typecheck, API build, and package-only script. Keep generated package under OS temp and do not commit it.
 
 ## Acceptance Criteria
-- [ ] All API tests pass; ranked training purchase can advance to rank 2.
-- [ ] API package builds with the expected Functions entry module.
+- [x] All API tests pass; ranked training purchase can advance to rank 2.
+- [x] API package builds with the expected Functions entry module.
 
 ## Validation
 - `npm run test --workspace @caravan/api` — all tests pass.
@@ -48,6 +48,7 @@ Task: T02-api-readiness
 ```
 
 ## Progress
-- [ ] 구현 완료
-- [ ] 검증 통과
+- [x] 구현 완료
+- [x] 검증 통과
+- Packaging note: `Compress-Archive` stalled on roughly 13,000 npm files; switched to Windows bsdtar ZIP creation. Verified `host.json`, `package.json`, and `dist/src/functions/index.js` are at the archive root.
 - commit: pending

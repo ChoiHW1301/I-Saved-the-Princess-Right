@@ -55,7 +55,7 @@ describe('profile and save handlers', () => {
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ version: 2 }));
   });
 
-  it('purchases character training once and persists it through the profile repository', async () => {
+  it('advances ranked character training and persists each level through the profile repository', async () => {
     let current: PlayerProfile = { ...profile, goldBalance: 400 };
     const repository = {
       getOrCreate: vi.fn(async () => current),
@@ -66,11 +66,11 @@ describe('profile and save handlers', () => {
     }), repository);
     expect(first.status).toBe(200);
     expect((first.jsonBody as PlayerProfile)).toMatchObject({ goldBalance: 300, characterTrainingLevels: { warrior: { 'warrior-thorn-armor': 1 } }, version: 2 });
-    const duplicate = await purchaseTraining(request('POST', 'http://localhost/api/profile/trainings', {
+    const second = await purchaseTraining(request('POST', 'http://localhost/api/profile/trainings', {
       characterId: 'warrior', trainingId: 'warrior-thorn-armor', expectedProfileVersion: 2,
     }), repository);
-    expect(duplicate.status).toBe(400);
-    expect(duplicate.jsonBody).toMatchObject({ code: 'INVALID_UPGRADE' });
+    expect(second.status).toBe(200);
+    expect(second.jsonBody).toMatchObject({ goldBalance: 175, characterTrainingLevels: { warrior: { 'warrior-thorn-armor': 2 } }, version: 3 });
   });
 
   it('saves versioned run state and reports unsupported versions and absent saves', async () => {

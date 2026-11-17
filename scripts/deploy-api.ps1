@@ -41,7 +41,9 @@ try {
     try { Invoke-Checked 'npm' @('install', '--omit=dev', '--no-audit', '--no-fund', '--package-lock=false') }
     finally { Pop-Location }
 
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -Force
+    # Compress-Archive is prohibitively slow for the thousands of small npm files.
+    # bsdtar writes the same ZIP layout with package.json and dist at the archive root.
+    Invoke-Checked 'tar' @('-a', '-c', '-f', $zipPath, '-C', $stage, '.')
     if ($PackageOnly) {
       Write-Output "Created API package at: $zipPath"
       return

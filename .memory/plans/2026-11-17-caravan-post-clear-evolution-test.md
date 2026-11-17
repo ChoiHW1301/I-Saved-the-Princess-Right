@@ -6,7 +6,7 @@
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | 클리어 후 테스트의 5분 진화 선택 연결 | [P01](../phases/2026-11-17-caravan-post-clear-evolution-test/P01-post-clear-evolution/phase.md) |
+| P01 | `done` | 클리어 후 테스트의 5분 진화 선택 연결 | [P01](../phases/2026-11-17-caravan-post-clear-evolution-test/P01-post-clear-evolution/phase.md) |
 
 ## Execution Order
 1. T01 개발자 5분 클리어 후 테스트에서 두 진화 트리를 제시하고 선택을 게임 상태에 반영한다.

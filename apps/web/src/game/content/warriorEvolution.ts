@@ -20,3 +20,11 @@ export function rollWarriorEvolutionChoices(random: () => number): readonly [War
   const roll = Number.isFinite(value) ? Math.max(0, Math.min(0.999999999, value)) : 0;
   return choicePairs[Math.floor(roll * choicePairs.length)]!;
 }
+
+export function shouldOfferWarriorEvolution(characterId: string, milestoneId: string, selected: WarriorEvolutionId | null): boolean {
+  return characterId === 'warrior' && milestoneId === 'lava-5min-slot' && selected === null;
+}
+
+export function isWarriorEvolutionChoice(choices: readonly [WarriorEvolutionId, WarriorEvolutionId] | null, candidate: WarriorEvolutionId): boolean {
+  return choices !== null && choices.includes(candidate);
+}

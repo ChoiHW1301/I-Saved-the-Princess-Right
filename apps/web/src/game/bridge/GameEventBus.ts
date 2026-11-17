@@ -1,6 +1,7 @@
 import type { BossId, CharacterId, RunEndingSummary, RunSnapshotV1, UpgradeChoice } from '@caravan/contracts';
 import type { StoryEvent } from '../content/events.js';
 import type { CampaignMilestone } from '../content/campaignSchedule.js';
+import type { WarriorEvolutionId } from '../content/warriorEvolution.js';
 
 interface GameEvents {
   'level-up': { level: number; choices: UpgradeChoice[] };
@@ -12,6 +13,11 @@ interface GameEvents {
   'event-complete': { eventId: string };
   'boss-encounter': CampaignMilestone & { bossId: BossId };
   'boss-defeated': { milestoneId: string };
+  'lava-boss-death-started': null;
+  'lava-boss-death-finished': null;
+  'warrior-evolution-offer': { choices: readonly [WarriorEvolutionId, WarriorEvolutionId] };
+  'warrior-evolution-choice': { evolutionId: WarriorEvolutionId };
+  'warrior-evolution-complete': null;
   'run-ended': RunEndingSummary;
   'continue-after-ending': RunEndingSummary;
   'snapshot-request': { reason: 'autosave' | 'checkpoint' | 'manual' };

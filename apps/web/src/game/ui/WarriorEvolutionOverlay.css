@@ -1,0 +1,16 @@
+.evolution-overlay { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 3%; background: #130e13e8; color: #f7e7cf; font-family: 'DungGeunMo', monospace; }
+.evolution-panel { width: min(700px, 94%); max-height: 94%; overflow-y: auto; text-align: center; }
+.evolution-kicker { color: #f0ac65; letter-spacing: .22em; font-size: clamp(12px, 1.7vw, 17px); }
+.evolution-panel h2 { margin: 9px 0 5px; color: #ffe4a6; font-size: clamp(22px, 3vw, 34px); }
+.evolution-panel > p { margin: 0 0 20px; color: #d5bea5; font-size: clamp(13px, 1.6vw, 17px); }
+.evolution-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 1.5vw, 18px); }
+.evolution-choice { position: relative; display: grid; justify-items: center; align-content: start; gap: 11px; min-width: 0; min-height: clamp(220px, 33vh, 290px); padding: clamp(14px, 2vw, 24px); border: 2px solid #ad824e; border-radius: 6px; color: #f9e8d0; background: linear-gradient(145deg, #493729, #292322); box-shadow: inset 0 0 0 3px #271b18, 0 5px 0 #1a1313; cursor: pointer; font: inherit; text-align: center; }
+.evolution-choice:hover, .evolution-choice:focus-visible { border-color: #ffd588; background: linear-gradient(145deg, #60432b, #342724); outline: 2px solid #ffdf9b; outline-offset: 2px; }
+.evolution-choice-icon { display: grid; place-items: center; width: clamp(52px, 8vw, 76px); aspect-ratio: 1; border: 2px solid #ad824e; border-radius: 50%; background: #1b1719; color: #ffc971; font-size: clamp(25px, 4vw, 40px); text-shadow: 2px 2px #6d3722; }
+.evolution-choice--sword-wave .evolution-choice-icon { color: #bfe2fc; }
+.evolution-choice--vanguard .evolution-choice-icon { color: #e68c70; }
+.evolution-choice-number { position: absolute; top: 10px; left: 12px; color: #d5ac68; font-size: 13px; }
+.evolution-choice strong { font-size: clamp(19px, 2.5vw, 28px); color: #ffe4a6; }
+.evolution-choice > span:not(.evolution-choice-icon, .evolution-choice-number) { font-size: clamp(12px, 1.5vw, 16px); line-height: 1.5; }
+.evolution-choice small { align-self: end; color: #f3b586; font-size: clamp(11px, 1.3vw, 14px); }
+.evolution-help { display: block; margin-top: 17px; color: #c5a78c; }

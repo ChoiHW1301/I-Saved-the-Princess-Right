@@ -172,6 +172,38 @@ export class Enemy extends Phaser.GameObjects.Container implements WeaponAttackT
     });
   }
 
+  playLavaBossDeathEffect(onComplete: () => void): void {
+    if (this.deathEffectPlayed || (this.definition.id !== 'lava-giant' && this.definition.id !== 'lava-magician')) return;
+    this.setBurning(false);
+    this.deathEffectPlayed = true;
+    const scene = this.scene;
+    const giant = this.definition.id === 'lava-giant';
+    const color = giant ? 0xff8d39 : 0xba79ef;
+    const fragmentCount = giant ? 22 : 28;
+    this.shadow.setAlpha(0.2);
+    for (let index = 0; index < fragmentCount; index += 1) {
+      const angle = index / fragmentCount * Math.PI * 2;
+      const distance = giant ? 20 + index % 5 * 11 : 34 + index % 6 * 10;
+      const fragment = scene.add.rectangle(this.x, this.y - 12, giant ? 7 + index % 3 * 3 : 3 + index % 2 * 2,
+        giant ? 5 + index % 4 * 2 : 8 + index % 3 * 3, index % 4 === 0 ? 0xffd487 : color)
+        .setDepth(this.depth + 2).setAlpha(0);
+      scene.tweens.add({ targets: fragment, alpha: 1, duration: 130 + index % 4 * 45,
+        onComplete: () => scene.tweens.add({ targets: fragment,
+          x: fragment.x + Math.cos(angle) * distance,
+          y: fragment.y + (giant ? 30 + index % 5 * 8 : Math.sin(angle) * distance - 24),
+          angle: giant ? index * 17 : index * 29, alpha: 0,
+          duration: giant ? 730 : 680, ease: giant ? 'Quad.easeIn' : 'Sine.easeOut',
+          onComplete: () => fragment.destroy(),
+        }),
+      });
+    }
+    scene.tweens.add({ targets: this.bodyImage, angle: giant ? 82 : -25,
+      y: giant ? 42 : -42, alpha: 0, duration: giant ? 850 : 760,
+      ease: giant ? 'Cubic.easeIn' : 'Sine.easeIn',
+    });
+    scene.time.delayedCall(1050, () => { this.destroy(); onComplete(); });
+  }
+
   private playHitEffect(): void {
     const color = this.effectColor();
     this.bodyImage.setTint(color).setTintFill();

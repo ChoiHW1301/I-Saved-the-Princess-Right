@@ -33,6 +33,18 @@ describe('campaign clock and biome schedule', () => {
     expect(clock.update(Number.NaN)).toEqual([]);
     expect(clock.elapsedSeconds).toBe(0);
   });
+  it('keeps the five-minute boss clock paused through death and choice, then resumes once', () => {
+    const clock = new CampaignClock(campaignSchedule, { elapsedSeconds: 300, emittedIds: ['wounded-messenger', 'lava-5min-slot'] });
+    clock.pause('boss:lava-5min-slot');
+    expect(clock.update(1050)).toEqual([]);
+    expect(clock.elapsedSeconds).toBe(300);
+    expect(clock.resume('boss:wrong')).toBe(false);
+    expect(clock.update(5000)).toEqual([]);
+    expect(clock.resume('boss:lava-5min-slot')).toBe(true);
+    expect(clock.resume('boss:lava-5min-slot')).toBe(false);
+    expect(clock.update(1000)).toEqual([]);
+    expect(clock.elapsedSeconds).toBe(301);
+  });
   it('fires all campaign milestones in order without repeats across pauses', () => {
     const clock = new CampaignClock();
     const fired: string[] = [];

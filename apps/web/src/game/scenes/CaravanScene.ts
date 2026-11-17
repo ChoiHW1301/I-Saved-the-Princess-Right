@@ -33,6 +33,7 @@ import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 import { createSnapshot, mapSnapshotWorldPoint, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
 import { bossCatalog } from '../content/bosses.js';
 import { getBossPostClearTestScenario, getBossTestScenario } from '../content/BossTestScenario.js';
+import { isWarriorEvolutionChoice, rollWarriorEvolutionChoices, shouldOfferWarriorEvolution, type WarriorEvolutionId } from '../content/warriorEvolution.js';
 import { campaignSchedule } from '../content/campaignSchedule.js';
 import { enemyForSpawnRoll, scaledEnemyHp } from '../systems/EnemyProgression.js';
 import { RewardPickup } from '../entities/RewardPickup.js';
@@ -75,6 +76,8 @@ export class CaravanScene extends Phaser.Scene {
   private activeBossId: BossId | null = null;
   private activeBossGimmick: BossGimmickState | null = null;
   private activeBossIsFinal = false;
+  private fiveMinuteBossDeathPhase: 'animation' | 'choice' | null = null;
+  private pendingEvolutionChoices: readonly [WarriorEvolutionId, WarriorEvolutionId] | null = null;
   private finalBossForRun: BossId | undefined;
   private readonly bossDirector = new BossDirector();
   private pendingFinalVictory = false;
@@ -154,6 +157,8 @@ export class CaravanScene extends Phaser.Scene {
     this.activeBossId = null;
     this.activeBossGimmick = null;
     this.activeBossIsFinal = false;
+    this.fiveMinuteBossDeathPhase = null;
+    this.pendingEvolutionChoices = null;
     this.pendingFinalVictory = false;
     this.random = seededRandom(snapshot?.rngSeed ?? data.seed);
     this.levelSystem = new LevelSystem(() => this.random());
@@ -308,6 +313,8 @@ export class CaravanScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeEvent);
     const unsubscribeBoss = gameEventBus.on('boss-defeated', ({ milestoneId }) => this.completeBoss(milestoneId));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeBoss);
+    const unsubscribeEvolution = gameEventBus.on('warrior-evolution-choice', ({ evolutionId }) => this.chooseWarriorEvolution(evolutionId));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeEvolution);
     const unsubscribeSnapshot = gameEventBus.on('snapshot-request', ({ reason }) => this.createRunSnapshot(reason));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeSnapshot);
     const unsubscribePause = gameEventBus.on('pause-request', () => { this.uiPaused = true; this.scene.pause(); });
@@ -343,6 +350,15 @@ export class CaravanScene extends Phaser.Scene {
   }
   update(_time: number, delta: number): void {
     if (!this.warrior?.active || this.levelUpAnnouncing) return;
+    if (this.fiveMinuteBossDeathPhase === 'animation') {
+      const movement = movementFromKeys({
+        up: this.keys.W.isDown || this.keys.UP.isDown, down: this.keys.S.isDown || this.keys.DOWN.isDown,
+        left: this.keys.A.isDown || this.keys.LEFT.isDown, right: this.keys.D.isDown || this.keys.RIGHT.isDown,
+      });
+      this.warrior.setInput(this.run.player.isDead ? { x: 0, y: 0 } : movement);
+      this.warrior.updateWalkMotion(_time);
+      return;
+    }
     if (this.run.status !== 'active') {
       if (this.run.status === 'lost' && !this.gameOverShown) this.showGameOver();
       return;
@@ -636,10 +652,50 @@ export class CaravanScene extends Phaser.Scene {
     });
     const result = this.levelSystem.addXp(this.run, experience);
     if (enemy.definition.rewardMonster) this.dropRewardPickup(enemy.worldPosition);
-    if (result.levelUps > 0 && this.run.pendingChoices.length > 0) {
+    if (!enemy.bossMilestoneId && result.levelUps > 0 && this.run.pendingChoices.length > 0) {
       this.announceLevelUp(this.run.level, this.run.pendingChoices);
     }
-    if (enemy.bossMilestoneId) gameEventBus.emit('boss-defeated', { milestoneId: enemy.bossMilestoneId });
+    if (enemy.bossMilestoneId === 'lava-5min-slot' && this.activeBossMilestoneId === enemy.bossMilestoneId
+      && this.run.status === 'active') this.beginFiveMinuteBossDeath(enemy);
+    else if (enemy.bossMilestoneId) gameEventBus.emit('boss-defeated', { milestoneId: enemy.bossMilestoneId });
+  }
+
+  private beginFiveMinuteBossDeath(enemy: Enemy): void {
+    if (this.fiveMinuteBossDeathPhase || !enemy.dead || this.activeBossMilestoneId !== 'lava-5min-slot') return;
+    this.fiveMinuteBossDeathPhase = 'animation';
+    this.warrior.setDashVelocity({ x: 0, y: 0 }, 0);
+    this.run.dashRemainingMs = 0;
+    this.enemies.splice(this.enemies.indexOf(enemy), 1);
+    gameEventBus.emit('lava-boss-death-started', null);
+    enemy.playLavaBossDeathEffect(() => this.finishFiveMinuteBossDeath('lava-5min-slot'));
+  }
+
+  private finishFiveMinuteBossDeath(milestoneId: string): void {
+    if (this.fiveMinuteBossDeathPhase !== 'animation' || this.activeBossMilestoneId !== milestoneId) return;
+    gameEventBus.emit('lava-boss-death-finished', null);
+    if (!shouldOfferWarriorEvolution(this.run.characterId, milestoneId, this.run.warriorEvolutionId) || this.run.status !== 'active') {
+      this.fiveMinuteBossDeathPhase = null;
+      gameEventBus.emit('boss-defeated', { milestoneId });
+      return;
+    }
+    this.fiveMinuteBossDeathPhase = 'choice';
+    this.pendingEvolutionChoices = rollWarriorEvolutionChoices(this.random);
+    this.warrior.setInput({ x: 0, y: 0 });
+    this.uiPaused = true;
+    this.scene.pause();
+    gameEventBus.emit('warrior-evolution-offer', { choices: this.pendingEvolutionChoices });
+  }
+
+  private chooseWarriorEvolution(evolutionId: WarriorEvolutionId): void {
+    if (this.fiveMinuteBossDeathPhase !== 'choice' || !isWarriorEvolutionChoice(this.pendingEvolutionChoices, evolutionId)
+      || this.run.warriorEvolutionId !== null || this.run.status !== 'active') return;
+    this.run.warriorEvolutionId = evolutionId;
+    this.pendingEvolutionChoices = null;
+    this.fiveMinuteBossDeathPhase = null;
+    this.uiPaused = false;
+    this.scene.resume();
+    gameEventBus.emit('warrior-evolution-complete', null);
+    gameEventBus.emit('boss-defeated', { milestoneId: 'lava-5min-slot' });
   }
 
   private startBoss(milestone: CampaignMilestone, forcedBossId?: BossId): void {
@@ -1254,6 +1310,7 @@ export class CaravanScene extends Phaser.Scene {
   }
 
   private createRunSnapshot(reason: 'autosave' | 'checkpoint' | 'manual'): void {
+    if (this.fiveMinuteBossDeathPhase) return;
     if (import.meta.env.DEV && (this.initialRunConfig?.debugBossId || this.initialRunConfig?.debugPostClearBossId)) return;
     if (this.run.status !== 'active') return;
     const shouldPauseScene = reason === 'manual';

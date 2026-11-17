@@ -13,6 +13,8 @@ import { EventChoiceOverlay } from './ui/EventChoiceOverlay.js';
 import { ResultPage } from '../features/results/ResultPage.js';
 import { RunController, RunControllerError } from '../features/run/RunController.js';
 import { bossDisplayName } from './content/bosses.js';
+import { WarriorEvolutionOverlay } from './ui/WarriorEvolutionOverlay.js';
+import type { WarriorEvolutionId } from './content/warriorEvolution.js';
 
 type ActiveBossEncounter = CampaignMilestone & { bossId: BossId };
 
@@ -33,6 +35,11 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [miniBossWarning, setMiniBossWarning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [evolutionChoices, setEvolutionChoices] = useState<readonly [WarriorEvolutionId, WarriorEvolutionId] | null>(null);
+  const [lavaBossDying, setLavaBossDying] = useState(false);
+  const chooseEvolution = useCallback((evolutionId: WarriorEvolutionId): void => {
+    gameEventBus.emit('warrior-evolution-choice', { evolutionId });
+  }, []);
   const chooseUpgrade = useCallback((upgradeId: string): void => {
     gameEventBus.emit('upgrade-choice', { upgradeId });
   }, []);
@@ -51,6 +58,10 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
       setBossEncounter((active) => active?.id === milestoneId ? null : active);
       setMiniBossWarning(false);
     });
+    const unsubscribeBossDeath = gameEventBus.on('lava-boss-death-started', () => setLavaBossDying(true));
+    const unsubscribeBossDeathEnd = gameEventBus.on('lava-boss-death-finished', () => setLavaBossDying(false));
+    const unsubscribeEvolutionOffer = gameEventBus.on('warrior-evolution-offer', ({ choices }) => setEvolutionChoices(choices));
+    const unsubscribeEvolutionComplete = gameEventBus.on('warrior-evolution-complete', () => setEvolutionChoices(null));
     const unsubscribeRunEnded = gameEventBus.on('run-ended', (summary) => {
       setRunSummary(summary); setLevelUp(null); setStoryEvent(null); setBossEncounter(null); setSubmitting(!isDevBossTest); setResultError(null);
       if (isDevBossTest) return;
@@ -59,7 +70,7 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
         setResultError(error instanceof RunControllerError ? error.message : '결과 제출에 실패했습니다. 다시 시도해 주세요.');
       }).finally(() => setSubmitting(false));
     });
-    return () => { unsubscribeLevelUp(); unsubscribeComplete(); unsubscribeEvent(); unsubscribeEventComplete(); unsubscribeBoss(); unsubscribeWarning(); unsubscribeBossComplete(); unsubscribeRunEnded(); };
+    return () => { unsubscribeLevelUp(); unsubscribeComplete(); unsubscribeEvent(); unsubscribeEventComplete(); unsubscribeBoss(); unsubscribeWarning(); unsubscribeBossComplete(); unsubscribeBossDeath(); unsubscribeBossDeathEnd(); unsubscribeEvolutionOffer(); unsubscribeEvolutionComplete(); unsubscribeRunEnded(); };
   }, [controller, isDevBossTest, onProfileUpdated]);
 
   useEffect(() => {
@@ -117,7 +128,8 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
     <>
       <div ref={hostRef} aria-label="마차 호위 게임 화면" style={{ width: '100%', height: '100%' }} />
       {miniBossWarning && !bossEncounter && <div className="mini-boss-warning" role="status">Warning!! 수상한 기운이 접근합니다!</div>}
-      <button type="button" className="game-pause-button" onClick={() => { setPauseMenu(true); gameEventBus.emit('pause-request', null); }} aria-label="일시 정지" />
+      {!lavaBossDying && !evolutionChoices && <button type="button" className="game-pause-button" onClick={() => { setPauseMenu(true); gameEventBus.emit('pause-request', null); }} aria-label="일시 정지" />}
+      {evolutionChoices && <WarriorEvolutionOverlay choices={evolutionChoices} onChoose={chooseEvolution} />}
       {levelUp && <LevelUpOverlay level={levelUp.level} choices={levelUp.choices} onChoose={chooseUpgrade} />}
       {storyEvent && <EventChoiceOverlay event={storyEvent} onChoose={chooseEvent} />}
       {bossEncounter && <div role="status" style={{ position: 'absolute', zIndex: 15, top: 'auto', bottom: '14px', left: '50%', transform: 'translateX(-50%)', padding: '10px 22px', border: '1px solid #b86556', borderRadius: 999, background: '#251414dd', color: '#f0c6a8', letterSpacing: '.12em', pointerEvents: 'none' }}>

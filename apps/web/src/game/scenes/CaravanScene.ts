@@ -28,6 +28,7 @@ import { BossDirector } from '../systems/BossDirector.js';
 import { resolveEnding } from '../systems/EndingSystem.js';
 import { getCharacterDefinition } from '../content/characters.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
+import { getVanguardHeatDamage, getVanguardMaxHp } from '../systems/WarriorEvolutionCombat.js';
 import type { CharacterId } from '@caravan/contracts';
 import { applyPermanentUpgrade } from '../systems/MetaProgression.js';
 import { createSnapshot, mapSnapshotWorldPoint, restoreSnapshot } from '../systems/SaveSnapshotSystem.js';
@@ -60,6 +61,8 @@ export class CaravanScene extends Phaser.Scene {
   private readonly moneyBombs: MoneyBomb[] = [];
   private readonly lavaSigils: LavaSigil[] = [];
   private readonly bowProjectileVisuals = new Map<number, Phaser.GameObjects.Graphics>();
+  private vanguardAura: Phaser.GameObjects.Arc | null = null;
+  private vanguardHeatCooldownMs = 500;
   private readonly teleportingMagicians = new WeakSet<Enemy>();
   private readonly queuedMagicianTeleports = new WeakMap<Enemy, Vector2>();
   private readonly magicianTeleportTargets = new WeakMap<Enemy, Vector2>();
@@ -134,6 +137,9 @@ export class CaravanScene extends Phaser.Scene {
     this.lavaSigils.length = 0;
     this.bowProjectileVisuals.forEach((projectile) => projectile.destroy());
     this.bowProjectileVisuals.clear();
+    this.vanguardAura?.destroy();
+    this.vanguardAura = null;
+    this.vanguardHeatCooldownMs = 500;
     if (!this.anims.exists('monster-death')) this.anims.create({
       key: 'monster-death', frames: this.anims.generateFrameNumbers('death-keep-ghoul', { start: 0, end: 3 }), frameRate: 9, repeat: 0,
     });
@@ -209,6 +215,7 @@ export class CaravanScene extends Phaser.Scene {
     this.background = new BackgroundScroll(this, snapshot?.stageId as StageId | undefined);
     new Caravan(this, WORLD_WIDTH / 2, ROAD_CENTER_Y);
     this.warrior = new Warrior(this, snapshot?.player.x ?? WORLD_WIDTH / 2 - 145, snapshot?.player.y ?? ROAD_CENTER_Y, this.run.characterId);
+    if (this.run.warriorEvolutionId === 'vanguard') this.createVanguardAura();
     this.caravanCollision = this.add.rectangle(WORLD_WIDTH / 2, ROAD_CENTER_Y, 224, 72, 0x000000, 0).setVisible(false);
     this.physics.add.existing(this.caravanCollision, true);
     this.physics.add.collider(this.warrior, this.caravanCollision);
@@ -306,6 +313,8 @@ export class CaravanScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bowProjectileVisuals.forEach((projectile) => projectile.destroy());
       this.bowProjectileVisuals.clear();
+      this.vanguardAura?.destroy();
+      this.vanguardAura = null;
     });
     const unsubscribeChoice = gameEventBus.on('upgrade-choice', ({ upgradeId }) => this.chooseUpgrade(upgradeId));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeChoice);
@@ -399,7 +408,7 @@ export class CaravanScene extends Phaser.Scene {
       this.showReviveLightBeam();
     }
     if (!this.run.player.isDead) {
-      const healthRegeneration = this.run.upgradeStats['health-regeneration'] ?? 0;
+      const healthRegeneration = (this.run.upgradeStats['health-regeneration'] ?? 0) * (this.run.warriorEvolutionId === 'vanguard' ? 2 : 1);
       this.run.player.hp = Math.min(this.run.player.maxHp, this.run.player.hp + healthRegeneration * delta / 1000);
       this.warrior.setAlpha(this.run.player.invulnerableMs > 0 && Math.floor(this.run.player.invulnerableMs / 120) % 2 === 0 ? 0.45 : 1);
     }
@@ -462,7 +471,8 @@ export class CaravanScene extends Phaser.Scene {
           this.showDamageNumber(this.warrior.x, this.warrior.y - 36, previousHp - this.run.player.hp, '#ff8278');
         }
         const reflectRank = this.run.characterId === 'warrior' ? this.run.trainingLevels['warrior-thorn-armor'] ?? 0 : 0;
-        const reflect = Math.min(reflectRank * 0.05, 0.25) * attack.damage;
+        const reflect = (Math.min(reflectRank * 0.05, 0.25) * attack.damage + (this.run.characterId === 'warrior' ? this.run.upgradeStats['warrior-reflect'] ?? 0 : 0))
+          * (this.run.warriorEvolutionId === 'vanguard' ? 2 : 1);
         if (wasDamaged && reflect > 0) {
           const reflected = resolveHit(attack.enemy, reflect, 'warrior-reflect');
           if (reflected && reflected.damage > 0) {
@@ -480,11 +490,25 @@ export class CaravanScene extends Phaser.Scene {
       }
     }
     this.advanceActiveBossGimmick(delta, warriorPosition, caravanPosition);
+    this.advanceVanguardHeat(delta, warriorPosition);
     if (!this.run.player.isDead) {
       for (const enemy of this.weaponSystem.update(this.run, warriorPosition, this.enemies, delta, this.random, (projectile) => {
         const color = projectile.weaponId === 'sword' ? 0xdde8f2 : projectile.weaponId === 'bow' ? 0xd6b475
           : projectile.weaponId === 'ice-spear' ? 0x91ddf2 : projectile.weaponId === 'thunder' ? 0xffe477
             : projectile.weaponId === 'gold-shotgun' ? 0xffd54f : 0xff793e;
+        if (projectile.evolution === 'sword-wave' && projectile.projectileId !== undefined && projectile.origin && projectile.directionAngle !== undefined) {
+          this.showSwordSlash(projectile.targetPositions[0] ?? { x: this.warrior.x + 1, y: this.warrior.y }, color);
+          const wave = this.add.graphics().setPosition(projectile.origin.x, projectile.origin.y).setRotation(projectile.directionAngle).setDepth(12);
+          wave.lineStyle(6, 0xeaf8ff, 0.95).beginPath().arc(0, 0, 23, -Math.PI / 2, Math.PI / 2).strokePath();
+          wave.lineStyle(2, 0x91c9f9, 0.9).beginPath().arc(0, 0, 18, -Math.PI / 2, Math.PI / 2).strokePath();
+          this.bowProjectileVisuals.set(projectile.projectileId, wave);
+          return;
+        }
+        if (projectile.evolution === 'whirlwind') {
+          const ring = this.add.circle(this.warrior.x, this.warrior.y, projectile.range ?? 125, 0xdde8f2, 0.1).setStrokeStyle(5, 0xf5f8ff, 0.8).setDepth(12);
+          this.tweens.add({ targets: ring, alpha: 0, scale: 1.08, duration: 180, onComplete: () => ring.destroy() });
+          return;
+        }
         if (projectile.weaponId === 'sword') {
           this.showSwordSlash(projectile.targetPositions[0] ?? { x: this.warrior.x + 1, y: this.warrior.y }, color);
           return;
@@ -507,6 +531,7 @@ export class CaravanScene extends Phaser.Scene {
         const arrow = this.bowProjectileVisuals.get(projectile.projectileId);
         if (!arrow) return;
         arrow.setPosition(projectile.position.x, projectile.position.y).setRotation(projectile.directionAngle);
+        if (projectile.evolution === 'sword-wave') arrow.setScale(projectile.sizeRatio ?? 1);
         if (projectile.finished) {
           arrow.destroy();
           this.bowProjectileVisuals.delete(projectile.projectileId);
@@ -531,6 +556,33 @@ export class CaravanScene extends Phaser.Scene {
   }
   getWorldSeedSample(): number { return this.random(); }
   getTravelDistance(): number { return this.background?.getDistance() ?? 0; }
+
+  private createVanguardAura(): void {
+    this.vanguardAura?.destroy();
+    this.vanguardAura = this.add.circle(this.warrior.x, this.warrior.y, 150, 0x8c1c16, 0.13)
+      .setStrokeStyle(2, 0xb43a25, 0.22).setDepth(7);
+  }
+
+  private advanceVanguardHeat(delta: number, origin: Vector2): void {
+    if (this.run.warriorEvolutionId !== 'vanguard' || this.run.player.isDead || this.run.status !== 'active') return;
+    this.vanguardAura?.setPosition(origin.x, origin.y);
+    this.vanguardHeatCooldownMs -= delta;
+    if (this.vanguardHeatCooldownMs > 0) return;
+    this.vanguardHeatCooldownMs += 500;
+    const damage = getVanguardHeatDamage((this.run.upgradeStats['vanguard-heat-damage'] ?? 0) / 2);
+    for (const target of [...this.enemies, ...this.lavaSigils]) {
+      if (target.dead || Phaser.Math.Distance.Between(origin.x, origin.y, target.worldPosition.x, target.worldPosition.y) > 150 + target.hitRadius) continue;
+      const hit = target.applyWeaponHit(damage, 'vanguard-heat');
+      if (hit && hit.damage > 0) {
+        this.showDamageNumber(target.worldPosition.x, target.worldPosition.y - 22, hit.damage);
+        if (target instanceof Enemy) this.resolveBossDamage(target, hit.damage);
+      }
+      if (hit?.killed) {
+        if (target instanceof Enemy) this.onEnemyDefeated(target);
+        else this.removeLavaSigil(target);
+      }
+    }
+  }
 
   private showSwordSlash(target: Vector2, color: number): void {
     const orientation = Math.atan2(target.y - this.warrior.y, target.x - this.warrior.x);
@@ -690,6 +742,13 @@ export class CaravanScene extends Phaser.Scene {
     if (this.fiveMinuteBossDeathPhase !== 'choice' || !isWarriorEvolutionChoice(this.pendingEvolutionChoices, evolutionId)
       || this.run.warriorEvolutionId !== null || this.run.status !== 'active') return;
     this.run.warriorEvolutionId = evolutionId;
+    if (evolutionId === 'vanguard') {
+      const baseHp = getCharacterDefinition('warrior').baseStats.maxHp;
+      const nextMaxHp = getVanguardMaxHp(baseHp, this.run.player.maxHp);
+      this.run.player.hp = Math.min(nextMaxHp, this.run.player.hp + nextMaxHp - this.run.player.maxHp);
+      this.run.player.maxHp = nextMaxHp;
+      this.createVanguardAura();
+    }
     this.pendingEvolutionChoices = null;
     this.fiveMinuteBossDeathPhase = null;
     this.uiPaused = false;
@@ -840,8 +899,9 @@ export class CaravanScene extends Phaser.Scene {
     if (stat.startsWith('add-weapon:')) this.weaponSystem.addWeapon(this.run, stat.slice('add-weapon:'.length));
     if (stat === 'movement-speed') this.warrior.moveSpeed += value;
     if (stat === 'warrior-max-health') {
-      this.run.player.maxHp += value;
-      this.run.player.hp += value;
+      const gainedHp = value * (this.run.warriorEvolutionId === 'vanguard' ? 2 : 1);
+      this.run.player.maxHp += gainedHp;
+      this.run.player.hp += gainedHp;
     }
     if (stat === 'caravan-max-health') {
       this.run.caravan.maxHp += value;

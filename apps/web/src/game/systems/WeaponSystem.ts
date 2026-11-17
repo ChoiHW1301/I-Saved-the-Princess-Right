@@ -3,12 +3,14 @@ import { getCharacterDefinition } from '../content/characters.js';
 import { weaponCatalog } from '../content/weapons.js';
 import type { Enemy } from '../entities/Enemy.js';
 import { distanceSquared, resolveHit, rollCriticalDamage, type Vector2, type WeaponAttackTarget } from './CombatSystem.js';
+import { getMultiSwordStrikeCount, getSwordWaveHitProfile, getWhirlwindDamageRatio, getWhirlwindIntervalMs } from './WarriorEvolutionCombat.js';
 
 export interface ProjectileSpawn {
   weaponId: string; targets: WeaponAttackTarget[]; targetPositions: Vector2[]; damage: number; penetration: number;
   projectileId?: number; origin?: Vector2; directionAngle?: number; speed?: number; statusEffect?: 'burn';
+  evolution?: 'whirlwind' | 'sword-wave'; range?: number;
 }
-export interface ProjectileProgress { projectileId: number; position: Vector2; directionAngle: number; finished: boolean }
+export interface ProjectileProgress { projectileId: number; position: Vector2; directionAngle: number; finished: boolean; evolution?: 'sword-wave'; sizeRatio?: number }
 export type WeaponDamageCallback = (target: WeaponAttackTarget, damage: number, sourceId: string) => void;
 export type WeaponTargetDefeatedCallback = (target: WeaponAttackTarget) => void;
 interface BurnState { remainingMs: number; cooldownMs: number; damage: number }
@@ -16,7 +18,9 @@ interface ActiveArrow {
   id: number; origin: Vector2; directionAngle: number; range: number; traveled: number; speed: number;
   damage: number; remainingHits: number; criticalChance: number; burnDamage: number;
   hitTargets: Set<WeaponAttackTarget>;
+  evolution?: 'sword-wave'; hitCount?: number;
 }
+interface PendingSwordStrike { remainingMs: number; origin: Vector2; angle: number; range: number; damage: number; criticalChance: number }
 
 export const BOW_PROJECTILE_SPEED = 600;
 
@@ -24,6 +28,7 @@ export class WeaponSystem {
   private readonly cooldowns = new Map<string, number>();
   private readonly burns = new WeakMap<Enemy, BurnState>();
   private readonly arrows: ActiveArrow[] = [];
+  private readonly pendingSwordStrikes: PendingSwordStrike[] = [];
   private nextProjectileId = 1;
 
   addWeapon(run: RunState, weaponId: string): boolean {
@@ -43,12 +48,21 @@ export class WeaponSystem {
     if (run.status !== 'active' || run.player.isDead || run.pausedBy === 'event' || run.pausedBy === 'level-up' || run.pausedBy === 'network') return [...killed];
     const allTargets = [...enemies.filter((target) => !target.dead), ...attackables.filter((target) => !target.dead)];
     this.advanceArrows(run, allTargets, delta, random, onProjectileUpdate, onDamage, killed, onTargetDefeated);
+    for (let index = this.pendingSwordStrikes.length - 1; index >= 0; index--) {
+      const strike = this.pendingSwordStrikes[index]!;
+      strike.remainingMs -= delta;
+      if (strike.remainingMs > 0) continue;
+      this.hitSwordTargets(strike.origin, strike.angle, strike.range, strike.damage, strike.criticalChance, random, allTargets, killed, onDamage, onTargetDefeated);
+      onFire?.({ weaponId: 'sword', targets: [], targetPositions: [{ x: strike.origin.x + Math.cos(strike.angle) * strike.range, y: strike.origin.y + Math.sin(strike.angle) * strike.range }], damage: strike.damage, penetration: 0 });
+      this.pendingSwordStrikes.splice(index, 1);
+    }
     const character = getCharacterDefinition(run.characterId);
     for (const weaponId of run.equippedWeaponIds) {
       const weapon = weaponCatalog[weaponId];
       if (!weapon || weapon.owner !== run.characterId) continue;
       const attackSpeedBonus = run.upgradeStats['attack-speed'] ?? 0;
-      const intervalMs = weapon.intervalMs / (1 + attackSpeedBonus);
+      const intervalMs = weaponId === 'sword' && run.warriorEvolutionId === 'whirlwind'
+        ? getWhirlwindIntervalMs(attackSpeedBonus) : weapon.intervalMs / Math.max(0.1, 1 + attackSpeedBonus);
       const cooldown = Math.max(0, (this.cooldowns.get(weaponId) ?? 0) - delta);
       if (cooldown > 0) { this.cooldowns.set(weaponId, cooldown); continue; }
       const rangeBonus = weaponId === 'sword' ? 0 : run.upgradeStats[`${weaponId}-range`] ?? run.upgradeStats['projectile-range'] ?? 0;
@@ -73,7 +87,7 @@ export class WeaponSystem {
         ? allTargets.filter((target) => {
           const x = target.worldPosition.x - origin.x;
           const y = target.worldPosition.y - origin.y;
-          return x * x + y * y <= range * range && x * Math.cos(directionAngle) + y * Math.sin(directionAngle) >= 0;
+          return x * x + y * y <= range * range && (run.warriorEvolutionId === 'whirlwind' || x * Math.cos(directionAngle) + y * Math.sin(directionAngle) >= 0);
         })
         : weapon.kind === 'spread'
           ? spreadAngles.flatMap((angle) => findTargetsOnAim(origin, angle, attackDistance, allTargets).slice(0, 1))
@@ -83,6 +97,8 @@ export class WeaponSystem {
       const damageMultiplier = character.baseStats.damageMultiplier * (1 + (run.upgradeStats['global-damage-multiplier'] ?? 0));
       const spreadTightness = weaponId === 'gold-shotgun' ? run.upgradeStats['gold-shotgun-tightness'] ?? 0 : 0;
       const damage = (weapon.damage + (run.upgradeStats[`${weaponId}-damage`] ?? 0)) * damageMultiplier * (1 + spreadTightness);
+      const swordDamage = weaponId === 'sword' && run.warriorEvolutionId === 'whirlwind'
+        ? damage * getWhirlwindDamageRatio((run.upgradeStats['whirlwind-damage-ratio'] ?? 0) * 10) : damage;
       const bowBurn = weaponId === 'bow' ? run.upgradeStats['bow-burn'] ?? 0 : 0;
       const statusEffect = weapon.statusEffect || bowBurn > 0 ? 'burn' : undefined;
       const hitTargets = [...directTargets];
@@ -103,10 +119,22 @@ export class WeaponSystem {
         this.cooldowns.set(weaponId, intervalMs);
         continue;
       }
-      onFire?.({ weaponId, targets: directTargets, targetPositions, damage, penetration, ...(statusEffect ? { statusEffect } : {}) });
+      if (weaponId === 'sword' && run.warriorEvolutionId === 'multi-sword') {
+        const count = getMultiSwordStrikeCount(run.upgradeStats['multi-sword-count'] ?? 0);
+        for (let strikeIndex = 1; strikeIndex < count; strikeIndex++) this.pendingSwordStrikes.push({ remainingMs: strikeIndex * 90, origin: { ...origin }, angle: directionAngle, range, damage, criticalChance: run.upgradeStats['critical-chance'] ?? 0 });
+      }
+      if (weaponId === 'sword' && run.warriorEvolutionId === 'sword-wave') {
+        const projectileId = this.nextProjectileId++;
+        // Travel beyond every edge of the fixed 4:3 world; the projectile expires after leaving view.
+        const waveRange = 1800;
+        const hits = 1 + Math.min(4, Math.max(0, run.upgradeStats['sword-wave-penetration'] ?? 0));
+        onFire?.({ weaponId, targets: directTargets, targetPositions, damage, penetration: hits, projectileId, origin: { ...origin }, directionAngle, speed: BOW_PROJECTILE_SPEED, evolution: 'sword-wave', range: waveRange });
+        this.arrows.push({ id: projectileId, origin: { ...origin }, directionAngle, range: waveRange, traveled: 0, speed: BOW_PROJECTILE_SPEED,
+          damage, remainingHits: hits, criticalChance: run.upgradeStats['critical-chance'] ?? 0, burnDamage: 0, hitTargets: new Set(), evolution: 'sword-wave', hitCount: 0 });
+      } else onFire?.({ weaponId, targets: directTargets, targetPositions, damage: swordDamage, penetration, ...(weaponId === 'sword' && run.warriorEvolutionId === 'whirlwind' ? { evolution: 'whirlwind' as const, range } : {}), ...(statusEffect ? { statusEffect } : {}) });
       for (const target of hitTargets) {
         const copyDamage = weaponId === 'fireball' && random() < weakCopyChance ? damage * 0.45 : 0;
-        const critical = rollCriticalDamage(damage + copyDamage, run.upgradeStats['critical-chance'] ?? 0, random);
+        const critical = rollCriticalDamage(swordDamage + copyDamage, run.upgradeStats['critical-chance'] ?? 0, random);
         const hit = target.applyWeaponHit(critical.damage, weaponId);
         if (hit && hit.damage > 0) onDamage?.(target, hit.damage, weaponId);
         if (hit?.killed) {
@@ -136,15 +164,18 @@ export class WeaponSystem {
         const collisionRadius = target.hitRadius;
         if (along + collisionRadius < previousDistance) continue;
         arrow.hitTargets.add(target);
-        const critical = rollCriticalDamage(arrow.damage, arrow.criticalChance, random);
-        const hit = target.applyWeaponHit(critical.damage, 'bow');
-        if (hit && hit.damage > 0) onDamage?.(target, hit.damage, 'bow');
+        const profile = arrow.evolution === 'sword-wave' ? getSwordWaveHitProfile(arrow.hitCount ?? 0) : null;
+        const critical = rollCriticalDamage(arrow.damage * (profile?.damageRatio ?? 1), arrow.criticalChance, random);
+        const sourceId = arrow.evolution === 'sword-wave' ? 'sword-wave' : 'bow';
+        const hit = target.applyWeaponHit(critical.damage, sourceId);
+        if (hit && hit.damage > 0) onDamage?.(target, hit.damage, sourceId);
         if (hit?.killed) {
           if (isEnemy(target)) killed.add(target);
           else onTargetDefeated?.(target);
         }
         if (isEnemy(target) && !target.dead && arrow.burnDamage > 0) this.applyBurn(target, arrow.burnDamage);
         arrow.remainingHits -= 1;
+        if (arrow.evolution === 'sword-wave') arrow.hitCount = (arrow.hitCount ?? 0) + 1;
         if (arrow.remainingHits <= 0) {
           stoppedAt = Math.max(previousDistance, along);
           break;
@@ -157,8 +188,23 @@ export class WeaponSystem {
         position: { x: arrow.origin.x + Math.cos(arrow.directionAngle) * arrow.traveled, y: arrow.origin.y + Math.sin(arrow.directionAngle) * arrow.traveled },
         directionAngle: arrow.directionAngle,
         finished,
+        ...(arrow.evolution ? { evolution: arrow.evolution, sizeRatio: getSwordWaveHitProfile(arrow.hitCount ?? 0).sizeRatio } : {}),
       });
       if (finished) this.arrows.splice(index, 1);
+    }
+  }
+
+  private hitSwordTargets(origin: Vector2, angle: number, range: number, damage: number, criticalChance: number,
+    random: () => number, targets: readonly WeaponAttackTarget[], killed: Set<Enemy>, onDamage?: WeaponDamageCallback,
+    onTargetDefeated?: WeaponTargetDefeatedCallback): void {
+    for (const target of targets) {
+      if (target.dead) continue;
+      const dx = target.worldPosition.x - origin.x;
+      const dy = target.worldPosition.y - origin.y;
+      if (dx * dx + dy * dy > range * range || dx * Math.cos(angle) + dy * Math.sin(angle) < 0) continue;
+      const hit = target.applyWeaponHit(rollCriticalDamage(damage, criticalChance, random).damage, 'sword');
+      if (hit && hit.damage > 0) onDamage?.(target, hit.damage, 'sword');
+      if (hit?.killed) { if (isEnemy(target)) killed.add(target); else onTargetDefeated?.(target); }
     }
   }
 

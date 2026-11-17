@@ -5,6 +5,16 @@ import { getAvailableUpgrades } from '../content/upgrades.js';
 import { weaponCatalog } from '../content/weapons.js';
 import { createRunState } from '../state/createRunState.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
+import { resolveHit, type WeaponAttackTarget } from '../systems/CombatSystem.js';
+import type { Enemy } from '../entities/Enemy.js';
+
+function createTarget(): Enemy {
+  const target: WeaponAttackTarget = {
+    id: 'test-enemy', hp: 100, maxHp: 100, dead: false, worldPosition: { x: 10, y: 0 }, hitRadius: 10,
+    applyWeaponHit(amount, sourceId) { return resolveHit(target, amount, sourceId); },
+  };
+  return Object.assign(target, { definition: { id: 'test-enemy' }, setBurning: () => undefined }) as unknown as Enemy;
+}
 
 describe('character and weapon catalogs', () => {
   it('validates four first-version characters with distinct starting weapons', () => {
@@ -34,7 +44,7 @@ describe('character and weapon catalogs', () => {
     const weapons = new WeaponSystem();
     expect(weapons.addWeapon(run, 'ice-spear')).toBe(true);
     expect(weapons.addWeapon(run, 'bow')).toBe(false);
-    const enemy = { hp: 100, maxHp: 100, dead: false, worldPosition: { x: 10, y: 0 } } as any;
+    const enemy = createTarget();
     weapons.update(run, { x: 0, y: 0 }, [enemy], 16, () => 1);
     const afterHit = enemy.hp;
     weapons.update(run, { x: 0, y: 0 }, [enemy], 600, () => 1);
@@ -44,7 +54,7 @@ describe('character and weapon catalogs', () => {
   it('fires all three starting gold pellets even when they converge on one target', () => {
     const run = createRunState('merchant');
     const weapons = new WeaponSystem();
-    const enemy = { hp: 100, maxHp: 100, dead: false, worldPosition: { x: 10, y: 0 } } as any;
+    const enemy = createTarget();
     weapons.update(run, { x: 0, y: 0 }, [enemy], 16);
     expect(enemy.hp).toBeCloseTo(81.1);
   });

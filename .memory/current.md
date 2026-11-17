@@ -1,18 +1,16 @@
-﻿# Current Context
+# Current Context
 
 ## Active Plan
-[보스 클리어 후 장면 테스트](./plans/2026-11-16-caravan-boss-post-clear-tests.md)
+[전사 5분 중간보스 진화 트리](./plans/2026-11-17-caravan-warrior-five-minute-evolution.md)
 
 ## Active Phase
-[P01 보스 클리어 후 테스트 장면](./phases/2026-11-16-caravan-boss-post-clear-tests/P01-post-clear-test-scenes/phase.md)
+[P01 전사 5분 중간보스 진화](./phases/2026-11-17-caravan-warrior-five-minute-evolution/P01-warrior-evolution/phase.md)
 
 ## Active Task
-없음 (완료)
+없음 (계획 완료)
 
 ## Status
-- 보스 클리어 후 맵 전환 테스트 시나리오 구현 완료.
-- 관련 시나리오 테스트, 웹 typecheck, production build 통과.
-- 전체 웹 테스트에서는 별개인 CharacterCatalog 테스트 2건이 실패했다.
+- T03 완료 (`47ef1dd`); P01 3/3 완료
 
 ## Next Step
-- 개발자 모드에서 보스 클리어 후 시작 버튼으로 맵 전환 장면을 직접 확인할 수 있다.
+- 다음 기능은 `/grill-me`로 요구사항을 확정한 뒤 `/memory-plan`으로 계획한다.

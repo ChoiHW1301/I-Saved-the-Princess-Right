@@ -6,7 +6,7 @@
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | 진화 상태·보스 선택 흐름·네 트리 전투 구현 | [P01](../phases/2026-11-17-caravan-warrior-five-minute-evolution/P01-warrior-evolution/phase.md) |
+| P01 | `done` | 진화 상태·보스 선택 흐름·네 트리 전투 구현 | [P01](../phases/2026-11-17-caravan-warrior-five-minute-evolution/P01-warrior-evolution/phase.md) |
 
 ## Execution Order
 1. T01 진화 상태, 무작위 후보, 강화 노출과 임시저장 계약

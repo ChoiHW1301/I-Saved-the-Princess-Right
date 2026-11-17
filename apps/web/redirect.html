@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>로그인 처리 중</title>
+  </head>
+  <body>
+    <p>로그인 처리 중...</p>
+    <script type="module">
+      import { broadcastResponseToMainFrame } from '@azure/msal-browser/redirect-bridge';
+
+      broadcastResponseToMainFrame().catch((error) => {
+        console.error('Entra 로그인 응답을 처리하지 못했습니다.', error);
+      });
+    </script>
+  </body>
+</html>

@@ -14,11 +14,9 @@ export interface BatchResponse {
   result?: Array<{ statusCode?: number }>;
 }
 
-export interface BatchPort {
-  create<T>(document: T): BatchPort;
-  replace<T>(id: string, document: T, options?: { ifMatch?: string }): BatchPort;
-  execute(): Promise<BatchResponse>;
-}
+export type BatchOperation =
+  | { operationType: 'Create'; resourceBody: object }
+  | { operationType: 'Replace'; id: string; resourceBody: object; ifMatch?: string };
 
 export interface ContainerPort {
   item(id: string, partitionKey: string): ItemPort;
@@ -31,7 +29,7 @@ export interface ContainerPort {
     ): {
       fetchAll(): Promise<{ resources: T[] }>;
     };
-    batch(partitionKey: string): BatchPort;
+    batch(operations: BatchOperation[], partitionKey: string): Promise<BatchResponse>;
   };
 }
 

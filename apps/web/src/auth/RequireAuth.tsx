@@ -3,6 +3,7 @@ import { InteractionStatus } from '@azure/msal-browser';
 import { useIsAuthenticated, useMsal } from '@azure/msal-react';
 import { loginRequest } from './msalConfig.js';
 import { useApiToken } from './useApiToken.js';
+import { apiUrl } from './apiUrl.js';
 
 type AccessState = 'idle' | 'checking' | 'allowed' | 'forbidden' | 'error';
 
@@ -28,7 +29,7 @@ export function RequireAuth({ children }: { children: ReactNode }): JSX.Element 
     void (async () => {
       try {
         const token = await getToken();
-        const response = await fetch('/api/me', {
+        const response = await fetch(apiUrl('/me'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (cancelled) return;

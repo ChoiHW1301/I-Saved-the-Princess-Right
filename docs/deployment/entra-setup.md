@@ -15,16 +15,16 @@ Under **App roles**, create:
 - Value: `CaravanGame.Player`
 - Enabled: yes
 
-The API verifies the token issuer, tenant, audience, and this exact `roles` claim. A valid DEX token without the role receives HTTP 403; a missing or invalid token receives HTTP 401.
+The API verifies the token signature, version-specific issuer, tenant, audience, and this exact `roles` claim. It supports Entra v1 and v2 access tokens for this API registration. A valid DEX token without the role receives HTTP 403; a missing or invalid token receives HTTP 401.
 
 ## 2. Register the web SPA
 
 Create a second app registration named `Caravan Escort Web`, again limited to accounts in this organizational directory. Under **Authentication**, add a **Single-page application** platform with redirect URIs for:
 
-- Local development: `http://localhost:5173/`
-- The deployed Static Web App: `https://<STATIC_SITE_HOSTNAME>/`
+- Local development: `http://localhost:5173/redirect.html` (or `http://127.0.0.1:5173/redirect.html` when using the repository's default Vite host)
+- The deployed Static Web App: `https://<STATIC_SITE_HOSTNAME>/redirect.html`
 
-Do not create a client secret for a browser SPA. Under **API permissions**, add delegated permission `access_as_user` from `Caravan Escort API` and grant tenant admin consent if required by DEX policy.
+The `redirect.html` page is the MSAL Browser 5 redirect bridge and must be registered exactly. Do not create a client secret for a browser SPA. Under **API permissions**, add delegated permission `access_as_user` from `Caravan Escort API` and grant tenant admin consent if required by DEX policy.
 
 ## 3. Assign the DEX employee group
 
@@ -48,7 +48,7 @@ The Bicep deployment accepts `entraTenantId` and `entraApiAudience` and configur
 | `VITE_ENTRA_TENANT_ID` | DEX tenant ID |
 | `VITE_ENTRA_WEB_CLIENT_ID` | Web SPA client ID |
 | `VITE_ENTRA_API_SCOPE` | `api://<API_CLIENT_ID>/access_as_user` |
-| `VITE_API_BASE_URL` | Optional Function API origin only; omit it when using the linked Static Web App backend |
+| `VITE_API_BASE_URL` | Function API origin (required by the current web deployment script) |
 
 The `VITE_` values are public browser configuration, not secrets. Avoid putting credentials or tokens in any Vite variable. For local development, copy the example values into a local environment file and replace them with the DEX registration values; do not commit that file.
 

@@ -27,17 +27,23 @@ async function createToken(overrides: {
   audience?: string;
   roles?: string[];
   expired?: boolean;
+  version?: '1.0' | '2.0';
+  includeName?: boolean;
 } = {}): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const tenantId = overrides.tenantId ?? TENANT_ID;
+  const version = overrides.version ?? '2.0';
   return new SignJWT({
+    ver: version,
     tid: tenantId,
     oid: OBJECT_ID,
-    name: 'DEX Test Player',
+    ...(overrides.includeName === false ? {} : { name: 'DEX Test Player' }),
     roles: overrides.roles ?? ['CaravanGame.Player'],
   })
     .setProtectedHeader({ alg: 'RS256', kid: KEY_ID, typ: 'JWT' })
-    .setIssuer(`https://login.microsoftonline.com/${tenantId}/v2.0`)
+    .setIssuer(version === '1.0'
+      ? `https://sts.windows.net/${tenantId}/`
+      : `https://login.microsoftonline.com/${tenantId}/v2.0`)
     .setAudience(overrides.audience ?? API_CLIENT_ID)
     .setIssuedAt(now - 60)
     .setExpirationTime(overrides.expired ? now - 10 : now + 300)
@@ -111,6 +117,28 @@ describe('authorizeRequest', () => {
       tenantId: TENANT_ID,
       objectId: OBJECT_ID,
       displayName: 'DEX Test Player',
+    });
+  });
+
+  it('accepts a v1 token for the configured API application URI', async () => {
+    const token = await createToken({ version: '1.0', audience: `api://${API_CLIENT_ID}` });
+    await expect(authorizeRequest(request(token))).resolves.toMatchObject({
+      tenantId: TENANT_ID,
+      objectId: OBJECT_ID,
+      displayName: 'DEX Test Player',
+    });
+  });
+
+  it('uses a neutral display name when the optional name claim is absent', async () => {
+    const token = await createToken({ includeName: false });
+    await expect(authorizeRequest(request(token))).resolves.toMatchObject({ displayName: 'DEX 직원' });
+  });
+
+  it('still rejects a v1 token for a different API', async () => {
+    const token = await createToken({ version: '1.0', audience: 'api://not-the-api' });
+    await expect(authorizeRequest(request(token))).rejects.toMatchObject({
+      status: 401,
+      code: 'UNAUTHENTICATED',
     });
   });
 });

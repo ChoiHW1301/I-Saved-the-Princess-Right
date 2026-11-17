@@ -22,7 +22,6 @@ function mockedContainer(): {
   create: ReturnType<typeof vi.fn>;
   upsert: ReturnType<typeof vi.fn>;
   batch: ReturnType<typeof vi.fn>;
-  execute: ReturnType<typeof vi.fn>;
 } {
   const documents = new Map<string, any>();
   const item = vi.fn((id: string, partition: string) => ({
@@ -42,8 +41,7 @@ function mockedContainer(): {
     return { resource: document };
   });
   const upsert = vi.fn(async (document: any) => ({ resource: document }));
-  const execute = vi.fn(async () => ({ statusCode: 200 }));
-  const batch = vi.fn(() => ({ create: vi.fn().mockReturnThis(), replace: vi.fn().mockReturnThis(), execute }));
+  const batch = vi.fn(async () => ({ statusCode: 200 }));
   const container = {
     item,
     items: {
@@ -53,7 +51,7 @@ function mockedContainer(): {
       batch,
     },
   } as unknown as ContainerPort;
-  return { container, documents, item, create, upsert, batch, execute };
+  return { container, documents, item, create, upsert, batch };
 }
 
 describe('Cosmos repositories', () => {
@@ -85,8 +83,10 @@ describe('Cosmos repositories', () => {
       permanentUpgradeLevels: {}, passiveIds: [], characterTrainingLevels: {}, updatedAt: now,
     };
     await expect(repository.applyRunOnce(caller, receipt, updated)).resolves.toBe(true);
-    expect(mock.batch).toHaveBeenCalledWith(userId);
-    expect(mock.execute).toHaveBeenCalledOnce();
+    expect(mock.batch).toHaveBeenCalledWith([
+      { operationType: 'Create', resourceBody: expect.objectContaining({ id: 'run:run-1' }) },
+      { operationType: 'Replace', id: 'profile', resourceBody: expect.objectContaining({ version: 2 }), ifMatch: 'etag-1' },
+    ], userId);
   });
 
   it('increments save revisions and turns stale revision writes into SAVE_CONFLICT', async () => {

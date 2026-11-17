@@ -82,6 +82,32 @@ describe('run save, resume, and result flow', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toMatchObject({ expectedRevision: null, snapshot: { elapsedSeconds: 30 } });
   });
 
+  it('serializes overlapping autosave and manual save with the latest server revision', async () => {
+    let serverRevision = 1;
+    const putBodies: Array<{ expectedRevision: number | null }> = [];
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method !== 'PUT') return response(save('run-1', serverRevision));
+      const body = JSON.parse(String(init.body)) as { expectedRevision: number | null; snapshot: RunSnapshotV1 };
+      putBodies.push(body);
+      if (body.expectedRevision !== serverRevision) return response({ code: 'SAVE_CONFLICT' }, 409);
+      await Promise.resolve();
+      serverRevision += 1;
+      return response(save('run-1', serverRevision, body.snapshot));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new RunController(async () => 'token', profile, new MemoryStore());
+    await controller.continueRun();
+
+    const [autosave, manualSave] = await Promise.all([
+      controller.saveSnapshot('run-1', snapshot),
+      controller.saveSnapshot('run-1', { ...snapshot, elapsedSeconds: 31 }),
+    ]);
+
+    expect([autosave.revision, manualSave.revision]).toEqual([2, 3]);
+    expect(putBodies.map((body) => body.expectedRevision)).toEqual([1, 2]);
+    expect(controller.syncStatus).toBe('clean');
+  });
+
   it('keeps the server save when another run conflicts with the local pending snapshot', async () => {
     const local = new MemoryStore(); local.value = save('local-run', 1);
     const fetchMock = vi.fn().mockResolvedValue(response(save('server-run', 1)));
@@ -98,7 +124,7 @@ describe('run save, resume, and result flow', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(response({ code: 'STORAGE_UNAVAILABLE' }, 503)).mockResolvedValueOnce(response(receipt, 201));
     vi.stubGlobal('fetch', fetchMock);
     const controller = new RunController(async () => 'token', profile, local);
-    await expect(controller.submitResult(result)).rejects.toMatchObject({ kind: 'offline' });
+    await expect(controller.submitResult(result)).rejects.toMatchObject({ kind: 'server' });
     expect(local.result?.runId).toBe(result.runId);
     await expect(controller.retryResult()).resolves.toMatchObject({ goldAward: 3, profile: { goldBalance: 3 } });
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).runId).toBe(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)).runId);

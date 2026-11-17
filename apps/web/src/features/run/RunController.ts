@@ -4,18 +4,20 @@ import { IndexedDbLocalSaveStore, type LocalSaveStore } from './localSaveStore.j
 
 export type SyncStatus = 'clean' | 'pending' | 'conflict';
 export class RunControllerError extends Error {
-  constructor(readonly kind: 'conflict' | 'offline' | 'auth' | 'access' | 'unknown', message: string) { super(message); this.name = 'RunControllerError'; }
+  constructor(readonly kind: 'conflict' | 'offline' | 'server' | 'auth' | 'access' | 'unknown', message: string) { super(message); this.name = 'RunControllerError'; }
 }
 
 export class RunController {
   private current: CurrentRunSaveV1 | null = null;
   private profile: PlayerProfile;
+  private saveQueue: Promise<void> = Promise.resolve();
   syncStatus: SyncStatus = 'clean';
   constructor(private readonly getToken: () => Promise<string>, profile: PlayerProfile, private readonly local: LocalSaveStore = new IndexedDbLocalSaveStore()) { this.profile = profile; }
   setProfile(profile: PlayerProfile): void { this.profile = profile; }
 
   async startNew(characterId: CharacterId): Promise<{ runId: string }> {
     if (!this.profile.unlockedCharacters.includes(characterId)) throw new RunControllerError('access', '선택한 캐릭터가 아직 해금되지 않았습니다.');
+    await this.saveQueue;
     try { await deleteSave(await this.getToken()); }
     catch (error) { if (!(error instanceof RunApiError && error.status === 404)) throw this.toControllerError(error); }
     await this.local.clear();
@@ -52,7 +54,13 @@ export class RunController {
     return save;
   }
 
-  async saveSnapshot(runId: string, snapshot: RunSnapshotV1): Promise<CurrentRunSaveV1> {
+  saveSnapshot(runId: string, snapshot: RunSnapshotV1): Promise<CurrentRunSaveV1> {
+    const pending = this.saveQueue.then(() => this.writeSnapshot(runId, snapshot));
+    this.saveQueue = pending.then(() => undefined, () => undefined);
+    return pending;
+  }
+
+  private async writeSnapshot(runId: string, snapshot: RunSnapshotV1): Promise<CurrentRunSaveV1> {
     const currentRevision = this.current?.runId === runId ? this.current.revision : null;
     const expectedRevision = currentRevision && currentRevision > 0 ? currentRevision : null;
     try {
@@ -97,6 +105,7 @@ export class RunController {
   async submitResult(result: RunSubmission): Promise<RunReceipt> {
     await this.local.putResult(result, this.profile.userId);
     try {
+      await this.saveQueue;
       const receipt = await submitRun(await this.getToken(), result);
       this.current = null; this.syncStatus = 'clean';
       await Promise.all([this.local.clear(), this.local.clearResult()]);
@@ -130,6 +139,7 @@ export class RunController {
       if (error.status === 401) return new RunControllerError('auth', '로그인 세션이 만료되었습니다. 다시 인증해 주세요.');
       if (error.status === 403) return new RunControllerError('access', 'DEX 직원 계정의 게임 이용 권한을 확인해 주세요.');
       if (error.status === 409) return new RunControllerError('conflict', '저장 또는 판 결과가 다른 요청과 충돌했습니다.');
+      if (error.status >= 500) return new RunControllerError('server', '서버가 원정 결과를 처리하지 못했습니다. 잠시 후 다시 제출해 주세요.');
     }
     return new RunControllerError('offline', 'API에 연결하지 못했습니다. 연결 상태를 확인해 주세요.');
   }

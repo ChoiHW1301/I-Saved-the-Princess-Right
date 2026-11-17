@@ -24,6 +24,8 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
 }): JSX.Element {
   const isDevBossTest = import.meta.env.DEV && (debugBossId !== undefined || debugPostClearBossId !== undefined);
   const hostRef = useRef<HTMLDivElement>(null);
+  const runEndedRef = useRef(false);
+  const pendingSaveCount = useRef(0);
   const [levelUp, setLevelUp] = useState<{ level: number; choices: UpgradeChoice[] } | null>(null);
   const [storyEvent, setStoryEvent] = useState<StoryEvent | null>(null);
   const [bossEncounter, setBossEncounter] = useState<ActiveBossEncounter | null>(null);
@@ -63,6 +65,7 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
     const unsubscribeEvolutionOffer = gameEventBus.on('warrior-evolution-offer', ({ choices }) => setEvolutionChoices(choices));
     const unsubscribeEvolutionComplete = gameEventBus.on('warrior-evolution-complete', () => setEvolutionChoices(null));
     const unsubscribeRunEnded = gameEventBus.on('run-ended', (summary) => {
+      runEndedRef.current = true;
       setRunSummary(summary); setLevelUp(null); setStoryEvent(null); setBossEncounter(null); setSubmitting(!isDevBossTest); setResultError(null);
       if (isDevBossTest) return;
       const submission: RunSubmission = { runId: summary.runId, characterId: summary.characterId, status: summary.status, elapsedSeconds: Math.floor(summary.elapsedSeconds), kills: summary.kills, defeatedBossIds: summary.defeatedBossIds, karma: summary.karma, endingId: summary.endingId };
@@ -75,16 +78,22 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
 
   useEffect(() => {
     const unsubscribeSnapshot = gameEventBus.on('snapshot-ready', (request) => {
-      if (isDevBossTest) return;
+      if (isDevBossTest || runEndedRef.current) return;
+      pendingSaveCount.current += 1;
       setSaving(true);
       void controller.saveSnapshot(request.runId, request.snapshot).then(() => {
+        if (runEndedRef.current) return;
         gameEventBus.emit('snapshot-saved', { reason: request.reason, resume: request.resumeAfterSave });
         setNetworkError(null); setPauseMenu(request.reason === 'manual'); onSaved?.();
         if (request.reason === 'manual') onExit();
       }).catch((error: unknown) => {
+        if (runEndedRef.current) return;
         const message = error instanceof RunControllerError ? error.message : '저장에 실패했습니다. 다시 시도해 주세요.';
         setNetworkError(message); gameEventBus.emit('snapshot-failed', { message });
-      }).finally(() => setSaving(false));
+      }).finally(() => {
+        pendingSaveCount.current -= 1;
+        setSaving(pendingSaveCount.current > 0);
+      });
     });
     return () => unsubscribeSnapshot();
   }, [controller, isDevBossTest, onExit, onSaved]);
@@ -128,7 +137,7 @@ export function GameCanvas({ characterId = 'warrior', profile, runId, resumeSave
     <>
       <div ref={hostRef} aria-label="마차 호위 게임 화면" style={{ width: '100%', height: '100%' }} />
       {miniBossWarning && !bossEncounter && <div className="mini-boss-warning" role="status">Warning!! 수상한 기운이 접근합니다!</div>}
-      {!lavaBossDying && !evolutionChoices && <button type="button" className="game-pause-button" onClick={() => { setPauseMenu(true); gameEventBus.emit('pause-request', null); }} aria-label="일시 정지" />}
+      {!runSummary && !networkError && !pauseMenu && !lavaBossDying && !evolutionChoices && <button type="button" className="game-pause-button" onClick={() => { setPauseMenu(true); gameEventBus.emit('pause-request', null); }} aria-label="일시 정지" />}
       {evolutionChoices && <WarriorEvolutionOverlay choices={evolutionChoices} onChoose={chooseEvolution} />}
       {levelUp && <LevelUpOverlay level={levelUp.level} choices={levelUp.choices} onChoose={chooseUpgrade} />}
       {storyEvent && <EventChoiceOverlay event={storyEvent} onChoose={chooseEvent} />}

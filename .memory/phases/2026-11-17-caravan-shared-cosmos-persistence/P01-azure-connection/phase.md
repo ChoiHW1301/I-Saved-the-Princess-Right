@@ -6,7 +6,7 @@
 | T01 | `done` | Isolated `caravan-game` database and containers | [T01](./T01-shared-database.md) |
 | T02 | `done` | API training test and release package readiness | [T02](./T02-api-readiness.md) |
 | T03 | `done` | Scoped managed identity roles and Functions release | [T03](./T03-api-deployment.md) |
-| T04 | `in_progress` | Web release and live persistence verification | [T04](./T04-web-verification.md) |
+| T04 | `done` | Web release and live persistence verification | [T04](./T04-web-verification.md) |
 
 ## Progress
-- done: 3/4 (active: T04)
+- done: 4/4

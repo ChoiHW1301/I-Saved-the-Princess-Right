@@ -52,6 +52,18 @@ resource leaderboards 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/contai
     resource: {
       id: 'leaderboards'
       partitionKey: { paths: ['/boardId'], kind: 'Hash', version: 2 }
+      indexingPolicy: {
+        automatic: true
+        indexingMode: 'consistent'
+        includedPaths: [{ path: '/*' }]
+        excludedPaths: [{ path: '/"_etag"/?' }]
+        compositeIndexes: [[
+          { path: '/score', order: 'descending' }
+          { path: '/kills', order: 'descending' }
+          { path: '/elapsedSeconds', order: 'descending' }
+          { path: '/displayName', order: 'ascending' }
+        ]]
+      }
     }
   }
 }

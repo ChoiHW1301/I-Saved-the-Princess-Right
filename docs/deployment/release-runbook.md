@@ -1,5 +1,9 @@
 # Azure release runbook
 
+## Current shared-Cosmos Caravan deployment
+
+The existing `caravan-grill-e21002` site in `grill-me-edu` uses the Free Static Web Apps plan and calls the separate `caravan-grill-api-e21002` Function origin directly. Set `VITE_API_BASE_URL=https://caravan-grill-api-e21002.azurewebsites.net` for web releases and keep the site's origin in the Function CORS allowlist. Register the exact SPA redirect URI `https://calm-hill-0358c1a00.6.azurestaticapps.net/redirect.html` for the MSAL Browser 5 bridge page. The Function uses the `caravangstge21002` Storage account and a managed identity scoped to the `caravan-game` database in the shared Cosmos account. Do not redeploy `infra/main.bicep` for this stack: it creates a separate Cosmos account. The generic first-release instructions below describe the older standalone template, not this existing stack.
+
 ## Before the first release
 
 1. Confirm the target subscription and resource group with `az account show`; select the intended subscription with `az account set` if needed.
@@ -16,7 +20,7 @@ From the repository root, run `./scripts/deploy-api.ps1 -ResourceGroup <resource
 
 The Bicep template links the Function as the Static Web App backend. Confirm the linked backend is enabled and the Static Web App is Standard tier. The web client calls `/api/...` on the same origin when `VITE_API_BASE_URL` is empty.
 
-Add the deployed Static Web App root URL to the SPA registration's redirect URIs. Configure `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_WEB_CLIENT_ID`, and `VITE_ENTRA_API_SCOPE` in the deployment environment, then deploy with `./scripts/deploy-web.ps1 -ResourceGroup <resource-group> -StaticSiteName <static-site>`. The script obtains the SWA deployment token from the authenticated Azure CLI session in memory and does not print it. It requires the Static Web Apps CLI (`swa`) on PATH.
+Add the deployed Static Web App's `/redirect.html` URL to the SPA registration's redirect URIs. Configure `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_WEB_CLIENT_ID`, `VITE_ENTRA_API_SCOPE`, and `VITE_API_BASE_URL` in the deployment environment, then deploy with `./scripts/deploy-web.ps1 -ResourceGroup <resource-group> -StaticSiteName <static-site>`. The script obtains the SWA deployment token from the authenticated Azure CLI session in memory and does not print it. It uses `swa` on PATH or downloads the official CLI from npm when needed.
 
 If using a separate API origin, set `VITE_API_BASE_URL` to the Function origin (without `/api`) and configure the Function CORS allowlist for the exact Static Web App origin. Prefer the linked backend to avoid cross-origin configuration.
 

@@ -6,7 +6,7 @@ Connect the existing Caravan web and Functions stack to an isolated `caravan-gam
 ## Phases
 | Phase | Status | Summary | Blueprint |
 | :--- | :--- | :--- | :--- |
-| P01 | `in_progress` | Shared database, API release, web release, live verification | [P01](../phases/2026-11-17-caravan-shared-cosmos-persistence/P01-azure-connection/phase.md) |
+| P01 | `done` | Shared database, API release, web release, live verification | [P01](../phases/2026-11-17-caravan-shared-cosmos-persistence/P01-azure-connection/phase.md) |
 
 ## Execution Order
 1. T01 create only the dedicated database and its three containers with 400 RU/s shared throughput.

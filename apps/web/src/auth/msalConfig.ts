@@ -14,7 +14,7 @@ const msalConfiguration: Configuration = {
     authority: tenantId
       ? `https://login.microsoftonline.com/${tenantId}`
       : 'https://login.microsoftonline.com/organizations',
-    redirectUri: window.location.origin,
+    redirectUri: `${window.location.origin}/redirect.html`,
     postLogoutRedirectUri: window.location.origin,
   },
   cache: {

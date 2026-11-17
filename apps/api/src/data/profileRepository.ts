@@ -93,10 +93,10 @@ export class ProfileRepository implements ProfileRepositoryPort {
       if (!current?.etag || safeProfile.version !== current.profile.version + 1) {
         throw new StorageError('PROFILE_CONFLICT');
       }
-      const result = await this.container.items.batch(userId)
-        .create(safeReceipt)
-        .replace('profile', safeProfile, { ifMatch: current.etag })
-        .execute();
+      const result = await this.container.items.batch([
+        { operationType: 'Create', resourceBody: safeReceipt },
+        { operationType: 'Replace', id: 'profile', resourceBody: safeProfile, ifMatch: current.etag },
+      ], userId);
       if (result.statusCode === 409) return false;
       if (result.statusCode === 412) throw new StorageError('PROFILE_CONFLICT');
       if (result.statusCode !== undefined && result.statusCode >= 400) {

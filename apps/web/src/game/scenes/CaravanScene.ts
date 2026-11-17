@@ -347,13 +347,24 @@ export class CaravanScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeEvolution);
     const unsubscribeSnapshot = gameEventBus.on('snapshot-request', ({ reason }) => this.createRunSnapshot(reason));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeSnapshot);
-    const unsubscribePause = gameEventBus.on('pause-request', () => { this.uiPaused = true; this.scene.pause(); });
+    const unsubscribePause = gameEventBus.on('pause-request', () => {
+      if (this.runEndEmitted || !this.sys?.isActive()) return;
+      this.uiPaused = true;
+      this.scene.pause();
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribePause);
-    const unsubscribeSaved = gameEventBus.on('snapshot-saved', ({ resume }) => { if (resume) this.scene.resume(); });
+    const unsubscribeSaved = gameEventBus.on('snapshot-saved', ({ resume }) => {
+      if (resume && !this.runEndEmitted && this.scene?.manager) this.scene.resume();
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeSaved);
-    const unsubscribeFailed = gameEventBus.on('snapshot-failed', () => { this.run.pausedBy = 'network'; this.uiPaused = true; this.scene.pause(); });
+    const unsubscribeFailed = gameEventBus.on('snapshot-failed', () => {
+      if (this.runEndEmitted || !this.scene?.manager) return;
+      this.run.pausedBy = 'network'; this.uiPaused = true;
+      if (this.sys.isActive()) this.scene.pause();
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeFailed);
     const unsubscribeResume = gameEventBus.on('resume-run', () => {
+      if (this.runEndEmitted || !this.scene?.manager) return;
       if (this.run.pausedBy === 'network') this.run.pausedBy = this.run.pendingChoices.length > 0 ? 'level-up' : this.activeBossId ? 'boss' : this.eventSystem.pendingEventId ? 'event' : 'none';
       this.uiPaused = this.run.pausedBy === 'event' || this.run.pausedBy === 'level-up';
       if (!this.uiPaused) this.scene.resume();
@@ -1475,7 +1486,7 @@ export class CaravanScene extends Phaser.Scene {
     if (this.run.status !== 'active') return;
     const shouldPauseScene = reason === 'manual';
     const resumeAfterSave = shouldPauseScene && !this.uiPaused;
-    if (shouldPauseScene) this.scene.pause();
+    if (shouldPauseScene && this.sys.isActive()) this.scene.pause();
     const activeBoss = this.enemies.find((enemy) => enemy.bossMilestoneId === this.activeBossMilestoneId);
     const snapshot = createSnapshot({
       run: this.run, player: { x: this.warrior.x, y: this.warrior.y }, rngSeed: this.random.getState(),
